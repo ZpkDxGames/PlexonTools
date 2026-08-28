@@ -40,6 +40,8 @@ public final class PlexonGuiHolder implements InventoryHolder {
         ADMIN_EDITOR,
         WORLDS,
         LEVELS,
-        LEVEL_EDITOR
+        LEVEL_EDITOR,
+        ENCHANTMENTS,
+        LORE
     }
 }

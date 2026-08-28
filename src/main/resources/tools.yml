@@ -2,7 +2,7 @@ tools:
   magma_breaker:
     enabled: true
     display_name: "<gradient:#FF4500:#FFA500><bold>Magma Breaker</bold></gradient>"
-    base_material: NETHERITE_PICKAXE
+    base_material: IRON_PICKAXE
     allowed_worlds:
       - world
       - world_nether
@@ -18,21 +18,50 @@ tools:
         enchantments:
           EFFICIENCY: 1
           UNBREAKING: 1
+        item:
+          unbreakable: false
+          glint: AUTO
+          hide_enchantments: false
+          hide_attributes: false
         lore:
           - "<gray>A scorching pickaxe forged in the depths.</gray>"
           - "<dark_gray>Bound world:</dark_gray> <white>{world}</white>"
-          - "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <orange>{current}/{required}</orange> blocks</gray>"
+          - "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <orange>{current}/{required}</orange> ({percent}%)</gray>"
           - "{bar}"
       2:
         requirement: 1500
+        display_name: "<gradient:#FF8C00:#FFD700><bold>Emberforged Breaker</bold></gradient>"
+        material: DIAMOND_PICKAXE
         enchantments:
-          EFFICIENCY: 2
-          UNBREAKING: 2
+          EFFICIENCY: 3
+          UNBREAKING: 3
           FORTUNE: 1
-        material_upgrade: NETHERITE_PICKAXE
+        item:
+          unbreakable: false
+          glint: AUTO
+          hide_enchantments: false
+          hide_attributes: false
         lore:
-          - "<gray>A scorching pickaxe forged in the depths.</gray>"
-          - "<gold><bold>Upgraded tier!</bold></gold>"
+          - "<gold><bold>Diamond tier unlocked</bold></gold>"
+          - "<dark_gray>Bound world:</dark_gray> <white>{world}</white>"
+          - "<gray>Remaining:</gray> <white>{remaining}</white> <dark_gray>•</dark_gray> <gray>Total:</gray> <white>{total}</white>"
+          - "{bar}"
+      3:
+        requirement: 3000
+        display_name: "<gradient:#FF4500:#FFA500><bold>Magma Breaker</bold></gradient>"
+        material: NETHERITE_PICKAXE
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 4
+          FORTUNE: 3
+        item:
+          unbreakable: true
+          glint: ON
+          hide_enchantments: false
+          hide_attributes: false
+        lore:
+          - "<gradient:#FF4500:#FFA500><bold>Maximum magma tier</bold></gradient>"
           - "<dark_gray>Bound world:</dark_gray> <white>{world}</white>"
           - "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <green>MAX</green></gray>"
+          - "<gray>Total tracked:</gray> <white>{total}</white>"
           - "{bar}"
