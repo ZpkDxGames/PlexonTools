@@ -271,8 +271,8 @@ public final class ToolItemService {
                             .map(ToolItemService::humanizeTarget)
                             .collect(Collectors.joining(", "));
         }
-        return requirement.targets().entrySet().stream()
-                .map(entry -> action + " " + entry.getValue() + " " + humanizeTarget(entry.getKey()))
+        return action + " " + requirement.targets().entrySet().stream()
+                .map(entry -> entry.getValue() + "x " + humanizeTarget(entry.getKey()))
                 .collect(Collectors.joining(" + "));
     }
 
