@@ -1081,11 +1081,11 @@ public final class GuiManager implements Listener {
 
     private void addNavigation(Inventory inventory, int page, int pages, String action) {
         if (page > 0) {
-            inventory.setItem(inventory.getSize() - 9, button(action, Integer.toString(page - 1), Material.ARROW,
+            inventory.setItem(inventory.getSize() - 8, button(action, Integer.toString(page - 1), Material.ARROW,
                     "<yellow><bold>Previous page</bold></yellow>", "<gray>Page " + page + " of " + pages + "</gray>"));
         }
         if (page + 1 < pages) {
-            inventory.setItem(inventory.getSize() - 1, button(action, Integer.toString(page + 1), Material.ARROW,
+            inventory.setItem(inventory.getSize() - 2, button(action, Integer.toString(page + 1), Material.ARROW,
                     "<yellow><bold>Next page</bold></yellow>", "<gray>Page " + (page + 2) + " of " + pages + "</gray>"));
         }
     }
