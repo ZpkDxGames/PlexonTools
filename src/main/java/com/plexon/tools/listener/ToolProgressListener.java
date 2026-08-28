@@ -75,12 +75,6 @@ public final class ToolProgressListener implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
         Optional<ToolState> state = itemService.read(item);
         if (state.isEmpty()) {
-            if (itemService.isTagged(item)) {
-                if (settings.cancelAttacks()) {
-                    event.setCancelled(true);
-                }
-                progression.warnInvalid(player);
-            }
             return;
         }
         Optional<ToolDefinition> definition = tools.find(state.get().toolId());
@@ -102,10 +96,10 @@ public final class ToolProgressListener implements Listener {
         Optional<ToolState> state = itemService.read(item);
         if (state.isEmpty()) {
             if (itemService.isTagged(item)) {
-                if (settings.cancelInteractions()) {
+                if (settings.cancelAttacks()) {
                     event.setCancelled(true);
                 }
-                progression.warnInvalid(event.getPlayer());
+                progression.warnInvalid(player);
             }
             return;
         }
@@ -131,6 +125,12 @@ public final class ToolProgressListener implements Listener {
         ItemStack item = event.getItem();
         Optional<ToolState> state = itemService.read(item);
         if (state.isEmpty()) {
+            if (itemService.isTagged(item)) {
+                if (settings.cancelInteractions()) {
+                    event.setCancelled(true);
+                }
+                progression.warnInvalid(event.getPlayer());
+            }
             return;
         }
         Optional<ToolDefinition> definition = tools.find(state.get().toolId());

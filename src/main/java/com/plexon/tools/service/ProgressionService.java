@@ -7,6 +7,9 @@ import com.plexon.tools.message.MessageService;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.storage.InstanceRegistry;
 import com.plexon.tools.util.ProgressionMath;
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -74,8 +77,8 @@ public final class ProgressionService {
         ProgressionMath.Result result = ProgressionMath.advance(
                 current.level(), current.progress(), amount, requirements);
         ToolState updated = current.withProgress(result.level(), result.progress());
-        itemService.apply(item, definition, updated);
-        player.getInventory().setItemInMainHand(item);
+        ItemStack updatedItem = itemService.apply(item, definition, updated);
+        player.getInventory().setItemInMainHand(updatedItem);
         instanceRegistry.update(updated, amount, player.getName());
 
         if (result.levelsGained() > 0) {
@@ -97,8 +100,16 @@ public final class ProgressionService {
         messages.actionBar(player, "level-up", placeholders);
 
         try {
-            Sound sound = Sound.valueOf(settings.levelUpSound().toUpperCase(Locale.ROOT));
-            player.playSound(player.getLocation(), sound, SoundCategory.PLAYERS, 1.0F, 1.15F);
+            String configured = settings.levelUpSound().toLowerCase(Locale.ROOT);
+            String namespaced = configured.contains(":")
+                    ? configured
+                    : "minecraft:" + configured.replace('_', '.');
+            NamespacedKey key = NamespacedKey.fromString(namespaced);
+            Sound sound = key == null ? null
+                    : RegistryAccess.registryAccess().getRegistry(RegistryKey.SOUND_EVENT).get(key);
+            if (sound != null) {
+                player.playSound(player.getLocation(), sound, SoundCategory.PLAYERS, 1.0F, 1.15F);
+            }
         } catch (IllegalArgumentException ignored) {
             // Invalid configured sounds should never interrupt progression.
         }

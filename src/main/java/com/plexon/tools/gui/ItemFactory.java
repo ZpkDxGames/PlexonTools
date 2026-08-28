@@ -18,7 +18,7 @@ public final class ItemFactory {
     }
 
     public static ItemStack create(Material material, Component name, List<Component> lore, boolean glow) {
-        ItemStack item = new ItemStack(material);
+        ItemStack item = ItemStack.of(material);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(name.decoration(TextDecoration.ITALIC, false));
         meta.lore(lore.stream()

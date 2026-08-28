@@ -650,8 +650,7 @@ public final class GuiManager implements Listener {
     private ItemStack previewIcon(ToolDefinition tool) {
         ToolState preview = new ToolState(tool.id(), UUID.randomUUID(), 1, 0L,
                 tool.allowedWorlds().iterator().next(), UUID.randomUUID());
-        ItemStack item = new ItemStack(tool.baseMaterial());
-        itemService.apply(item, tool, preview);
+        ItemStack item = itemService.apply(ItemStack.of(tool.baseMaterial()), tool, preview);
         tag(item, "preview", tool.id());
         return item;
     }
@@ -659,8 +658,7 @@ public final class GuiManager implements Listener {
     private ItemStack previewIcon(ToolDefinition tool, ToolLevel level) {
         ToolState preview = new ToolState(tool.id(), UUID.randomUUID(), level.number(), 0L,
                 tool.allowedWorlds().iterator().next(), UUID.randomUUID());
-        ItemStack item = new ItemStack(tool.baseMaterial());
-        itemService.apply(item, tool, preview);
+        ItemStack item = itemService.apply(ItemStack.of(tool.baseMaterial()), tool, preview);
         tag(item, "preview", tool.id());
         return item;
     }

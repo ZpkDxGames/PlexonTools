@@ -3,9 +3,10 @@ package com.plexon.tools.config;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.ToolLevel;
 import com.plexon.tools.model.TrackingType;
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.Registry;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -384,7 +385,8 @@ public final class ToolConfigRepository {
         NamespacedKey key = normalized.contains(":")
                 ? NamespacedKey.fromString(normalized)
                 : NamespacedKey.minecraft(normalized);
-        return key == null ? null : Registry.ENCHANTMENT.get(key);
+        return key == null ? null
+                : RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT).get(key);
     }
 
     private static Material parseItemMaterial(String value, String field, String id) {

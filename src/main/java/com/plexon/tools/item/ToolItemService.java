@@ -49,8 +49,7 @@ public final class ToolItemService {
         UUID instanceId = UUID.randomUUID();
         ToolState state = new ToolState(definition.id(), instanceId,
                 definition.firstLevel().number(), 0L, boundWorld, owner.getUniqueId());
-        ItemStack item = new ItemStack(definition.baseMaterial());
-        apply(item, definition, state);
+        ItemStack item = apply(ItemStack.of(definition.baseMaterial()), definition, state);
         return new CreatedTool(item, state);
     }
 
@@ -84,14 +83,14 @@ public final class ToolItemService {
                 && item.getItemMeta().getPersistentDataContainer().has(idKey, PersistentDataType.STRING);
     }
 
-    public void apply(ItemStack item, ToolDefinition definition, ToolState state) {
+    public ItemStack apply(ItemStack item, ToolDefinition definition, ToolState state) {
         ToolLevel level = definition.level(state.level()).orElse(definition.firstLevel());
         Material material = level.materialUpgrade() == null ? item.getType() : level.materialUpgrade();
-        if (material.isItem() && item.getType() != material) {
-            item.setType(material);
-        }
+        ItemStack updatedItem = material.isItem() && item.getType() != material
+                ? item.withType(material)
+                : item;
 
-        ItemMeta meta = item.getItemMeta();
+        ItemMeta meta = updatedItem.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         pdc.set(idKey, PersistentDataType.STRING, state.toolId());
         pdc.set(uuidKey, PersistentDataType.STRING, state.instanceId().toString());
@@ -111,7 +110,8 @@ public final class ToolItemService {
         }
         level.enchantments().forEach((enchantment, enchantLevel) ->
                 meta.addEnchant(enchantment, enchantLevel, true));
-        item.setItemMeta(meta);
+        updatedItem.setItemMeta(meta);
+        return updatedItem;
     }
 
     public Optional<ToolState> findBestOwned(Player player, String toolId) {
