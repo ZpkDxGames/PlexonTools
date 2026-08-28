@@ -43,6 +43,12 @@ public final class ProgressionService {
     }
 
     public boolean canUse(Player player, ToolDefinition definition, ToolState state, boolean notify) {
+        if (definition.level(state.level()).isEmpty()) {
+            if (notify) {
+                warnInvalid(player);
+            }
+            return false;
+        }
         if (settings.enforceOwner()
                 && !state.ownerId().equals(player.getUniqueId())
                 && !player.hasPermission("plexontools.bypass.owner")) {
@@ -77,7 +83,9 @@ public final class ProgressionService {
         ProgressionMath.Result result = ProgressionMath.advance(
                 current.level(), current.progress(), amount, requirements);
         ToolState updated = current.withProgress(result.level(), result.progress());
-        ItemStack updatedItem = itemService.apply(item, definition, updated);
+        ItemStack updatedItem = result.levelsGained() > 0
+                ? itemService.apply(item, definition, updated)
+                : itemService.refreshProgress(item, definition, updated);
         player.getInventory().setItemInMainHand(updatedItem);
         instanceRegistry.update(updated, amount, player.getName());
 

@@ -626,6 +626,21 @@ public final class GuiManager implements Listener {
             lore.add(messages.parse("<dark_gray>No owned instance found in your inventory.</dark_gray>"));
         }
         lore.add(Component.empty());
+        Optional<ToolLevel> reward = owned.isPresent()
+                ? tool.nextLevel(owned.get().level())
+                : Optional.of(tool.firstLevel());
+        if (reward.isPresent()) {
+            ToolLevel next = reward.get();
+            String rewardTitle = owned.isPresent() ? "Next level rewards" : "Starting rewards";
+            lore.add(messages.parse("<gold><bold>" + rewardTitle + "</bold></gold> <dark_gray>• Level " + next.number() + "</dark_gray>"));
+            lore.add(messages.parse("<gray>Enchantments:</gray> <white>" + formatEnchantments(next.enchantments()) + "</white>"));
+            Material rewardMaterial = next.materialUpgrade() == null ? tool.baseMaterial() : next.materialUpgrade();
+            lore.add(messages.parse("<gray>Material:</gray> <white>" + rewardMaterial.name() + "</white>"));
+            lore.add(Component.empty());
+        } else {
+            lore.add(messages.parse("<green><bold>Maximum level reached</bold></green>"));
+            lore.add(Component.empty());
+        }
         if (locked) {
             lore.add(messages.parse("<red><bold>Locked in this world</bold></red>"));
         } else {

@@ -6,7 +6,7 @@
 2. The tool ID resolves against the immutable in-memory definition cache.
 3. `ProgressionService` validates the owner, definition allowlist, and bound world.
 4. Matching block or entity events advance the counter using `ProgressionMath`.
-5. `ToolItemService` updates only that `ItemStack`'s PDC, material, name, lore, and enchantments.
+5. Normal progress refreshes only that `ItemStack`'s counter and dynamic lore; level-ups additionally apply material, name, and enchantment rewards.
 6. `InstanceRegistry` updates its in-memory record and flushes periodically or on shutdown.
 
 No YAML lookup or disk write occurs on every block break or kill.

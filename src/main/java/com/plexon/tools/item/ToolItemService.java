@@ -84,24 +84,19 @@ public final class ToolItemService {
     }
 
     public ItemStack apply(ItemStack item, ToolDefinition definition, ToolState state) {
-        ToolLevel level = definition.level(state.level()).orElse(definition.firstLevel());
+        ToolLevel level = definition.level(state.level())
+                .orElseThrow(() -> new IllegalArgumentException("Tool level is no longer configured: " + state.level()));
         Material material = level.materialUpgrade() == null ? item.getType() : level.materialUpgrade();
         ItemStack updatedItem = material.isItem() && item.getType() != material
                 ? item.withType(material)
                 : item;
 
         ItemMeta meta = updatedItem.getItemMeta();
-        PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        pdc.set(idKey, PersistentDataType.STRING, state.toolId());
-        pdc.set(uuidKey, PersistentDataType.STRING, state.instanceId().toString());
-        pdc.set(levelKey, PersistentDataType.INTEGER, state.level());
-        pdc.set(statCountKey, PersistentDataType.LONG, state.progress());
-        pdc.set(boundWorldKey, PersistentDataType.STRING, state.boundWorld());
-        pdc.set(ownerKey, PersistentDataType.STRING, state.ownerId().toString());
-
-        meta.displayName(messages.parse(definition.displayName(), placeholders(definition, state)));
+        writeState(meta.getPersistentDataContainer(), state);
+        Map<String, String> placeholders = placeholders(definition, state);
+        meta.displayName(messages.parse(definition.displayName(), placeholders));
         List<Component> lore = level.lore().stream()
-                .map(line -> messages.parse(line, placeholders(definition, state)))
+                .map(line -> messages.parse(line, placeholders))
                 .toList();
         meta.lore(lore);
 
@@ -112,6 +107,30 @@ public final class ToolItemService {
                 meta.addEnchant(enchantment, enchantLevel, true));
         updatedItem.setItemMeta(meta);
         return updatedItem;
+    }
+
+    public ItemStack refreshProgress(ItemStack item, ToolDefinition definition, ToolState state) {
+        ToolLevel level = definition.level(state.level())
+                .orElseThrow(() -> new IllegalArgumentException("Tool level is no longer configured: " + state.level()));
+        ItemMeta meta = item.getItemMeta();
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        pdc.set(levelKey, PersistentDataType.INTEGER, state.level());
+        pdc.set(statCountKey, PersistentDataType.LONG, state.progress());
+        Map<String, String> placeholders = placeholders(definition, state);
+        meta.lore(level.lore().stream()
+                .map(line -> messages.parse(line, placeholders))
+                .toList());
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private void writeState(PersistentDataContainer pdc, ToolState state) {
+        pdc.set(idKey, PersistentDataType.STRING, state.toolId());
+        pdc.set(uuidKey, PersistentDataType.STRING, state.instanceId().toString());
+        pdc.set(levelKey, PersistentDataType.INTEGER, state.level());
+        pdc.set(statCountKey, PersistentDataType.LONG, state.progress());
+        pdc.set(boundWorldKey, PersistentDataType.STRING, state.boundWorld());
+        pdc.set(ownerKey, PersistentDataType.STRING, state.ownerId().toString());
     }
 
     public Optional<ToolState> findBestOwned(Player player, String toolId) {
