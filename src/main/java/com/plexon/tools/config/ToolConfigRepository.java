@@ -1,6 +1,8 @@
 package com.plexon.tools.config;
 
 import com.plexon.tools.model.GlintMode;
+import com.plexon.tools.model.LevelRequirement;
+import com.plexon.tools.model.RequirementMode;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.ToolLevel;
 import com.plexon.tools.model.TrackingType;
@@ -19,6 +21,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -38,12 +41,14 @@ public final class ToolConfigRepository {
     private static final String ID_PATTERN = "[a-z0-9_-]+";
 
     private final JavaPlugin plugin;
+    private final PluginSettings settings;
     private final File file;
     private volatile Map<String, ToolDefinition> definitions = Map.of();
     private YamlConfiguration yaml = new YamlConfiguration();
 
-    public ToolConfigRepository(JavaPlugin plugin) {
+    public ToolConfigRepository(JavaPlugin plugin, PluginSettings settings) {
         this.plugin = plugin;
+        this.settings = settings;
         this.file = new File(plugin.getDataFolder(), "tools.yml");
     }
 
@@ -77,6 +82,21 @@ public final class ToolConfigRepository {
                 .toList();
     }
 
+    public List<String> targetOptions(TrackingType trackingType) {
+        if (trackingType == TrackingType.BLOCKS_BROKEN) {
+            return Arrays.stream(Material.values())
+                    .filter(Material::isBlock)
+                    .map(Material::name)
+                    .sorted()
+                    .toList();
+        }
+        return Arrays.stream(EntityType.values())
+                .filter(EntityType::isAlive)
+                .map(EntityType::name)
+                .sorted()
+                .toList();
+    }
+
     public synchronized ToolDefinition createTool(String rawId, Material material, String world)
             throws IOException, InvalidConfigurationException {
         String id = normalizeId(rawId);
@@ -95,19 +115,17 @@ public final class ToolConfigRepository {
             config.set(root + ".base_material", material.name());
             config.set(root + ".allowed_worlds", List.of(world));
             config.set(root + ".tracking.type", TrackingType.BLOCKS_BROKEN.name());
-            config.set(root + ".tracking.targets", List.of());
+            config.set(root + ".tracking.mode", RequirementMode.GENERAL.name());
+            config.set(root + ".tracking.amount", 500L);
+            config.set(root + ".tracking.targets", null);
+            config.set(root + ".levels.1.requirement_mode", RequirementMode.GENERAL.name());
             config.set(root + ".levels.1.requirement", 500L);
             config.set(root + ".levels.1.enchantments", Map.of());
             config.set(root + ".levels.1.item.unbreakable", false);
             config.set(root + ".levels.1.item.glint", GlintMode.AUTO.name());
             config.set(root + ".levels.1.item.hide_enchantments", false);
             config.set(root + ".levels.1.item.hide_attributes", false);
-            config.set(root + ".levels.1.lore", List.of(
-                    "<gray>A progressive Plexon tool.</gray>",
-                    "<dark_gray>Bound world:</dark_gray> <white>{world}</white>",
-                    "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <aqua>{current}/{required}</aqua></gray>",
-                    "{bar}"
-            ));
+            config.set(root + ".levels.1.lore", settings.defaultLore());
         });
         return definitions.get(id);
     }
@@ -154,10 +172,17 @@ public final class ToolConfigRepository {
 
     public synchronized void setTrackingType(String id, TrackingType trackingType)
             throws IOException, InvalidConfigurationException {
-        requireTool(id);
+        ToolDefinition tool = requireTool(id);
+        List<ToolLevel> levels = tool.levels().values().stream()
+                .map(level -> level.withRequirement(LevelRequirement.general(
+                        Math.max(1L, level.requirement().requiredTotal()))))
+                .toList();
         mutate(config -> {
             config.set(path(id, "tracking.type"), trackingType.name());
-            config.set(path(id, "tracking.targets"), List.of());
+            config.set(path(id, "tracking.mode"), RequirementMode.GENERAL.name());
+            config.set(path(id, "tracking.amount"), levels.getFirst().requirement().amount());
+            config.set(path(id, "tracking.targets"), null);
+            writeLevels(config, id, levels);
         });
     }
 
@@ -171,16 +196,59 @@ public final class ToolConfigRepository {
                 .distinct()
                 .toList();
         validateTargets(tool.trackingType(), normalized, id);
-        mutate(config -> config.set(path(id, "tracking.targets"), normalized));
+        mutate(config -> {
+            // Preserve the beta list-target behavior as an explicitly legacy shape.
+            config.set(path(id, "tracking.mode"), null);
+            config.set(path(id, "tracking.targets"), normalized);
+            for (ToolLevel level : tool.levels().values()) {
+                config.set(levelPath(id, level.number(), "requirement_mode"), null);
+                config.set(levelPath(id, level.number(), "requirement"),
+                        level.requirement().requiredTotal());
+                config.set(levelPath(id, level.number(), "requirements"), null);
+            }
+        });
     }
 
     public synchronized void setLevelRequirement(String id, int level, long requirement)
             throws IOException, InvalidConfigurationException {
-        requireLevel(id, level);
+        setLevelRequirementAmount(id, level, requirement);
+    }
+
+    public synchronized void setLevelRequirementAmount(String id, int level, long requirement)
+            throws IOException, InvalidConfigurationException {
+        ToolLevel toolLevel = requireLevel(id, level);
+        if (toolLevel.requirement().mode() != RequirementMode.GENERAL) {
+            throw new IllegalArgumentException("Use target amounts while this level is in SPECIFIC mode.");
+        }
         if (requirement < 1L) {
             throw new IllegalArgumentException("Requirement must be at least 1.");
         }
-        mutate(config -> config.set(levelPath(id, level, "requirement"), requirement));
+        mutate(config -> writeRequirement(config, id, level,
+                toolLevel.requirement().withAmount(requirement)));
+    }
+
+    public synchronized void setLevelRequirementMode(String id, int level, RequirementMode mode)
+            throws IOException, InvalidConfigurationException {
+        ToolLevel toolLevel = requireLevel(id, level);
+        mutate(config -> writeRequirement(config, id, level,
+                toolLevel.requirement().withMode(mode)));
+    }
+
+    public synchronized void setLevelTargetRequirement(
+            String id,
+            int level,
+            String target,
+            Long requirement
+    ) throws IOException, InvalidConfigurationException {
+        ToolDefinition tool = requireTool(id);
+        ToolLevel toolLevel = requireLevel(id, level);
+        if (toolLevel.requirement().mode() != RequirementMode.SPECIFIC) {
+            throw new IllegalArgumentException("Switch this level to SPECIFIC mode before editing targets.");
+        }
+        String normalized = LevelRequirement.normalize(target);
+        validateTargets(tool.trackingType(), List.of(normalized), id);
+        mutate(config -> writeRequirement(config, id, level,
+                toolLevel.requirement().withTarget(normalized, requirement)));
     }
 
     public synchronized void setLevelDisplayName(String id, int level, String displayName)
@@ -279,9 +347,7 @@ public final class ToolConfigRepository {
     public synchronized int addLevel(String id) throws IOException, InvalidConfigurationException {
         ToolDefinition tool = requireTool(id);
         ToolLevel previous = tool.levels().lastEntry().getValue();
-        long requirement = previous.requirement() > Long.MAX_VALUE / 2L
-                ? Long.MAX_VALUE
-                : previous.requirement() * 2L;
+        LevelRequirement requirement = doubled(previous.requirement());
         List<ToolLevel> levels = new ArrayList<>(tool.levels().values());
         levels.add(previous.withNumber(levels.size() + 1).withRequirement(requirement));
         mutate(config -> writeLevels(config, id, levels));
@@ -384,19 +450,41 @@ public final class ToolConfigRepository {
 
         TrackingType trackingType = TrackingType.parse(requireText(
                 config.getString(root + ".tracking.type"), "tracking.type", id));
-        List<String> targetNames = config.getStringList(root + ".tracking.targets");
-        validateTargets(trackingType, targetNames, id);
-        Set<Material> blockTargets = new LinkedHashSet<>();
-        Set<EntityType> entityTargets = new LinkedHashSet<>();
-        if (trackingType == TrackingType.BLOCKS_BROKEN) {
-            targetNames.forEach(name -> blockTargets.add(Material.matchMaterial(name)));
-        } else {
-            targetNames.forEach(name -> entityTargets.add(EntityType.valueOf(name.toUpperCase(Locale.ROOT))));
+        String trackingRoot = root + ".tracking";
+        boolean modeExplicit = config.contains(trackingRoot + ".mode");
+        boolean legacyTargetList = config.isList(trackingRoot + ".targets");
+        List<String> legacyTargets = legacyTargetList
+                ? config.getStringList(trackingRoot + ".targets").stream()
+                        .map(LevelRequirement::normalize)
+                        .filter(value -> !value.isBlank())
+                        .distinct()
+                        .toList()
+                : List.of();
+        Map<String, Long> rootTargetRequirements = parseTargetRequirements(
+                config, trackingRoot + ".targets", "tracking.targets");
+        RequirementMode defaultMode = modeExplicit
+                ? RequirementMode.parse(requireText(config.getString(trackingRoot + ".mode"),
+                        "tracking.mode", id))
+                : rootTargetRequirements.isEmpty() ? RequirementMode.GENERAL : RequirementMode.SPECIFIC;
+        long defaultAmount = config.getLong(trackingRoot + ".amount", 500L);
+        if (defaultAmount < 1L) {
+            throw new IllegalArgumentException("tracking.amount must be at least 1");
         }
+        if (defaultMode == RequirementMode.SPECIFIC
+                && rootTargetRequirements.isEmpty()
+                && !legacyTargets.isEmpty()) {
+            Map<String, Long> converted = new LinkedHashMap<>();
+            legacyTargets.forEach(target -> converted.put(target, defaultAmount));
+            rootTargetRequirements = converted;
+        }
+        validateTargets(trackingType, legacyTargets, id);
+        validateTargets(trackingType, new ArrayList<>(rootTargetRequirements.keySet()), id);
 
-        NavigableMap<Integer, ToolLevel> levels = parseLevels(config, root, id, displayName, baseMaterial);
+        NavigableMap<Integer, ToolLevel> levels = parseLevels(config, root, id, displayName,
+                baseMaterial, trackingType, defaultMode, modeExplicit, defaultAmount,
+                legacyTargetList, legacyTargets, rootTargetRequirements);
         return new ToolDefinition(id, enabled, displayName, baseMaterial, worlds, trackingType,
-                blockTargets, entityTargets, levels);
+                defaultMode, levels);
     }
 
     private NavigableMap<Integer, ToolLevel> parseLevels(
@@ -404,7 +492,14 @@ public final class ToolConfigRepository {
             String root,
             String id,
             String baseDisplayName,
-            Material baseMaterial
+            Material baseMaterial,
+            TrackingType trackingType,
+            RequirementMode defaultMode,
+            boolean rootModeExplicit,
+            long defaultAmount,
+            boolean legacyTargetList,
+            List<String> legacyTargets,
+            Map<String, Long> rootTargetRequirements
     ) {
         ConfigurationSection levelSection = config.getConfigurationSection(root + ".levels");
         if (levelSection == null || levelSection.getKeys(false).isEmpty()) {
@@ -440,9 +535,31 @@ public final class ToolConfigRepository {
         for (Map.Entry<Integer, String> entry : levelKeys.entrySet()) {
             int level = entry.getKey();
             String levelRoot = root + ".levels." + entry.getValue();
-            long requirement = config.getLong(levelRoot + ".requirement", -1L);
-            if (requirement < 1L) {
-                throw new IllegalArgumentException("level " + level + " requirement must be at least 1");
+            boolean levelModeExplicit = config.contains(levelRoot + ".requirement_mode");
+            RequirementMode requirementMode = levelModeExplicit
+                    ? RequirementMode.parse(requireText(config.getString(levelRoot + ".requirement_mode"),
+                            "level " + level + " requirement_mode", id))
+                    : defaultMode;
+            LevelRequirement requirement;
+            if (requirementMode == RequirementMode.GENERAL) {
+                long amount = config.getLong(levelRoot + ".requirement", defaultAmount);
+                if (amount < 1L) {
+                    throw new IllegalArgumentException("level " + level + " requirement must be at least 1");
+                }
+                boolean preserveLegacyFilter = legacyTargetList
+                        && !rootModeExplicit
+                        && !levelModeExplicit;
+                requirement = preserveLegacyFilter
+                        ? LevelRequirement.filtered(amount, legacyTargets)
+                        : LevelRequirement.general(amount);
+            } else {
+                Map<String, Long> targetRequirements = parseTargetRequirements(
+                        config, levelRoot + ".requirements", "level " + level + " requirements");
+                if (targetRequirements.isEmpty()) {
+                    targetRequirements = rootTargetRequirements;
+                }
+                validateTargets(trackingType, new ArrayList<>(targetRequirements.keySet()), id);
+                requirement = LevelRequirement.specific(targetRequirements);
             }
 
             String levelDisplayName = config.getString(levelRoot + ".display_name");
@@ -461,7 +578,9 @@ public final class ToolConfigRepository {
             }
 
             Map<Enchantment, Integer> enchantments = parseEnchantments(config, levelRoot, level);
-            List<String> lore = config.getStringList(levelRoot + ".lore");
+            List<String> lore = config.contains(levelRoot + ".lore")
+                    ? config.getStringList(levelRoot + ".lore")
+                    : settings.defaultLore();
             boolean unbreakable = config.getBoolean(levelRoot + ".item.unbreakable", false);
             GlintMode glint = GlintMode.parse(config.getString(levelRoot + ".item.glint", GlintMode.AUTO.name()));
             boolean hideEnchantments = config.getBoolean(levelRoot + ".item.hide_enchantments", false);
@@ -504,13 +623,37 @@ public final class ToolConfigRepository {
         return enchantments;
     }
 
+    private static Map<String, Long> parseTargetRequirements(
+            YamlConfiguration config,
+            String path,
+            String field
+    ) {
+        ConfigurationSection section = config.getConfigurationSection(path);
+        if (section == null) {
+            return Map.of();
+        }
+        Map<String, Long> targets = new LinkedHashMap<>();
+        for (String rawTarget : section.getKeys(false)) {
+            String target = LevelRequirement.normalize(rawTarget);
+            long amount = section.getLong(rawTarget, -1L);
+            if (target.isBlank()) {
+                throw new IllegalArgumentException(field + " contains a blank target");
+            }
+            if (amount < 1L) {
+                throw new IllegalArgumentException(field + "." + rawTarget + " must be at least 1");
+            }
+            targets.put(target, amount);
+        }
+        return targets;
+    }
+
     private static void writeLevels(YamlConfiguration config, String id, List<ToolLevel> levels) {
         String root = "tools." + normalizeId(id) + ".levels";
         config.set(root, null);
         for (int index = 0; index < levels.size(); index++) {
             ToolLevel level = levels.get(index).withNumber(index + 1);
             String levelRoot = root + "." + level.number();
-            config.set(levelRoot + ".requirement", level.requirement());
+            writeRequirement(config, id, level.number(), level.requirement());
             config.set(levelRoot + ".display_name", level.displayNameOverride() ? level.displayName() : null);
             config.set(levelRoot + ".material", level.materialOverride() ? level.material().name() : null);
             Map<String, Integer> enchantments = new LinkedHashMap<>();
@@ -526,10 +669,50 @@ public final class ToolConfigRepository {
         }
     }
 
+    private static void writeRequirement(
+            YamlConfiguration config,
+            String id,
+            int level,
+        LevelRequirement requirement
+    ) {
+        String root = levelPath(id, level, "");
+        if (requirement.isLegacyFilteredGeneral()) {
+            config.set(root + "requirement_mode", null);
+            config.set(root + "requirement", requirement.amount());
+            config.set(root + "requirements", null);
+            return;
+        }
+        config.set(root + "requirement_mode", requirement.mode().name());
+        if (requirement.mode() == RequirementMode.GENERAL) {
+            config.set(root + "requirement", requirement.amount());
+            config.set(root + "requirements", null);
+        } else {
+            config.set(root + "requirement", null);
+            config.set(root + "requirements", requirement.targets());
+        }
+    }
+
     private static void renumber(List<ToolLevel> levels) {
         for (int index = 0; index < levels.size(); index++) {
             levels.set(index, levels.get(index).withNumber(index + 1));
         }
+    }
+
+    private static LevelRequirement doubled(LevelRequirement requirement) {
+        if (requirement.mode() == RequirementMode.GENERAL) {
+            long doubled = saturatingMultiplyByTwo(requirement.amount());
+            return requirement.isLegacyFilteredGeneral()
+                    ? LevelRequirement.filtered(doubled, requirement.targets().keySet())
+                    : LevelRequirement.general(doubled);
+        }
+        Map<String, Long> targets = new LinkedHashMap<>();
+        requirement.targets().forEach((target, amount) ->
+                targets.put(target, saturatingMultiplyByTwo(amount)));
+        return LevelRequirement.specific(targets);
+    }
+
+    private static long saturatingMultiplyByTwo(long value) {
+        return value > Long.MAX_VALUE / 2L ? Long.MAX_VALUE : value * 2L;
     }
 
     private void validateTargets(TrackingType type, List<String> targets, String id) {
@@ -541,7 +724,10 @@ public final class ToolConfigRepository {
                 }
             } else {
                 try {
-                    EntityType.valueOf(target.toUpperCase(Locale.ROOT));
+                    EntityType entityType = EntityType.valueOf(target.toUpperCase(Locale.ROOT));
+                    if (!entityType.isAlive()) {
+                        throw new IllegalArgumentException("not a living entity");
+                    }
                 } catch (IllegalArgumentException exception) {
                     throw new IllegalArgumentException("unknown entity target '" + target + "' for " + id);
                 }

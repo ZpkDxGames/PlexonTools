@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.0 — 2026-08-28
+
+- Added the GENERAL and SPECIFIC per-level requirement engine.
+- Added independent persistent target counters while retaining every mandatory beta PDC key.
+- Added searchable material/entity selection with visual quota editing, stepped controls, and exact input.
+- Added native 2.0 root quota maps and per-level requirement overrides.
+- Added compatibility parsing for beta list filters, issued items, `data.yml`, and `material_upgrade`.
+- Added the standardized Plexon MiniMessage lore layout and angle-bracket placeholder aliases.
+- Added dynamic objective, percentage, progress-bar, bound-world, owner-name, and target-progress placeholders.
+- Added per-target overflow handling across compatible level transitions.
+- Added unit coverage for shared totals, independent quotas, ignored targets, empty target sets, and overflow.
+- Updated the bundled example, release metadata, administrator guide, and architecture guide for the stable release.
+
 ## 1.0.0-beta.2 — 2026-08-28
 
 - Added complete per-level profiles with inherited MiniMessage names and materials.

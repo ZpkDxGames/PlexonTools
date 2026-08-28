@@ -5,12 +5,13 @@ import com.plexon.tools.config.ToolConfigRepository;
 import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.item.ToolState;
 import com.plexon.tools.message.MessageService;
+import com.plexon.tools.model.LevelRequirement;
+import com.plexon.tools.model.RequirementMode;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.ToolLevel;
 import com.plexon.tools.model.TrackingType;
 import com.plexon.tools.service.ChatPromptService;
 import com.plexon.tools.service.ToolGrantService;
-import com.plexon.tools.util.ProgressionMath;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -36,8 +37,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.NavigableMap;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -58,6 +57,7 @@ public final class GuiManager implements Listener {
     private final NamespacedKey actionKey;
     private final NamespacedKey valueKey;
     private final Map<UUID, PendingDelete> pendingDeletes = new HashMap<>();
+    private final Map<UUID, String> targetSearches = new HashMap<>();
 
     public GuiManager(
             JavaPlugin plugin,
@@ -168,10 +168,16 @@ public final class GuiManager implements Listener {
         inventory.setItem(14, button("tracking-type", tool.id(), Material.TARGET,
                 "<light_purple><bold>Tracking type</bold></light_purple>",
                 "<white>" + tool.trackingType().displayName() + "</white>", "", "<gray>Click to cycle. Changing type clears targets.</gray>"));
-        inventory.setItem(15, button("tracking-targets", tool.id(), Material.WRITABLE_BOOK,
-                "<blue><bold>Tracking targets</bold></blue>",
-                "<white>" + summarize(tool.targetNames().stream().sorted().toList(), 5) + "</white>", "",
-                "<gray>Click to enter a comma-separated list.</gray>", "<dark_gray>Empty / none means every target.</dark_gray>"));
+        ToolLevel firstLevel = tool.firstLevel();
+        inventory.setItem(15, button("requirements", tool.id(), Material.WRITABLE_BOOK,
+                "<blue><bold>Requirement engine</bold></blue>",
+                "<gray>Level 1 mode:</gray> <white>" + firstLevel.requirement().mode().displayName() + "</white>",
+                "<gray>Configured total:</gray> <white>" + firstLevel.requirement().requiredTotal() + "</white>",
+                tool.hasMixedRequirementModes()
+                        ? "<light_purple>Levels use mixed modes.</light_purple>"
+                        : "<dark_gray>All levels currently use one mode.</dark_gray>", "",
+                "<gray>Click to edit level 1. Each level can</gray>",
+                "<gray>use its own mode, targets, and amounts.</gray>"));
         inventory.setItem(16, button("levels", tool.id(), Material.EXPERIENCE_BOTTLE,
                 "<green><bold>Progression levels</bold></green>",
                 "<white>" + tool.levels().size() + " configured level(s)</white>", "", "<gray>Click to edit rewards and thresholds.</gray>"));
@@ -245,7 +251,7 @@ public final class GuiManager implements Listener {
                     level.displayName(),
                     "<dark_gray>" + (level.displayNameOverride() ? "Custom name" : "Inherited name") + "</dark_gray>", "",
                     "<gray>Progress before level:</gray> <white>" + cumulative + "</white>",
-                    "<gray>Next threshold:</gray> <white>" + level.requirement() + "</white>",
+                    "<gray>Requirement:</gray> <white>" + requirementSummary(level.requirement()) + "</white>",
                     "<gray>Enchantments:</gray> <white>" + formatEnchantments(level.enchantments()) + "</white>",
                     "<gray>Material:</gray> <white>" + level.material().name() + "</white>",
                     "", "<yellow>Click to edit the complete profile.</yellow>",
@@ -283,9 +289,12 @@ public final class GuiManager implements Listener {
                 "<dark_gray>" + (level.materialOverride() ? "Changes at this level" : "Inherited from an earlier profile") + "</dark_gray>", "",
                 "<gray>Left-click with an item to set.</gray>", "<gray>Right-click to inherit.</gray>"));
         inventory.setItem(12, button("level-requirement", tool.id(), Material.CLOCK,
-                "<yellow><bold>Next threshold</bold></yellow>", "<white>" + level.requirement() + " events</white>",
+                "<yellow><bold>Requirement engine</bold></yellow>",
+                "<gray>Mode:</gray> <white>" + level.requirement().mode().displayName() + "</white>",
+                "<gray>Requirement:</gray> <white>" + requirementSummary(level.requirement()) + "</white>",
                 "<gray>Cumulative before this level:</gray> <white>" + cumulativeRequirement(tool, level.number()) + "</white>", "",
-                "<gray>Progress needed to advance from</gray>", "<gray>this level to the next one.</gray>"));
+                "<gray>Configure mode, exact amounts, step</gray>",
+                "<gray>controls, target search, and quotas.</gray>"));
         inventory.setItem(13, button("level-enchantments", tool.id(), Material.ENCHANTED_BOOK,
                 "<light_purple><bold>Enchantments</bold></light_purple>",
                 "<white>" + formatEnchantments(level.enchantments()) + "</white>", "",
@@ -338,6 +347,187 @@ public final class GuiManager implements Listener {
                     "<dark_red>and renumber every later level.</dark_red>"));
         }
         player.openInventory(inventory);
+    }
+
+    private void openRequirement(Player player, String toolId, int levelNumber) {
+        ToolDefinition tool = tools.find(toolId).orElse(null);
+        ToolLevel level = tool == null ? null : tool.level(levelNumber).orElse(null);
+        if (tool == null || level == null || !requireAdmin(player)) {
+            openAdminList(player, 0);
+            return;
+        }
+        LevelRequirement requirement = level.requirement();
+        PlexonGuiHolder holder = new PlexonGuiHolder(
+                PlexonGuiHolder.View.REQUIREMENT, tool.id(), 0, level.number());
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<yellow><bold>Requirement</bold></yellow> <dark_gray>• Level "
+                        + level.number() + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+
+        Material modeMaterial = requirement.mode() == RequirementMode.GENERAL
+                ? Material.COMPASS : Material.TARGET;
+        inventory.setItem(10, button("requirement-mode", tool.id(), modeMaterial,
+                "<light_purple><bold>" + requirement.mode().displayName() + "</bold></light_purple>",
+                requirement.mode() == RequirementMode.GENERAL
+                        ? "<gray>One total across every accepted event.</gray>"
+                        : "<gray>Every configured target has its own quota.</gray>", "",
+                "<yellow>Click to switch modes.</yellow>",
+                "<dark_gray>Mode changes reset the requirement shape,</dark_gray>",
+                "<dark_gray>but existing issued items remain readable.</dark_gray>"));
+
+        List<String> summary = new ArrayList<>();
+        summary.add("<gold><bold>Current requirement</bold></gold>");
+        summary.add("<gray>Mode:</gray> <white>" + requirement.mode().name() + "</white>");
+        summary.add("<gray>Total:</gray> <white>" + requirement.requiredTotal() + "</white>");
+        if (requirement.mode() == RequirementMode.SPECIFIC) {
+            summary.add("<gray>Targets:</gray> <white>" + requirement.targets().size() + "</white>");
+            requirement.targets().entrySet().stream().limit(8).forEach(entry ->
+                    summary.add("<dark_gray>•</dark_gray> <white>" + humanizeKey(entry.getKey())
+                            + "</white> <gray>×</gray> <yellow>" + entry.getValue() + "</yellow>"));
+            if (requirement.targets().size() > 8) {
+                summary.add("<dark_gray>+" + (requirement.targets().size() - 8) + " more</dark_gray>");
+            }
+        }
+        inventory.setItem(13, button(
+                requirement.mode() == RequirementMode.GENERAL ? "requirement-exact" : "noop",
+                tool.id(), Material.CLOCK, summary.getFirst(),
+                summary.stream().skip(1).toArray(String[]::new)));
+
+        if (requirement.mode() == RequirementMode.GENERAL) {
+            addAmountControls(inventory, "requirement-adjust", requirement.amount());
+            inventory.setItem(49, button("requirement-exact", tool.id(), Material.ANVIL,
+                    "<aqua><bold>Enter exact amount</bold></aqua>",
+                    "<gray>Current:</gray> <white>" + requirement.amount() + "</white>", "",
+                    "<gray>Click and type any positive whole number.</gray>"));
+        } else {
+            inventory.setItem(22, button("requirement-targets", tool.id(), Material.CHEST,
+                    "<green><bold>Manage target quotas</bold></green>",
+                    "<gray>Selected:</gray> <white>" + requirement.targets().size() + "</white>",
+                    "<gray>Combined requirement:</gray> <white>" + requirement.requiredTotal() + "</white>", "",
+                    "<gray>Browse, search, add, remove, and</gray>",
+                    "<gray>set an exact amount for each target.</gray>"));
+            if (requirement.targets().isEmpty()) {
+                inventory.setItem(31, button("requirement-targets", tool.id(), Material.REDSTONE_TORCH,
+                        "<red><bold>No targets configured</bold></red>",
+                        "<gray>This level cannot progress until</gray>",
+                        "<gray>at least one target is added.</gray>"));
+            }
+        }
+        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to the level profile.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openTargetSelector(Player player, String toolId, int levelNumber, int requestedPage) {
+        ToolDefinition tool = tools.find(toolId).orElse(null);
+        ToolLevel level = tool == null ? null : tool.level(levelNumber).orElse(null);
+        if (tool == null || level == null || !requireAdmin(player)) {
+            openAdminList(player, 0);
+            return;
+        }
+        if (level.requirement().mode() != RequirementMode.SPECIFIC) {
+            openRequirement(player, toolId, levelNumber);
+            return;
+        }
+        String search = targetSearches.getOrDefault(player.getUniqueId(), "");
+        List<String> options = tools.targetOptions(tool.trackingType()).stream()
+                .filter(target -> search.isBlank() || target.contains(search))
+                .toList();
+        int pages = pageCount(options.size(), GRID_SLOTS.length);
+        int page = clampPage(requestedPage, pages);
+        PlexonGuiHolder holder = new PlexonGuiHolder(
+                PlexonGuiHolder.View.TARGET_SELECTOR, tool.id(), page, level.number());
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<green><bold>Target quotas</bold></green> <dark_gray>• Level "
+                        + level.number() + " • " + (page + 1) + "/" + pages + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+
+        int offset = page * GRID_SLOTS.length;
+        for (int index = 0; index < GRID_SLOTS.length && offset + index < options.size(); index++) {
+            String target = options.get(offset + index);
+            Long amount = level.requirement().targets().get(target);
+            boolean selected = amount != null;
+            inventory.setItem(GRID_SLOTS[index], button("select-target", target,
+                    targetIcon(tool.trackingType(), target),
+                    selected
+                            ? "<green><bold>✓ " + humanizeKey(target) + "</bold></green>"
+                            : "<gray><bold>" + humanizeKey(target) + "</bold></gray>",
+                    "<dark_gray>" + target + "</dark_gray>",
+                    selected
+                            ? "<gray>Required:</gray> <yellow>" + amount + "</yellow>"
+                            : "<dark_gray>Not selected</dark_gray>", "",
+                    selected
+                            ? "<yellow>Left-click:</yellow> <gray>edit amount</gray>"
+                            : "<green>Left-click:</green> <gray>add with 100 required</gray>",
+                    selected ? "<red>Right-click:</red> <gray>remove</gray>" : ""));
+        }
+        addNavigation(inventory, page, pages, "target-page");
+        inventory.setItem(45, button("requirement", tool.id(), Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to the requirement editor.</gray>"));
+        inventory.setItem(48, button("target-clear-search", tool.id(), Material.MILK_BUCKET,
+                "<white><bold>Clear search</bold></white>",
+                search.isBlank() ? "<dark_gray>No filter is active.</dark_gray>"
+                        : "<gray>Current:</gray> <white>" + messages.plain(search) + "</white>"));
+        inventory.setItem(49, button("target-search", tool.id(), Material.SPYGLASS,
+                "<aqua><bold>Search targets</bold></aqua>",
+                search.isBlank() ? "<gray>Showing every valid target.</gray>"
+                        : "<gray>Filter:</gray> <white>" + messages.plain(search) + "</white>", "",
+                "<gray>Click and enter part of a target name.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openTargetAmount(Player player, String toolId, int levelNumber, String target) {
+        ToolDefinition tool = tools.find(toolId).orElse(null);
+        ToolLevel level = tool == null ? null : tool.level(levelNumber).orElse(null);
+        String normalized = LevelRequirement.normalize(target);
+        Long amount = level == null ? null : level.requirement().targets().get(normalized);
+        if (tool == null || level == null || amount == null || !requireAdmin(player)) {
+            openTargetSelector(player, toolId, levelNumber, 0);
+            return;
+        }
+        PlexonGuiHolder holder = new PlexonGuiHolder(
+                PlexonGuiHolder.View.TARGET_AMOUNT, tool.id(), 0, level.number(), normalized);
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<aqua><bold>Target amount</bold></aqua> <dark_gray>• "
+                        + humanizeKey(normalized) + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+        inventory.setItem(13, button("target-exact", normalized,
+                targetIcon(tool.trackingType(), normalized),
+                "<aqua><bold>" + humanizeKey(normalized) + "</bold></aqua>",
+                "<gray>Required:</gray> <white>" + amount + "</white>", "",
+                "<gray>Click to enter an exact amount in chat.</gray>"));
+        addAmountControls(inventory, "target-adjust", amount);
+        inventory.setItem(45, button("requirement-targets", tool.id(), Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to all target quotas.</gray>"));
+        inventory.setItem(49, button("target-exact", normalized, Material.ANVIL,
+                "<aqua><bold>Enter exact amount</bold></aqua>",
+                "<gray>Current:</gray> <white>" + amount + "</white>"));
+        inventory.setItem(53, button("target-remove", normalized, Material.RED_DYE,
+                "<red><bold>Remove target</bold></red>",
+                "<gray>Shift-right-click to remove this quota.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void addAmountControls(Inventory inventory, String action, long current) {
+        long[] steps = {1L, 10L, 100L, 1000L};
+        Material[] addMaterials = {
+                Material.LIME_DYE, Material.EMERALD, Material.EMERALD_BLOCK, Material.BEACON
+        };
+        Material[] subtractMaterials = {
+                Material.RED_DYE, Material.REDSTONE, Material.REDSTONE_BLOCK, Material.TNT
+        };
+        for (int index = 0; index < steps.length; index++) {
+            long step = steps[index];
+            inventory.setItem(19 + index, button(action, Long.toString(step), addMaterials[index],
+                    "<green><bold>+" + step + "</bold></green>",
+                    "<gray>Current:</gray> <white>" + current + "</white>"));
+            inventory.setItem(28 + index, button(action, Long.toString(-step), subtractMaterials[index],
+                    "<red><bold>-" + step + "</bold></red>",
+                    "<gray>Minimum:</gray> <white>1</white>"));
+        }
     }
 
     private void openEnchantments(Player player, String toolId, int levelNumber, int requestedPage) {
@@ -464,6 +654,7 @@ public final class GuiManager implements Listener {
                     () -> tools.setTrackingType(value, tools.find(value).orElseThrow().trackingType().next()),
                     () -> openEditor(player, value));
             case "tracking-targets" -> promptTargets(player, value);
+            case "requirements" -> openRequirement(player, value, 1);
             case "levels" -> openLevels(player, value, 0);
             case "levels-page" -> openLevels(player, holder.toolId(), parseInt(value, 0));
             case "give-self" -> giveSelf(player, value);
@@ -475,7 +666,33 @@ public final class GuiManager implements Listener {
             case "edit-level" -> openLevelEditor(player, holder.toolId(), parseInt(value, 1));
             case "add-level" -> addLevel(player, value);
             case "level-name" -> editLevelName(player, holder.toolId(), holder.level(), event);
-            case "level-requirement" -> promptRequirement(player, holder.toolId(), holder.level());
+            case "level-requirement", "requirement" ->
+                    openRequirement(player, holder.toolId(), holder.level());
+            case "requirement-mode" -> toggleRequirementMode(
+                    player, holder.toolId(), holder.level());
+            case "requirement-adjust" -> adjustGeneralRequirement(
+                    player, holder.toolId(), holder.level(), parseLong(value, 0L));
+            case "requirement-exact" -> promptRequirement(
+                    player, holder.toolId(), holder.level(), false, null);
+            case "requirement-targets" -> openTargetSelector(
+                    player, holder.toolId(), holder.level(), 0);
+            case "target-page" -> openTargetSelector(
+                    player, holder.toolId(), holder.level(), parseInt(value, 0));
+            case "target-search" -> promptTargetSearch(
+                    player, holder.toolId(), holder.level());
+            case "target-clear-search" -> {
+                targetSearches.remove(player.getUniqueId());
+                openTargetSelector(player, holder.toolId(), holder.level(), 0);
+            }
+            case "select-target" -> selectTarget(
+                    player, holder.toolId(), holder.level(), value, event);
+            case "target-adjust" -> adjustTargetRequirement(
+                    player, holder.toolId(), holder.level(), holder.context(), parseLong(value, 0L));
+            case "target-exact" -> promptRequirement(
+                    player, holder.toolId(), holder.level(), true,
+                    holder.context() == null ? value : holder.context());
+            case "target-remove" -> removeTarget(
+                    player, holder.toolId(), holder.level(), holder.context(), event);
             case "level-enchantments" -> openEnchantments(player, holder.toolId(), holder.level(), 0);
             case "level-lore" -> openLore(player, holder.toolId(), holder.level(), 0);
             case "level-material" -> setLevelMaterial(player, holder.toolId(), holder.level(), event);
@@ -608,21 +825,159 @@ public final class GuiManager implements Listener {
                 () -> openLevelEditor(player, toolId, level));
     }
 
-    private void promptRequirement(Player player, String toolId, int level) {
+    private void toggleRequirementMode(Player player, String toolId, int level) {
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        RequirementMode next = current.requirement().mode().next();
+        change(player, toolId, "level requirement mode",
+                () -> tools.setLevelRequirementMode(toolId, level, next),
+                () -> openRequirement(player, toolId, level));
+    }
+
+    private void adjustGeneralRequirement(
+            Player player,
+            String toolId,
+            int level,
+            long delta
+    ) {
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        if (current.requirement().mode() != RequirementMode.GENERAL) {
+            openRequirement(player, toolId, level);
+            return;
+        }
+        long updated = adjustAmount(current.requirement().amount(), delta);
+        change(player, toolId, "level requirement",
+                () -> tools.setLevelRequirementAmount(toolId, level, updated),
+                () -> openRequirement(player, toolId, level));
+    }
+
+    private void promptRequirement(
+            Player player,
+            String toolId,
+            int level,
+            boolean targetAmount,
+            String target
+    ) {
+        String label = targetAmount ? humanizeKey(LevelRequirement.normalize(target)) : "level total";
         prompts.begin(player,
-                messages.parse("<yellow><bold>Next threshold</bold></yellow> <gray>Enter a positive whole number.</gray>"),
+                messages.parse("<yellow><bold>Exact requirement</bold></yellow> <gray>Enter a positive whole number for <white>"
+                        + messages.plain(label) + "</white>.</gray>"),
                 input -> {
                     try {
                         long value = Long.parseLong(input.replace("_", "").replace(",", ""));
-                        change(player, toolId, "level requirement",
-                                () -> tools.setLevelRequirement(toolId, level, value),
-                                () -> openLevelEditor(player, toolId, level));
+                        if (value < 1L) {
+                            throw new IllegalArgumentException("Requirement must be at least 1.");
+                        }
+                        if (targetAmount) {
+                            change(player, toolId, "target requirement",
+                                    () -> tools.setLevelTargetRequirement(toolId, level, target, value),
+                                    () -> openTargetAmount(player, toolId, level, target));
+                        } else {
+                            change(player, toolId, "level requirement",
+                                    () -> tools.setLevelRequirementAmount(toolId, level, value),
+                                    () -> openRequirement(player, toolId, level));
+                        }
                     } catch (NumberFormatException exception) {
                         showError(player, new IllegalArgumentException("Requirement must be a whole number."));
-                        openLevelEditor(player, toolId, level);
+                        if (targetAmount) {
+                            openTargetAmount(player, toolId, level, target);
+                        } else {
+                            openRequirement(player, toolId, level);
+                        }
+                    } catch (IllegalArgumentException exception) {
+                        showError(player, exception);
+                        if (targetAmount) {
+                            openTargetAmount(player, toolId, level, target);
+                        } else {
+                            openRequirement(player, toolId, level);
+                        }
                     }
                 },
-                () -> openLevelEditor(player, toolId, level));
+                () -> {
+                    if (targetAmount) {
+                        openTargetAmount(player, toolId, level, target);
+                    } else {
+                        openRequirement(player, toolId, level);
+                    }
+                });
+    }
+
+    private void promptTargetSearch(Player player, String toolId, int level) {
+        prompts.begin(player,
+                messages.parse("<aqua><bold>Target search</bold></aqua> <gray>Enter part of a material or mob name, or <white>clear</white>.</gray>"),
+                input -> {
+                    String search = LevelRequirement.normalize(input).replace(' ', '_');
+                    if (search.isBlank() || search.equals("CLEAR") || search.equals("NONE")) {
+                        targetSearches.remove(player.getUniqueId());
+                    } else {
+                        targetSearches.put(player.getUniqueId(), search);
+                    }
+                    openTargetSelector(player, toolId, level, 0);
+                },
+                () -> openTargetSelector(player, toolId, level, 0));
+    }
+
+    private void selectTarget(
+            Player player,
+            String toolId,
+            int level,
+            String target,
+            InventoryClickEvent event
+    ) {
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        String normalized = LevelRequirement.normalize(target);
+        boolean selected = current.requirement().targets().containsKey(normalized);
+        int page = event.getView().getTopInventory().getHolder() instanceof PlexonGuiHolder gui
+                ? gui.page() : 0;
+        if (selected && event.isRightClick()) {
+            change(player, toolId, "target requirement",
+                    () -> tools.setLevelTargetRequirement(toolId, level, normalized, null),
+                    () -> openTargetSelector(player, toolId, level, page));
+            return;
+        }
+        if (selected) {
+            openTargetAmount(player, toolId, level, normalized);
+            return;
+        }
+        change(player, toolId, "target requirement",
+                () -> tools.setLevelTargetRequirement(toolId, level, normalized, 100L),
+                () -> openTargetAmount(player, toolId, level, normalized));
+    }
+
+    private void adjustTargetRequirement(
+            Player player,
+            String toolId,
+            int level,
+            String target,
+            long delta
+    ) {
+        String normalized = LevelRequirement.normalize(target);
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        Long amount = current.requirement().targets().get(normalized);
+        if (amount == null) {
+            openTargetSelector(player, toolId, level, 0);
+            return;
+        }
+        long updated = adjustAmount(amount, delta);
+        change(player, toolId, "target requirement",
+                () -> tools.setLevelTargetRequirement(toolId, level, normalized, updated),
+                () -> openTargetAmount(player, toolId, level, normalized));
+    }
+
+    private void removeTarget(
+            Player player,
+            String toolId,
+            int level,
+            String target,
+            InventoryClickEvent event
+    ) {
+        if (!event.isShiftClick() || !event.isRightClick()) {
+            showError(player, new IllegalArgumentException("Shift-right-click to remove this target."));
+            return;
+        }
+        String normalized = LevelRequirement.normalize(target);
+        change(player, toolId, "target requirement",
+                () -> tools.setLevelTargetRequirement(toolId, level, normalized, null),
+                () -> openTargetSelector(player, toolId, level, 0));
     }
 
     private void promptEnchantments(Player player, String toolId, int level) {
@@ -644,7 +999,7 @@ public final class GuiManager implements Listener {
 
     private void promptLore(Player player, String toolId, int level) {
         prompts.begin(player,
-                messages.parse("<aqua><bold>Level lore</bold></aqua> <gray>Enter MiniMessage lore and separate lines with <white>;;</white>. Placeholders: <white>{level}, {max_level}, {current}, {required}, {world}, {bar}</white>.</gray>"),
+                messages.parse("<aqua><bold>Level lore</bold></aqua> <gray>Enter MiniMessage lore and separate lines with <white>;;</white>. Placeholders include <white>{level}, {current}, {required}, {goal_type_description}, {bound_world}, {owner_name}, {progress_bar}</white>.</gray>"),
                 input -> {
                     try {
                         List<String> lore = java.util.Arrays.stream(input.split(";;", -1))
@@ -666,7 +1021,7 @@ public final class GuiManager implements Listener {
     private void promptLoreLine(Player player, String toolId, int level, int lineIndex) {
         String verb = lineIndex < 0 ? "New" : "Edit";
         prompts.begin(player,
-                messages.parse("<aqua><bold>" + verb + " lore line</bold></aqua> <gray>Enter one MiniMessage-formatted line. Placeholders include <white>{level}, {current}, {required}, {remaining}, {percent}, {total}, {material}, {enchantments}, {world}, {owner}, {bar}</white>.</gray>"),
+                messages.parse("<aqua><bold>" + verb + " lore line</bold></aqua> <gray>Enter one MiniMessage-formatted line. Placeholders include <white>{level}, {current}, {required}, {percentage}, {goal_type_description}, {target_progress}, {bound_world}, {owner_name}, {progress_bar}</white>.</gray>"),
                 input -> {
                     try {
                         messages.parse(input);
@@ -1116,6 +1471,24 @@ public final class GuiManager implements Listener {
         }
     }
 
+    private static long parseLong(String value, long fallback) {
+        try {
+            return Long.parseLong(value);
+        } catch (RuntimeException exception) {
+            return fallback;
+        }
+    }
+
+    private static long adjustAmount(long current, long delta) {
+        if (delta > 0L && Long.MAX_VALUE - current < delta) {
+            return Long.MAX_VALUE;
+        }
+        if (delta < 0L && current < 1L - delta) {
+            return 1L;
+        }
+        return Math.max(1L, current + delta);
+    }
+
     private static String summarize(List<String> values, int maximum) {
         if (values.isEmpty()) {
             return "All";
@@ -1125,9 +1498,33 @@ public final class GuiManager implements Listener {
     }
 
     private static long cumulativeRequirement(ToolDefinition tool, int level) {
-        NavigableMap<Integer, Long> requirements = new TreeMap<>();
-        tool.levels().forEach((number, profile) -> requirements.put(number, profile.requirement()));
-        return ProgressionMath.cumulativeBefore(level, requirements);
+        long total = 0L;
+        for (ToolLevel profile : tool.levels().headMap(level, false).values()) {
+            long amount = profile.requirement().requiredTotal();
+            total = Long.MAX_VALUE - total < amount ? Long.MAX_VALUE : total + amount;
+        }
+        return total;
+    }
+
+    private static String requirementSummary(LevelRequirement requirement) {
+        if (requirement.mode() == RequirementMode.GENERAL) {
+            return (requirement.isLegacyFilteredGeneral() ? "General filtered total • " : "General total • ")
+                    + requirement.amount();
+        }
+        return requirement.targets().isEmpty()
+                ? "Specific quotas • no targets"
+                : "Specific quotas • " + requirement.targets().size() + " targets • "
+                        + requirement.requiredTotal() + " combined";
+    }
+
+    private static Material targetIcon(TrackingType trackingType, String target) {
+        if (trackingType == TrackingType.BLOCKS_BROKEN) {
+            Material material = Material.matchMaterial(target);
+            return material != null && material.isItem() && !material.isAir()
+                    ? material : Material.PAPER;
+        }
+        Material spawnEgg = Material.matchMaterial(target + "_SPAWN_EGG");
+        return spawnEgg != null && spawnEgg.isItem() ? spawnEgg : Material.NAME_TAG;
     }
 
     private static String humanizeKey(String key) {

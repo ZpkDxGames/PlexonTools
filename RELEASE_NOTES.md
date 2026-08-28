@@ -1,17 +1,25 @@
-# PlexonTools 1.0.0-beta.2
+# PlexonTools 2.0.0
 
-This release turns level rewards into complete, independently editable item profiles.
+PlexonTools 2.0 is the first full release. It combines the complete per-level profile editor from the beta series with a production requirement engine designed for both broad activity totals and exact target quotas.
 
 ## Highlights
 
-- Set a custom MiniMessage display name and material at any level, with inheritance from earlier levels.
-- Configure enchantments visually: left/right click adjusts levels, shift-click changes faster or removes an enchantment.
-- Edit lore one line at a time, including add, edit, delete, reorder, clear, and bulk replacement operations.
-- Duplicate, move, or delete any level profile; later levels are renumbered automatically.
-- Toggle unbreakable state, glint behavior, hidden enchantments, hidden attributes, and custom model data per level.
-- Preview the fully resolved item for every level directly in the editor.
-- Use new dynamic placeholders: `{remaining}`, `{percent}`, `{total}`, `{next_level}`, `{level_name}`, `{tracking}`, `{targets}`, `{material}`, and `{enchantments}`.
-- Existing beta.1 `tools.yml`, item PDC, and `data.yml` remain compatible. Legacy `material_upgrade` entries are still accepted.
-- GUI configuration writes are validated transactionally before replacing `tools.yml`.
+- Choose GENERAL mode for one shared block-break or mob-kill total.
+- Choose SPECIFIC mode for independent quotas such as 500 Stone plus 200 Deepslate.
+- Configure modes per level and edit targets through a searchable visual browser.
+- Adjust totals with `±1`, `±10`, `±100`, and `±1000`, or enter an exact value in chat.
+- Persist per-target progress directly on each item while retaining the required `id`, `uuid`, `level`, `stat_count`, and `bound_world` keys.
+- Change display names, materials, enchantments, lore, glint, flags, unbreakable state, and custom model data at any level.
+- Duplicate, reorder, or delete profiles with automatic contiguous renumbering.
+- Use the standardized Plexon lore layout and new aliases including `{goal_type_description}`, `{percentage}`, `{progress_bar}`, `{bound_world}`, and `{owner_name}`.
+- Keep progression hot paths memory-only; the instance registry still flushes periodically rather than per event.
 
-Paper 1.21.4 and Java 21 are required. No runtime dependencies are needed.
+## Compatibility
+
+Existing beta configurations and items are accepted without a forced rewrite. Legacy list targets keep their shared filtered-total behavior, while native 2.0 target maps use independent quotas. The `material_upgrade` alias remains supported.
+
+Back up the plugin directory before upgrading, replace the JAR, and restart Paper. Paper 1.21.4 and Java 21 are required. No runtime dependencies are needed.
+
+## Known tracking behavior
+
+Block progression is material-based. Matching player-placed blocks count because 2.0 does not store block-origin history.

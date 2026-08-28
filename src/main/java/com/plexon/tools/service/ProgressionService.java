@@ -4,9 +4,10 @@ import com.plexon.tools.config.PluginSettings;
 import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.item.ToolState;
 import com.plexon.tools.message.MessageService;
+import com.plexon.tools.model.LevelRequirement;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.storage.InstanceRegistry;
-import com.plexon.tools.util.ProgressionMath;
+import com.plexon.tools.util.RequirementProgression;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import org.bukkit.NamespacedKey;
@@ -74,15 +75,22 @@ public final class ProgressionService {
         return true;
     }
 
-    public ToolState addProgress(Player player, ItemStack item, ToolDefinition definition, long amount) {
+    public ToolState addProgress(
+            Player player,
+            ItemStack item,
+            ToolDefinition definition,
+            String target,
+            long amount
+    ) {
         ToolState current = itemService.read(item)
                 .orElseThrow(() -> new IllegalArgumentException("Item is not a valid Plexon tool."));
 
-        NavigableMap<Integer, Long> requirements = new TreeMap<>();
+        NavigableMap<Integer, LevelRequirement> requirements = new TreeMap<>();
         definition.levels().forEach((number, level) -> requirements.put(number, level.requirement()));
-        ProgressionMath.Result result = ProgressionMath.advance(
-                current.level(), current.progress(), amount, requirements);
-        ToolState updated = current.withProgress(result.level(), result.progress());
+        RequirementProgression.Result result = RequirementProgression.advance(
+                current.level(), current.progress(), current.targetProgress(), target, amount, requirements);
+        ToolState updated = current.withProgress(
+                result.level(), result.progress(), result.targetProgress());
         ItemStack updatedItem = result.levelsGained() > 0
                 ? itemService.apply(item, definition, updated)
                 : itemService.refreshProgress(item, definition, updated);

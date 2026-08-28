@@ -8,7 +8,7 @@ import java.util.Map;
 
 public record ToolLevel(
         int number,
-        long requirement,
+        LevelRequirement requirement,
         String displayName,
         boolean displayNameOverride,
         Map<Enchantment, Integer> enchantments,
@@ -22,6 +22,12 @@ public record ToolLevel(
         Integer customModelData
 ) {
     public ToolLevel {
+        if (number < 1) {
+            throw new IllegalArgumentException("Level number must be positive.");
+        }
+        if (requirement == null) {
+            throw new IllegalArgumentException("Level requirement is required.");
+        }
         enchantments = Map.copyOf(enchantments);
         lore = List.copyOf(lore);
     }
@@ -32,7 +38,7 @@ public record ToolLevel(
                 hideEnchantments, hideAttributes, customModelData);
     }
 
-    public ToolLevel withRequirement(long newRequirement) {
+    public ToolLevel withRequirement(LevelRequirement newRequirement) {
         return new ToolLevel(number, newRequirement, displayName, displayNameOverride,
                 enchantments, material, materialOverride, lore, unbreakable, glint,
                 hideEnchantments, hideAttributes, customModelData);
