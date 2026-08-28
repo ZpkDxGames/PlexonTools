@@ -648,14 +648,26 @@ public final class ToolConfigRepository {
     }
 
     private static void writeLevels(YamlConfiguration config, String id, List<ToolLevel> levels) {
-        String root = "tools." + normalizeId(id) + ".levels";
+        String toolRoot = "tools." + normalizeId(id);
+        String root = toolRoot + ".levels";
+        String inheritedDisplayName = config.getString(toolRoot + ".display_name", "");
+        Material inheritedMaterial = Material.matchMaterial(
+                config.getString(toolRoot + ".base_material", "STONE"));
         config.set(root, null);
         for (int index = 0; index < levels.size(); index++) {
             ToolLevel level = levels.get(index).withNumber(index + 1);
             String levelRoot = root + "." + level.number();
             writeRequirement(config, id, level.number(), level.requirement());
-            config.set(levelRoot + ".display_name", level.displayNameOverride() ? level.displayName() : null);
-            config.set(levelRoot + ".material", level.materialOverride() ? level.material().name() : null);
+            boolean displayNameOverride = !level.displayName().equals(inheritedDisplayName);
+            config.set(levelRoot + ".display_name", displayNameOverride ? level.displayName() : null);
+            if (displayNameOverride) {
+                inheritedDisplayName = level.displayName();
+            }
+            boolean materialOverride = level.material() != inheritedMaterial;
+            config.set(levelRoot + ".material", materialOverride ? level.material().name() : null);
+            if (materialOverride) {
+                inheritedMaterial = level.material();
+            }
             Map<String, Integer> enchantments = new LinkedHashMap<>();
             level.enchantments().forEach((enchantment, value) ->
                     enchantments.put(enchantment.getKey().toString(), value));
