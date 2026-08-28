@@ -1,0 +1,29 @@
+# PlexonTools core settings
+settings:
+  # A tool is bound to the receiver's current world when it is granted.
+  enforce-bound-world: true
+  enforce-owner: true
+  cancel-unauthorized-block-breaks: true
+  cancel-unauthorized-interactions: true
+  cancel-unauthorized-attacks: true
+  unauthorized-warning-cooldown-ms: 1500
+  registry-autosave-ticks: 6000
+
+progress-bar:
+  width: 20
+  filled-symbol: "|"
+  empty-symbol: "|"
+  filled-format: "<gradient:#41E296:#A8FF78>"
+  empty-format: "<dark_gray>"
+
+showcase:
+  title: "<gradient:#4158D0:#C850C0><bold>PlexonTools</bold></gradient>"
+  show-world-locked-tools: true
+  rows: 6
+
+admin-gui:
+  title: "<gradient:#4158D0:#C850C0><bold>PlexonTools Editor</bold></gradient>"
+
+effects:
+  level-up-sound: "ENTITY_PLAYER_LEVELUP"
+  level-up-particles: true

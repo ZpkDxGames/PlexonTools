@@ -1,0 +1,45 @@
+name: PlexonTools
+version: '${version}'
+main: com.plexon.tools.PlexonTools
+description: Progressive, world-bound custom tools for the Plexon ecosystem.
+api-version: '1.21'
+load: POSTWORLD
+author: ZpkDxGames
+website: https://github.com/ZpkDxGames/PlexonTools
+
+commands:
+  plexontools:
+    description: Opens and manages PlexonTools.
+    usage: /<command> [give <player> <tool_id>|reload|gui]
+    aliases: [pt, plexontool]
+    permission: plexontools.use
+
+permissions:
+  plexontools.use:
+    description: Opens the player tool showcase.
+    default: true
+  plexontools.admin:
+    description: Grants every PlexonTools administrative capability.
+    default: op
+    children:
+      plexontools.use: true
+      plexontools.give: true
+      plexontools.reload: true
+      plexontools.gui: true
+      plexontools.bypass.world: true
+      plexontools.bypass.owner: true
+  plexontools.give:
+    description: Grants configured tools to players.
+    default: op
+  plexontools.reload:
+    description: Reloads PlexonTools configuration and language files.
+    default: op
+  plexontools.gui:
+    description: Opens the administrative tool editor.
+    default: op
+  plexontools.bypass.world:
+    description: Allows use of custom tools outside their bound world.
+    default: false
+  plexontools.bypass.owner:
+    description: Allows use of tools owned by another player.
+    default: false

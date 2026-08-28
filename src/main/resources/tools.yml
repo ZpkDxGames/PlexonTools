@@ -1,0 +1,38 @@
+tools:
+  magma_breaker:
+    enabled: true
+    display_name: "<gradient:#FF4500:#FFA500><bold>Magma Breaker</bold></gradient>"
+    base_material: NETHERITE_PICKAXE
+    allowed_worlds:
+      - world
+      - world_nether
+    tracking:
+      type: BLOCKS_BROKEN
+      targets:
+        - STONE
+        - COBBLESTONE
+        - DEEPSLATE
+    levels:
+      1:
+        requirement: 500
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        lore:
+          - "<gray>A scorching pickaxe forged in the depths.</gray>"
+          - "<dark_gray>Bound world:</dark_gray> <white>{world}</white>"
+          - "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <orange>{current}/{required}</orange> blocks</gray>"
+          - "{bar}"
+      2:
+        requirement: 1500
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 2
+          FORTUNE: 1
+        material_upgrade: NETHERITE_PICKAXE
+        lore:
+          - "<gray>A scorching pickaxe forged in the depths.</gray>"
+          - "<gold><bold>Upgraded tier!</bold></gold>"
+          - "<dark_gray>Bound world:</dark_gray> <white>{world}</white>"
+          - "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <green>MAX</green></gray>"
+          - "{bar}"
