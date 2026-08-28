@@ -29,7 +29,27 @@ public final class ProgressionMath {
         return new Result(level, progress, levelsGained);
     }
 
-    private static long saturatingAdd(long first, long second) {
+    public static long cumulativeBefore(int level, NavigableMap<Integer, Long> requirements) {
+        long total = 0L;
+        for (long requirement : requirements.headMap(level, false).values()) {
+            total = saturatingAdd(total, Math.max(0L, requirement));
+        }
+        return total;
+    }
+
+    public static long remaining(long progress, long requirement) {
+        return Math.max(0L, Math.max(0L, requirement) - Math.max(0L, progress));
+    }
+
+    public static int percent(long progress, long requirement) {
+        if (requirement <= 0L) {
+            return 100;
+        }
+        double ratio = Math.max(0.0D, Math.min(1.0D, progress / (double) requirement));
+        return (int) Math.floor(ratio * 100.0D);
+    }
+
+    public static long saturatingAdd(long first, long second) {
         if (Long.MAX_VALUE - first < second) {
             return Long.MAX_VALUE;
         }

@@ -101,7 +101,9 @@ public final class ProgressionService {
 
     private void announceUpgrade(Player player, ToolDefinition definition, ToolState state) {
         Map<String, String> placeholders = Map.of(
-                "tool", definition.displayName(),
+                "tool", definition.level(state.level())
+                        .map(com.plexon.tools.model.ToolLevel::displayName)
+                        .orElse(definition.displayName()),
                 "level", Integer.toString(state.level())
         );
         messages.sendWithoutPrefix(player, "level-up", placeholders);

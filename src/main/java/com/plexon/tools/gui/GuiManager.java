@@ -10,6 +10,7 @@ import com.plexon.tools.model.ToolLevel;
 import com.plexon.tools.model.TrackingType;
 import com.plexon.tools.service.ChatPromptService;
 import com.plexon.tools.service.ToolGrantService;
+import com.plexon.tools.util.ProgressionMath;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -35,6 +36,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -236,20 +239,24 @@ public final class GuiManager implements Listener {
         int offset = page * GRID_SLOTS.length;
         for (int index = 0; index < GRID_SLOTS.length && offset + index < levels.size(); index++) {
             ToolLevel level = levels.get(offset + index);
-            Material icon = level.materialUpgrade() == null ? tool.baseMaterial() : level.materialUpgrade();
-            inventory.setItem(GRID_SLOTS[index], button("edit-level", Integer.toString(level.number()), icon,
+            long cumulative = cumulativeRequirement(tool, level.number());
+            inventory.setItem(GRID_SLOTS[index], button("edit-level", Integer.toString(level.number()), level.material(),
                     "<gradient:#41E296:#A8FF78><bold>Level " + level.number() + "</bold></gradient>",
+                    level.displayName(),
+                    "<dark_gray>" + (level.displayNameOverride() ? "Custom name" : "Inherited name") + "</dark_gray>", "",
+                    "<gray>Progress before level:</gray> <white>" + cumulative + "</white>",
                     "<gray>Next threshold:</gray> <white>" + level.requirement() + "</white>",
                     "<gray>Enchantments:</gray> <white>" + formatEnchantments(level.enchantments()) + "</white>",
-                    "<gray>Material:</gray> <white>" + (level.materialUpgrade() == null ? "unchanged" : level.materialUpgrade().name()) + "</white>",
-                    "", "<yellow>Click to edit.</yellow>"));
+                    "<gray>Material:</gray> <white>" + level.material().name() + "</white>",
+                    "", "<yellow>Click to edit the complete profile.</yellow>",
+                    "<dark_gray>Shift-click inside the editor to manage order.</dark_gray>"));
         }
         addNavigation(inventory, page, pages, "levels-page");
         inventory.setItem(45, button("editor", tool.id(), Material.ARROW,
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the tool editor.</gray>"));
         inventory.setItem(49, button("add-level", tool.id(), Material.LIME_DYE,
                 "<green><bold>Add level</bold></green>",
-                "<gray>Clones the current final level and</gray>", "<gray>doubles its next threshold.</gray>"));
+                "<gray>Clones the final profile and doubles</gray>", "<gray>its next threshold.</gray>"));
         player.openInventory(inventory);
     }
 
@@ -266,28 +273,155 @@ public final class GuiManager implements Listener {
         holder.attach(inventory);
         fill(inventory);
 
-        inventory.setItem(10, button("level-requirement", tool.id(), Material.CLOCK,
-                "<yellow><bold>Next threshold</bold></yellow>", "<white>" + level.requirement() + " events</white>", "",
+        inventory.setItem(10, button("level-name", tool.id(), Material.NAME_TAG,
+                "<yellow><bold>Level display name</bold></yellow>", level.displayName(),
+                "<dark_gray>" + (level.displayNameOverride() ? "Custom at this level" : "Inherited from an earlier profile") + "</dark_gray>", "",
+                "<gray>Left-click to edit.</gray>", "<gray>Right-click to inherit.</gray>"));
+        inventory.setItem(11, button("level-material", tool.id(), level.material(),
+                "<gold><bold>Level material</bold></gold>",
+                "<white>" + level.material().name() + "</white>",
+                "<dark_gray>" + (level.materialOverride() ? "Changes at this level" : "Inherited from an earlier profile") + "</dark_gray>", "",
+                "<gray>Left-click with an item to set.</gray>", "<gray>Right-click to inherit.</gray>"));
+        inventory.setItem(12, button("level-requirement", tool.id(), Material.CLOCK,
+                "<yellow><bold>Next threshold</bold></yellow>", "<white>" + level.requirement() + " events</white>",
+                "<gray>Cumulative before this level:</gray> <white>" + cumulativeRequirement(tool, level.number()) + "</white>", "",
                 "<gray>Progress needed to advance from</gray>", "<gray>this level to the next one.</gray>"));
-        inventory.setItem(11, button("level-enchantments", tool.id(), Material.ENCHANTED_BOOK,
+        inventory.setItem(13, button("level-enchantments", tool.id(), Material.ENCHANTED_BOOK,
                 "<light_purple><bold>Enchantments</bold></light_purple>",
                 "<white>" + formatEnchantments(level.enchantments()) + "</white>", "",
-                "<gray>Format: efficiency=2, unbreaking=1</gray>"));
-        inventory.setItem(12, button("level-lore", tool.id(), Material.BOOK,
+                "<gray>Open the visual enchantment editor.</gray>"));
+        inventory.setItem(14, button("level-lore", tool.id(), Material.BOOK,
                 "<aqua><bold>Lore</bold></aqua>", "<white>" + level.lore().size() + " line(s)</white>", "",
-                "<gray>Separate lines with <white>;;</white>.</gray>"));
-        inventory.setItem(13, button("level-material", tool.id(), Material.SMITHING_TABLE,
-                "<gold><bold>Material upgrade</bold></gold>",
-                "<white>" + (level.materialUpgrade() == null ? "No change" : level.materialUpgrade().name()) + "</white>", "",
-                "<gray>Click with an item to set it.</gray>", "<gray>Right-click to clear.</gray>"));
+                "<gray>Edit, move, add, or delete individual lines.</gray>"));
+        inventory.setItem(15, toggleButton("level-unbreakable", tool.id(), Material.OBSIDIAN,
+                "Unbreakable", level.unbreakable()));
+        inventory.setItem(16, button("level-glint", tool.id(), Material.GLOW_INK_SAC,
+                "<light_purple><bold>Enchantment glint</bold></light_purple>",
+                "<white>" + level.glint().displayName() + "</white>", "",
+                "<gray>Click to cycle automatic, on, and off.</gray>"));
+        inventory.setItem(19, toggleButton("level-hide-enchants", tool.id(), Material.BOOKSHELF,
+                "Hide enchantments", level.hideEnchantments()));
+        inventory.setItem(20, toggleButton("level-hide-attributes", tool.id(), Material.IRON_CHESTPLATE,
+                "Hide attributes", level.hideAttributes()));
+        inventory.setItem(21, button("level-model-data", tool.id(), Material.PAINTING,
+                "<aqua><bold>Custom model data</bold></aqua>",
+                "<white>" + (level.customModelData() == null ? "Not set" : level.customModelData()) + "</white>", "",
+                "<gray>Left-click to set an integer.</gray>", "<gray>Right-click to clear.</gray>"));
+        inventory.setItem(23, button("duplicate-level", tool.id(), Material.SLIME_BALL,
+                "<green><bold>Duplicate after this level</bold></green>",
+                "<gray>Copies this entire profile and shifts</gray>", "<gray>later levels forward.</gray>"));
+        if (level.number() > 1) {
+            inventory.setItem(24, button("move-level-up", tool.id(), Material.SPECTRAL_ARROW,
+                    "<yellow><bold>Move one level earlier</bold></yellow>",
+                    "<gray>Swaps this complete profile with level " + (level.number() - 1) + ".</gray>"));
+        }
+        if (level.number() < tool.maxLevel()) {
+            inventory.setItem(25, button("move-level-down", tool.id(), Material.ARROW,
+                    "<yellow><bold>Move one level later</bold></yellow>",
+                    "<gray>Swaps this complete profile with level " + (level.number() + 1) + ".</gray>"));
+        }
         inventory.setItem(31, previewIcon(tool, level));
         inventory.setItem(45, button("levels", tool.id(), Material.ARROW,
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to all levels.</gray>"));
-        if (level.number() > 1 && level.number() == tool.maxLevel()) {
-            inventory.setItem(49, button("remove-level", tool.id(), Material.RED_DYE,
-                    "<red><bold>Remove final level</bold></red>",
-                    "<gray>Shift-right-click to remove level " + level.number() + ".</gray>"));
+        if (level.number() > 1) {
+            inventory.setItem(47, button("edit-level", Integer.toString(level.number() - 1), Material.ARROW,
+                    "<yellow><bold>Previous level</bold></yellow>", "<gray>Open level " + (level.number() - 1) + ".</gray>"));
         }
+        if (level.number() < tool.maxLevel()) {
+            inventory.setItem(51, button("edit-level", Integer.toString(level.number() + 1), Material.ARROW,
+                    "<yellow><bold>Next level</bold></yellow>", "<gray>Open level " + (level.number() + 1) + ".</gray>"));
+        }
+        if (tool.levels().size() > 1) {
+            inventory.setItem(53, button("remove-level", tool.id(), Material.RED_DYE,
+                    "<red><bold>Delete this level</bold></red>",
+                    "<gray>Shift-right-click to delete level " + level.number() + "</gray>",
+                    "<dark_red>and renumber every later level.</dark_red>"));
+        }
+        player.openInventory(inventory);
+    }
+
+    private void openEnchantments(Player player, String toolId, int levelNumber, int requestedPage) {
+        ToolDefinition tool = tools.find(toolId).orElse(null);
+        ToolLevel level = tool == null ? null : tool.level(levelNumber).orElse(null);
+        if (tool == null || level == null || !requireAdmin(player)) {
+            openAdminList(player, 0);
+            return;
+        }
+        List<Enchantment> options = tools.enchantmentOptions();
+        int pages = pageCount(options.size(), GRID_SLOTS.length);
+        int page = clampPage(requestedPage, pages);
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.ENCHANTMENTS, tool.id(), page, level.number());
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<light_purple><bold>Enchantments</bold></light_purple> <dark_gray>• Level " + level.number() + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+
+        int offset = page * GRID_SLOTS.length;
+        for (int index = 0; index < GRID_SLOTS.length && offset + index < options.size(); index++) {
+            Enchantment enchantment = options.get(offset + index);
+            int current = level.enchantments().getOrDefault(enchantment, 0);
+            String key = enchantment.getKey().toString();
+            String color = current > 0 ? "light_purple" : "gray";
+            inventory.setItem(GRID_SLOTS[index], button("adjust-enchantment", key,
+                    current > 0 ? Material.ENCHANTED_BOOK : Material.BOOK,
+                    "<" + color + "><bold>" + humanizeKey(key) + "</bold></" + color + ">",
+                    "<dark_gray>" + key + "</dark_gray>",
+                    "<gray>Current level:</gray> <white>" + current + "</white>", "",
+                    "<green>Left-click:</green> <gray>+1</gray>",
+                    "<green>Shift-left:</green> <gray>+5</gray>",
+                    "<red>Right-click:</red> <gray>-1</gray>",
+                    "<red>Shift-right:</red> <gray>remove</gray>"));
+        }
+        addNavigation(inventory, page, pages, "enchantments-page");
+        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to the level profile.</gray>"));
+        inventory.setItem(49, button("enchantments-bulk", tool.id(), Material.WRITABLE_BOOK,
+                "<aqua><bold>Bulk text editor</bold></aqua>",
+                "<gray>Paste enchantment=level pairs in chat.</gray>"));
+        inventory.setItem(53, button("clear-enchantments", tool.id(), Material.RED_DYE,
+                "<red><bold>Clear all enchantments</bold></red>",
+                "<gray>Shift-right-click to confirm.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openLore(Player player, String toolId, int levelNumber, int requestedPage) {
+        ToolDefinition tool = tools.find(toolId).orElse(null);
+        ToolLevel level = tool == null ? null : tool.level(levelNumber).orElse(null);
+        if (tool == null || level == null || !requireAdmin(player)) {
+            openAdminList(player, 0);
+            return;
+        }
+        int pages = pageCount(level.lore().size(), GRID_SLOTS.length);
+        int page = clampPage(requestedPage, pages);
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.LORE, tool.id(), page, level.number());
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<aqua><bold>Lore editor</bold></aqua> <dark_gray>• Level " + level.number() + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+
+        int offset = page * GRID_SLOTS.length;
+        for (int index = 0; index < GRID_SLOTS.length && offset + index < level.lore().size(); index++) {
+            int lineIndex = offset + index;
+            String line = level.lore().get(lineIndex);
+            inventory.setItem(GRID_SLOTS[index], button("lore-line", Integer.toString(lineIndex), Material.PAPER,
+                    "<aqua><bold>Line " + (lineIndex + 1) + "</bold></aqua>", line, "",
+                    "<yellow>Left-click:</yellow> <gray>edit</gray>",
+                    "<red>Right-click:</red> <gray>delete</gray>",
+                    "<yellow>Shift-left:</yellow> <gray>move up</gray>",
+                    "<yellow>Shift-right:</yellow> <gray>move down</gray>"));
+        }
+        addNavigation(inventory, page, pages, "lore-page");
+        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to the level profile.</gray>"));
+        inventory.setItem(48, button("lore-bulk", tool.id(), Material.WRITABLE_BOOK,
+                "<aqua><bold>Bulk text editor</bold></aqua>",
+                "<gray>Replace all lines using <white>;;</white> separators.</gray>"));
+        inventory.setItem(49, button("add-lore-line", tool.id(), Material.LIME_DYE,
+                "<green><bold>Add lore line</bold></green>",
+                "<gray>Append one MiniMessage-formatted line.</gray>"));
+        inventory.setItem(53, button("clear-lore", tool.id(), Material.RED_DYE,
+                "<red><bold>Clear all lore</bold></red>",
+                "<gray>Shift-right-click to confirm.</gray>"));
         player.openInventory(inventory);
     }
 
@@ -340,11 +474,29 @@ public final class GuiManager implements Listener {
             case "add-world" -> promptWorld(player, value);
             case "edit-level" -> openLevelEditor(player, holder.toolId(), parseInt(value, 1));
             case "add-level" -> addLevel(player, value);
+            case "level-name" -> editLevelName(player, holder.toolId(), holder.level(), event);
             case "level-requirement" -> promptRequirement(player, holder.toolId(), holder.level());
-            case "level-enchantments" -> promptEnchantments(player, holder.toolId(), holder.level());
-            case "level-lore" -> promptLore(player, holder.toolId(), holder.level());
+            case "level-enchantments" -> openEnchantments(player, holder.toolId(), holder.level(), 0);
+            case "level-lore" -> openLore(player, holder.toolId(), holder.level(), 0);
             case "level-material" -> setLevelMaterial(player, holder.toolId(), holder.level(), event);
+            case "level-unbreakable" -> toggleUnbreakable(player, holder.toolId(), holder.level());
+            case "level-glint" -> cycleGlint(player, holder.toolId(), holder.level());
+            case "level-hide-enchants" -> toggleHideEnchantments(player, holder.toolId(), holder.level());
+            case "level-hide-attributes" -> toggleHideAttributes(player, holder.toolId(), holder.level());
+            case "level-model-data" -> editCustomModelData(player, holder.toolId(), holder.level(), event);
+            case "duplicate-level" -> duplicateLevel(player, holder.toolId(), holder.level());
+            case "move-level-up" -> moveLevel(player, holder.toolId(), holder.level(), -1);
+            case "move-level-down" -> moveLevel(player, holder.toolId(), holder.level(), 1);
             case "remove-level" -> removeLevel(player, holder.toolId(), holder.level(), event);
+            case "enchantments-page" -> openEnchantments(player, holder.toolId(), holder.level(), parseInt(value, 0));
+            case "adjust-enchantment" -> adjustEnchantment(player, holder.toolId(), holder.level(), value, event);
+            case "enchantments-bulk" -> promptEnchantments(player, holder.toolId(), holder.level());
+            case "clear-enchantments" -> clearEnchantments(player, holder.toolId(), holder.level(), event);
+            case "lore-page" -> openLore(player, holder.toolId(), holder.level(), parseInt(value, 0));
+            case "lore-line" -> editLoreLine(player, holder.toolId(), holder.level(), parseInt(value, 0), event);
+            case "add-lore-line" -> promptLoreLine(player, holder.toolId(), holder.level(), -1);
+            case "lore-bulk" -> promptLore(player, holder.toolId(), holder.level());
+            case "clear-lore" -> clearLore(player, holder.toolId(), holder.level(), event);
             default -> {
                 // Non-interactive showcase and preview items intentionally do nothing.
             }
@@ -434,6 +586,28 @@ public final class GuiManager implements Listener {
                 () -> openWorlds(player, toolId));
     }
 
+    private void editLevelName(Player player, String toolId, int level, InventoryClickEvent event) {
+        if (event.isRightClick()) {
+            change(player, toolId, "level display name inheritance",
+                    () -> tools.setLevelDisplayName(toolId, level, null),
+                    () -> openLevelEditor(player, toolId, level));
+            return;
+        }
+        prompts.begin(player,
+                messages.parse("<yellow><bold>Level display name</bold></yellow> <gray>Enter a MiniMessage name. All lore placeholders are supported.</gray>"),
+                input -> {
+                    try {
+                        messages.parse(input);
+                        tools.setLevelDisplayName(toolId, level, input);
+                        saved(player, toolId, "level display name");
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                    }
+                    openLevelEditor(player, toolId, level);
+                },
+                () -> openLevelEditor(player, toolId, level));
+    }
+
     private void promptRequirement(Player player, String toolId, int level) {
         prompts.begin(player,
                 messages.parse("<yellow><bold>Next threshold</bold></yellow> <gray>Enter a positive whole number.</gray>"),
@@ -459,13 +633,13 @@ public final class GuiManager implements Listener {
                         Map<String, Integer> enchantments = parseEnchantments(input);
                         change(player, toolId, "level enchantments",
                                 () -> tools.setLevelEnchantments(toolId, level, enchantments),
-                                () -> openLevelEditor(player, toolId, level));
+                                () -> openEnchantments(player, toolId, level, 0));
                     } catch (IllegalArgumentException exception) {
                         showError(player, exception);
-                        openLevelEditor(player, toolId, level);
+                        openEnchantments(player, toolId, level, 0);
                     }
                 },
-                () -> openLevelEditor(player, toolId, level));
+                () -> openEnchantments(player, toolId, level, 0));
     }
 
     private void promptLore(Player player, String toolId, int level) {
@@ -480,13 +654,41 @@ public final class GuiManager implements Listener {
                         lore.forEach(messages::parse);
                         change(player, toolId, "level lore",
                                 () -> tools.setLevelLore(toolId, level, lore),
-                                () -> openLevelEditor(player, toolId, level));
+                                () -> openLore(player, toolId, level, 0));
                     } catch (RuntimeException exception) {
                         showError(player, exception);
-                        openLevelEditor(player, toolId, level);
+                        openLore(player, toolId, level, 0);
                     }
                 },
-                () -> openLevelEditor(player, toolId, level));
+                () -> openLore(player, toolId, level, 0));
+    }
+
+    private void promptLoreLine(Player player, String toolId, int level, int lineIndex) {
+        String verb = lineIndex < 0 ? "New" : "Edit";
+        prompts.begin(player,
+                messages.parse("<aqua><bold>" + verb + " lore line</bold></aqua> <gray>Enter one MiniMessage-formatted line. Placeholders include <white>{level}, {current}, {required}, {remaining}, {percent}, {total}, {material}, {enchantments}, {world}, {owner}, {bar}</white>.</gray>"),
+                input -> {
+                    try {
+                        messages.parse(input);
+                        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+                        List<String> lore = new ArrayList<>(current.lore());
+                        if (lineIndex < 0) {
+                            lore.add(input);
+                        } else if (lineIndex < lore.size()) {
+                            lore.set(lineIndex, input);
+                        } else {
+                            throw new IllegalArgumentException("That lore line no longer exists.");
+                        }
+                        tools.setLevelLore(toolId, level, lore);
+                        saved(player, toolId, "level lore");
+                        int page = Math.max(0, (lineIndex < 0 ? lore.size() - 1 : lineIndex) / GRID_SLOTS.length);
+                        openLore(player, toolId, level, page);
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                        openLore(player, toolId, level, 0);
+                    }
+                },
+                () -> openLore(player, toolId, level, 0));
     }
 
     private void setBaseMaterial(Player player, String toolId, InventoryClickEvent event) {
@@ -501,7 +703,7 @@ public final class GuiManager implements Listener {
 
     private void setLevelMaterial(Player player, String toolId, int level, InventoryClickEvent event) {
         if (event.isRightClick()) {
-            change(player, toolId, "material upgrade", () -> tools.setLevelMaterialUpgrade(toolId, level, null),
+            change(player, toolId, "level material inheritance", () -> tools.setLevelMaterial(toolId, level, null),
                     () -> openLevelEditor(player, toolId, level));
             return;
         }
@@ -510,8 +712,145 @@ public final class GuiManager implements Listener {
             showError(player, new IllegalArgumentException("Put an item on your cursor or in your main hand first."));
             return;
         }
-        change(player, toolId, "material upgrade", () -> tools.setLevelMaterialUpgrade(toolId, level, material),
+        change(player, toolId, "level material", () -> tools.setLevelMaterial(toolId, level, material),
                 () -> openLevelEditor(player, toolId, level));
+    }
+
+    private void toggleUnbreakable(Player player, String toolId, int level) {
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        change(player, toolId, "unbreakable setting",
+                () -> tools.setLevelUnbreakable(toolId, level, !current.unbreakable()),
+                () -> openLevelEditor(player, toolId, level));
+    }
+
+    private void cycleGlint(Player player, String toolId, int level) {
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        change(player, toolId, "enchantment glint",
+                () -> tools.setLevelGlint(toolId, level, current.glint().next()),
+                () -> openLevelEditor(player, toolId, level));
+    }
+
+    private void toggleHideEnchantments(Player player, String toolId, int level) {
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        change(player, toolId, "hidden enchantments",
+                () -> tools.setLevelHideEnchantments(toolId, level, !current.hideEnchantments()),
+                () -> openLevelEditor(player, toolId, level));
+    }
+
+    private void toggleHideAttributes(Player player, String toolId, int level) {
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        change(player, toolId, "hidden attributes",
+                () -> tools.setLevelHideAttributes(toolId, level, !current.hideAttributes()),
+                () -> openLevelEditor(player, toolId, level));
+    }
+
+    private void editCustomModelData(Player player, String toolId, int level, InventoryClickEvent event) {
+        if (event.isRightClick()) {
+            change(player, toolId, "custom model data",
+                    () -> tools.setLevelCustomModelData(toolId, level, null),
+                    () -> openLevelEditor(player, toolId, level));
+            return;
+        }
+        prompts.begin(player,
+                messages.parse("<aqua><bold>Custom model data</bold></aqua> <gray>Enter a non-negative whole number.</gray>"),
+                input -> {
+                    try {
+                        int value = Integer.parseInt(input.replace("_", "").replace(",", ""));
+                        change(player, toolId, "custom model data",
+                                () -> tools.setLevelCustomModelData(toolId, level, value),
+                                () -> openLevelEditor(player, toolId, level));
+                    } catch (NumberFormatException exception) {
+                        showError(player, new IllegalArgumentException("Custom model data must be a whole number."));
+                        openLevelEditor(player, toolId, level);
+                    }
+                },
+                () -> openLevelEditor(player, toolId, level));
+    }
+
+    private void adjustEnchantment(
+            Player player,
+            String toolId,
+            int level,
+            String enchantmentKey,
+            InventoryClickEvent event
+    ) {
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        int value = current.enchantments().entrySet().stream()
+                .filter(entry -> entry.getKey().getKey().toString().equals(enchantmentKey))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(0);
+        int updated;
+        if (event.isShiftClick() && event.isRightClick()) {
+            updated = 0;
+        } else if (event.isShiftClick()) {
+            updated = Math.min(255, value + 5);
+        } else if (event.isRightClick()) {
+            updated = Math.max(0, value - 1);
+        } else {
+            updated = Math.min(255, value + 1);
+        }
+        change(player, toolId, "level enchantment",
+                () -> tools.setLevelEnchantment(toolId, level, enchantmentKey, updated),
+                () -> openEnchantments(player, toolId, level, event.getView().getTopInventory().getHolder() instanceof PlexonGuiHolder gui ? gui.page() : 0));
+    }
+
+    private void clearEnchantments(Player player, String toolId, int level, InventoryClickEvent event) {
+        if (!event.isShiftClick() || !event.isRightClick()) {
+            showError(player, new IllegalArgumentException("Shift-right-click to clear every enchantment."));
+            return;
+        }
+        change(player, toolId, "level enchantments",
+                () -> tools.setLevelEnchantments(toolId, level, Map.of()),
+                () -> openEnchantments(player, toolId, level, 0));
+    }
+
+    private void editLoreLine(
+            Player player,
+            String toolId,
+            int level,
+            int lineIndex,
+            InventoryClickEvent event
+    ) {
+        ToolLevel current = tools.find(toolId).orElseThrow().level(level).orElseThrow();
+        if (lineIndex < 0 || lineIndex >= current.lore().size()) {
+            openLore(player, toolId, level, 0);
+            return;
+        }
+        if (!event.isShiftClick() && !event.isRightClick()) {
+            promptLoreLine(player, toolId, level, lineIndex);
+            return;
+        }
+
+        List<String> lore = new ArrayList<>(current.lore());
+        int destination = lineIndex;
+        if (event.isShiftClick()) {
+            destination = event.isRightClick()
+                    ? Math.min(lore.size() - 1, lineIndex + 1)
+                    : Math.max(0, lineIndex - 1);
+            if (destination == lineIndex) {
+                openLore(player, toolId, level, lineIndex / GRID_SLOTS.length);
+                return;
+            }
+            java.util.Collections.swap(lore, lineIndex, destination);
+        } else {
+            lore.remove(lineIndex);
+            destination = Math.min(lineIndex, Math.max(0, lore.size() - 1));
+        }
+        int targetPage = destination / GRID_SLOTS.length;
+        change(player, toolId, "level lore",
+                () -> tools.setLevelLore(toolId, level, lore),
+                () -> openLore(player, toolId, level, targetPage));
+    }
+
+    private void clearLore(Player player, String toolId, int level, InventoryClickEvent event) {
+        if (!event.isShiftClick() || !event.isRightClick()) {
+            showError(player, new IllegalArgumentException("Shift-right-click to clear every lore line."));
+            return;
+        }
+        change(player, toolId, "level lore",
+                () -> tools.setLevelLore(toolId, level, List.of()),
+                () -> openLore(player, toolId, level, 0));
     }
 
     private void addLevel(Player player, String toolId) {
@@ -525,12 +864,34 @@ public final class GuiManager implements Listener {
         }
     }
 
+    private void duplicateLevel(Player player, String toolId, int level) {
+        try {
+            int number = tools.duplicateLevel(toolId, level);
+            saved(player, toolId, "duplicated level " + number);
+            openLevelEditor(player, toolId, number);
+        } catch (Exception exception) {
+            showError(player, exception);
+            openLevelEditor(player, toolId, level);
+        }
+    }
+
+    private void moveLevel(Player player, String toolId, int level, int direction) {
+        try {
+            int destination = tools.moveLevel(toolId, level, direction);
+            saved(player, toolId, "level order");
+            openLevelEditor(player, toolId, destination);
+        } catch (Exception exception) {
+            showError(player, exception);
+            openLevelEditor(player, toolId, level);
+        }
+    }
+
     private void removeLevel(Player player, String toolId, int level, InventoryClickEvent event) {
         if (!event.isShiftClick() || !event.isRightClick()) {
-            showError(player, new IllegalArgumentException("Shift-right-click to confirm removing the final level."));
+            showError(player, new IllegalArgumentException("Shift-right-click to confirm deleting this level."));
             return;
         }
-        change(player, toolId, "levels", () -> tools.removeLastLevel(toolId),
+        change(player, toolId, "levels", () -> tools.removeLevel(toolId, level),
                 () -> openLevels(player, toolId, 0));
     }
 
@@ -609,7 +970,10 @@ public final class GuiManager implements Listener {
         boolean worldAllowed = tool.isAllowedWorld(player.getWorld().getName());
         boolean boundHere = owned.map(state -> state.boundWorld().equalsIgnoreCase(player.getWorld().getName())).orElse(true);
         boolean locked = !worldAllowed || !boundHere;
-        Material material = locked ? Material.GRAY_DYE : tool.baseMaterial();
+        Material resolvedMaterial = owned.flatMap(state -> tool.level(state.level()))
+                .map(ToolLevel::material)
+                .orElse(tool.firstLevel().material());
+        Material material = locked ? Material.GRAY_DYE : resolvedMaterial;
         List<Component> lore = new ArrayList<>();
         lore.add(messages.parse("<dark_gray>ID: " + messages.plain(tool.id()) + "</dark_gray>"));
         lore.add(Component.empty());
@@ -634,8 +998,8 @@ public final class GuiManager implements Listener {
             String rewardTitle = owned.isPresent() ? "Next level rewards" : "Starting rewards";
             lore.add(messages.parse("<gold><bold>" + rewardTitle + "</bold></gold> <dark_gray>• Level " + next.number() + "</dark_gray>"));
             lore.add(messages.parse("<gray>Enchantments:</gray> <white>" + formatEnchantments(next.enchantments()) + "</white>"));
-            Material rewardMaterial = next.materialUpgrade() == null ? tool.baseMaterial() : next.materialUpgrade();
-            lore.add(messages.parse("<gray>Material:</gray> <white>" + rewardMaterial.name() + "</white>"));
+            lore.add(messages.parse("<gray>Name:</gray> " + next.displayName()));
+            lore.add(messages.parse("<gray>Material:</gray> <white>" + next.material().name() + "</white>"));
             lore.add(Component.empty());
         } else {
             lore.add(messages.parse("<green><bold>Maximum level reached</bold></green>"));
@@ -653,7 +1017,7 @@ public final class GuiManager implements Listener {
     }
 
     private ItemStack adminToolIcon(ToolDefinition tool) {
-        return button("editor", tool.id(), tool.baseMaterial(), tool.displayName(),
+        return button("editor", tool.id(), tool.firstLevel().material(), tool.displayName(),
                 "<dark_gray>" + messages.plain(tool.id()) + "</dark_gray>", "",
                 "<gray>Status:</gray> " + (tool.enabled() ? "<green>enabled</green>" : "<red>disabled</red>"),
                 "<gray>Tracking:</gray> <white>" + tool.trackingType().displayName() + "</white>",
@@ -685,6 +1049,13 @@ public final class GuiManager implements Listener {
         ItemStack item = ItemFactory.create(material, messages.parse(name), lore);
         tag(item, action, value);
         return item;
+    }
+
+    private ItemStack toggleButton(String action, String value, Material material, String label, boolean enabled) {
+        return button(action, value, material,
+                (enabled ? "<green>" : "<red>") + "<bold>" + label + "</bold>" + (enabled ? "</green>" : "</red>"),
+                "<gray>Current:</gray> " + (enabled ? "<green>enabled</green>" : "<red>disabled</red>"), "",
+                "<gray>Click to toggle this level setting.</gray>");
     }
 
     private void tag(ItemStack item, String action, String value) {
@@ -751,6 +1122,20 @@ public final class GuiManager implements Listener {
         }
         String result = values.stream().limit(maximum).collect(Collectors.joining(", "));
         return values.size() > maximum ? result + " +" + (values.size() - maximum) : result;
+    }
+
+    private static long cumulativeRequirement(ToolDefinition tool, int level) {
+        NavigableMap<Integer, Long> requirements = new TreeMap<>();
+        tool.levels().forEach((number, profile) -> requirements.put(number, profile.requirement()));
+        return ProgressionMath.cumulativeBefore(level, requirements);
+    }
+
+    private static String humanizeKey(String key) {
+        String value = key.contains(":") ? key.substring(key.indexOf(':') + 1) : key;
+        return java.util.Arrays.stream(value.split("_"))
+                .filter(part -> !part.isBlank())
+                .map(part -> Character.toUpperCase(part.charAt(0)) + part.substring(1).toLowerCase(Locale.ROOT))
+                .collect(Collectors.joining(" "));
     }
 
     private static String formatEnchantments(Map<Enchantment, Integer> enchantments) {
