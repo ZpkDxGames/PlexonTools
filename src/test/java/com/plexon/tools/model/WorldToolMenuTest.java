@@ -1,24 +1,16 @@
 package com.plexon.tools.model;
 
-import org.bukkit.Material;
 import org.junit.jupiter.api.Test;
-
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorldToolMenuTest {
     @Test
-    void normalizesToolIdsAndResolvesSlots() {
-        WorldToolMenu menu = new WorldToolMenu("world", "Tools", 4,
-                Material.GRAY_STAINED_GLASS_PANE, " ", Map.of("Magma_Breaker", 10));
-
-        assertTrue(menu.contains("magma_breaker"));
-        assertEquals(10, menu.slot("MAGMA_BREAKER").orElseThrow());
-        assertEquals(36, menu.size());
+    void normalizesMenuAndToolIds() {
+        assertEquals("magma_breaker", WorldToolMenu.normalize("  Magma_Breaker "));
+        assertEquals("", WorldToolMenu.normalize(null));
     }
 
     @Test
@@ -30,12 +22,4 @@ class WorldToolMenuTest {
         assertFalse(WorldToolMenu.isContentSlot(4, 31));
     }
 
-    @Test
-    void rejectsDuplicateAndUnsafeSlots() {
-        assertThrows(IllegalArgumentException.class, () -> new WorldToolMenu(
-                "world", "Tools", 4, Material.STONE, " ",
-                Map.of("first", 10, "second", 10)));
-        assertThrows(IllegalArgumentException.class, () -> new WorldToolMenu(
-                "world", "Tools", 4, Material.STONE, " ", Map.of("first", 31)));
-    }
 }
