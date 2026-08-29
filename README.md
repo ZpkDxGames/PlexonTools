@@ -136,6 +136,7 @@ Block-break tracking remains material-based: matching player-placed blocks also 
 
 ## Documentation
 
+- [PlexonTools 3.5.1 current version and next-release roadmap](docs/PLEXONTOOLS_3_5_1.md)
 - [Capabilities and configuration](docs/CAPABILITIES.md)
 - [Administrative GUI](docs/ADMIN_EDITOR.md)
 - [Architecture and persistence](docs/ARCHITECTURE.md)
