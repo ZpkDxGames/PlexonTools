@@ -14,6 +14,13 @@ import java.io.IOException;
 import java.util.Map;
 
 public final class MessageService {
+    private static final Map<String, String> BUILT_IN_DEFAULTS = Map.of(
+            "activation-inventory-full", "<yellow>Your inventory is full. Free one slot to activate the bound tool.</yellow>",
+            "target-inventory-full", "<yellow><white>{player}</white>'s inventory is full; no tool was issued or dropped.</yellow>",
+            "activation-unavailable", "<red>That tool cannot be activated in this world.</red>",
+            "tool-activated", "<green>Activated <white>{tool}</white> for <white>{world}</white>.</green>",
+            "tool-deactivated", "<yellow>Deactivated and safely stored <white>{tool}</white> for <white>{world}</white>.</yellow>"
+    );
     private final JavaPlugin plugin;
     private final File file;
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
@@ -74,7 +81,8 @@ public final class MessageService {
 
     private String value(String key) {
         return messages.getString("messages." + key,
-                messages.getString(key, "<red>Missing message: " + plain(key) + "</red>"));
+                messages.getString(key, BUILT_IN_DEFAULTS.getOrDefault(key,
+                        "<red>Missing message: " + plain(key) + "</red>")));
     }
 
     private static String normalizeItalics(String input) {

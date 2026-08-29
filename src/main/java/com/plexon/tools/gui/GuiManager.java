@@ -3,6 +3,7 @@ package com.plexon.tools.gui;
 import com.plexon.tools.config.PluginSettings;
 import com.plexon.tools.config.CategoryRepository;
 import com.plexon.tools.config.ToolConfigRepository;
+import com.plexon.tools.config.WorldMenuRepository;
 import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.item.ToolState;
 import com.plexon.tools.message.MessageService;
@@ -15,7 +16,9 @@ import com.plexon.tools.model.ToolCategory;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.ToolLevel;
 import com.plexon.tools.model.TrackingType;
+import com.plexon.tools.model.WorldToolMenu;
 import com.plexon.tools.service.ChatPromptService;
+import com.plexon.tools.service.ToolActivationService;
 import com.plexon.tools.service.ToolGrantService;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
@@ -60,7 +63,9 @@ public final class GuiManager implements Listener {
     private final JavaPlugin plugin;
     private final CategoryRepository categories;
     private final ToolConfigRepository tools;
+    private final WorldMenuRepository worldMenus;
     private final ToolItemService itemService;
+    private final ToolActivationService activations;
     private final ToolGrantService grants;
     private final ChatPromptService prompts;
     private final PluginSettings settings;
@@ -74,7 +79,9 @@ public final class GuiManager implements Listener {
             JavaPlugin plugin,
             CategoryRepository categories,
             ToolConfigRepository tools,
+            WorldMenuRepository worldMenus,
             ToolItemService itemService,
+            ToolActivationService activations,
             ToolGrantService grants,
             ChatPromptService prompts,
             PluginSettings settings,
@@ -83,7 +90,9 @@ public final class GuiManager implements Listener {
         this.plugin = plugin;
         this.categories = categories;
         this.tools = tools;
+        this.worldMenus = worldMenus;
         this.itemService = itemService;
+        this.activations = activations;
         this.grants = grants;
         this.prompts = prompts;
         this.settings = settings;
@@ -97,11 +106,42 @@ public final class GuiManager implements Listener {
     }
 
     public void openPlayerEntry(Player viewer, Player subject) {
-        if (categories.size() > 1) {
-            openCategorySelection(viewer, subject);
-        } else {
-            openShowcase(viewer, subject, categories.defaultCategoryId(), 0);
+        openWorldToolMenu(viewer, subject, subject.getWorld().getName());
+    }
+
+    private void openWorldToolMenu(Player viewer, Player subject, String worldName) {
+        if (subject.getWorld().getName().equalsIgnoreCase(worldName)) {
+            activations.reconcile(subject);
         }
+        WorldToolMenu menu = worldMenus.menuFor(worldName);
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.WORLD_TOOL_MENU,
+                null, 0, 0, menu.worldName(), subject.getUniqueId(), null);
+        String title = menu.title().replace("{world}", messages.plain(worldName));
+        if (!viewer.equals(subject)) {
+            title += " <dark_gray>• " + messages.plain(subject.getName()) + "</dark_gray>";
+        }
+        Inventory inventory = Bukkit.createInventory(holder, menu.size(), messages.parse(title));
+        holder.attach(inventory);
+        fill(inventory, menu.fillerMaterial(), menu.fillerName());
+
+        int visible = 0;
+        for (Map.Entry<String, Integer> entry : menu.toolSlots().entrySet()) {
+            ToolDefinition definition = tools.find(entry.getKey()).orElse(null);
+            if (definition == null || !definition.enabled()) {
+                continue;
+            }
+            inventory.setItem(entry.getValue(), worldToolIcon(subject, definition, worldName));
+            visible++;
+        }
+        if (visible == 0) {
+            inventory.setItem(menu.size() / 2, button("noop", "", Material.BARRIER,
+                    "<red><bold>No tools reserved</bold></red>",
+                    "<gray>An administrator has not assigned any</gray>",
+                    "<gray>custom tools to this world menu yet.</gray>"));
+        }
+        inventory.setItem(menu.size() - 5, button("close", "", Material.BARRIER,
+                "<red><bold>Close</bold></red>", "<gray>Close this menu.</gray>"));
+        viewer.openInventory(inventory);
     }
 
     public void openShowcase(
@@ -187,7 +227,7 @@ public final class GuiManager implements Listener {
         }
         PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.ADMIN_DASHBOARD,
                 null, 0, 0);
-        Inventory inventory = Bukkit.createInventory(holder, 27, messages.parse(settings.adminTitle()));
+        Inventory inventory = Bukkit.createInventory(holder, 36, messages.parse(settings.adminTitle()));
         holder.attach(inventory);
         fill(inventory);
         inventory.setItem(10, button("admin-list", "", Material.DIAMOND_PICKAXE,
@@ -197,16 +237,165 @@ public final class GuiManager implements Listener {
         inventory.setItem(12, button("create", "", Material.LIME_DYE,
                 "<green><bold>Create New Tool</bold></green>",
                 "<gray>Uses the held item's material.</gray>"));
-        inventory.setItem(14, button("categories", "", Material.CHEST,
-                "<light_purple><bold>Category Manager</bold></light_purple>",
-                "<gray>Create and customize GUI categories.</gray>",
-                "<white>" + categories.size() + " configured category(s)</white>"));
+        inventory.setItem(14, button("world-menus", "", Material.ENDER_CHEST,
+                "<gradient:#41E296:#A8FF78><bold>World Tool Menus</bold></gradient>",
+                "<gray>Reserve tools and customize each</gray>",
+                "<gray>world's player activation GUI.</gray>",
+                "<white>" + worldMenus.size() + " configured world menu(s)</white>"));
         inventory.setItem(16, button("global-settings", "", Material.COMPARATOR,
                 "<yellow><bold>Global Settings</bold></yellow>",
-                "<gray>Owner, world, effects, and enforcement.</gray>"));
+                "<gray>World, effects, and enforcement.</gray>"));
+        inventory.setItem(20, button("categories", "", Material.CHEST,
+                "<light_purple><bold>Category Manager</bold></light_purple>",
+                "<gray>Organize tools inside the admin editor.</gray>",
+                "<white>" + categories.size() + " configured category(s)</white>"));
         inventory.setItem(22, button("showcase-entry", "", Material.COMPASS,
-                "<gradient:#4158D0:#C850C0><bold>Live Player Preview</bold></gradient>",
-                "<gray>Open the category-driven player GUI.</gray>"));
+                "<gradient:#4158D0:#C850C0><bold>Live World Menu</bold></gradient>",
+                "<gray>Preview your current world's /pt GUI.</gray>"));
+        inventory.setItem(24, button("close", "", Material.BARRIER,
+                "<red><bold>Close</bold></red>", "<gray>Close the editor.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openWorldMenuManager(Player player, int requestedPage) {
+        if (!requireAdmin(player)) {
+            return;
+        }
+        List<String> worlds = java.util.stream.Stream.concat(
+                        Bukkit.getWorlds().stream().map(World::getName),
+                        worldMenus.all().stream().map(WorldToolMenu::worldName))
+                .map(WorldToolMenu::normalize)
+                .distinct()
+                .sorted()
+                .toList();
+        int pages = pageCount(worlds.size(), GRID_SLOTS.length);
+        int page = clampPage(requestedPage, pages);
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.WORLD_MENUS,
+                null, page, 0);
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<gradient:#41E296:#A8FF78><bold>World Tool Menus</bold></gradient>"
+                        + " <dark_gray>• " + (page + 1) + "/" + pages + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+
+        int offset = page * GRID_SLOTS.length;
+        for (int index = 0; index < GRID_SLOTS.length && offset + index < worlds.size(); index++) {
+            String worldName = worlds.get(offset + index);
+            WorldToolMenu configured = worldMenus.find(worldName).orElse(null);
+            World loaded = Bukkit.getWorld(worldName);
+            Material icon = loaded == null ? Material.MAP : switch (loaded.getEnvironment()) {
+                case NETHER -> Material.NETHERRACK;
+                case THE_END -> Material.END_STONE;
+                default -> Material.GRASS_BLOCK;
+            };
+            inventory.setItem(GRID_SLOTS[index], button("world-menu-editor", worldName, icon,
+                    "<aqua><bold>" + messages.plain(worldName) + "</bold></aqua>",
+                    configured == null
+                            ? "<yellow>Not configured yet</yellow>"
+                            : "<green>Configured</green>",
+                    configured == null ? "<gray>Click to create this menu.</gray>"
+                            : "<gray>Reserved tools:</gray> <white>"
+                                    + configured.toolSlots().size() + "</white>", "",
+                    "<yellow>Click to customize.</yellow>"));
+        }
+        addNavigation(inventory, page, pages, "world-menus-page");
+        inventory.setItem(45, button("admin-dashboard", "", Material.ARROW,
+                "<yellow><bold>Dashboard</bold></yellow>", "<gray>Return to the admin dashboard.</gray>"));
+        inventory.setItem(49, button("create-world-menu", "", Material.LIME_DYE,
+                "<green><bold>Add Unloaded World</bold></green>",
+                "<gray>Enter an exact world name in chat.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openWorldMenuEditor(Player player, String rawWorldName) {
+        if (!requireAdmin(player)) {
+            return;
+        }
+        String worldName = WorldToolMenu.normalize(rawWorldName);
+        WorldToolMenu menu;
+        try {
+            menu = worldMenus.ensureWorld(worldName);
+        } catch (Exception exception) {
+            showError(player, exception);
+            openWorldMenuManager(player, 0);
+            return;
+        }
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.WORLD_MENU_EDITOR,
+                null, 0, 0, worldName);
+        Inventory inventory = Bukkit.createInventory(holder, 36,
+                messages.parse("<green><bold>World Menu</bold></green> <dark_gray>• "
+                        + messages.plain(worldName) + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+        inventory.setItem(10, button("world-menu-title", worldName, Material.NAME_TAG,
+                "<yellow><bold>Menu Title</bold></yellow>", menu.title(), "",
+                "<gray>Click to edit with MiniMessage.</gray>"));
+        inventory.setItem(12, button("world-menu-rows", worldName, Material.CHEST,
+                "<aqua><bold>Menu Size</bold></aqua>",
+                "<white>" + menu.rows() + " rows</white>", "",
+                "<gray>Click to cycle from 3 to 6 rows.</gray>"));
+        inventory.setItem(14, button("world-menu-filler", worldName, menu.fillerMaterial(),
+                "<gold><bold>Filler Material</bold></gold>",
+                "<white>" + menu.fillerMaterial().name() + "</white>", "",
+                "<gray>Click using your cursor or held item.</gray>"));
+        inventory.setItem(16, button("world-menu-filler-name", worldName, Material.OAK_SIGN,
+                "<light_purple><bold>Filler Name</bold></light_purple>",
+                "<gray>Current:</gray> " + (menu.fillerName().isBlank()
+                        ? "<dark_gray>blank</dark_gray>" : menu.fillerName()), "",
+                "<gray>Click to edit with MiniMessage.</gray>"));
+        inventory.setItem(20, button("world-menu-tools", worldName, Material.DIAMOND_PICKAXE,
+                "<green><bold>Reserved Tools</bold></green>",
+                "<white>" + menu.toolSlots().size() + " assigned tool(s)</white>", "",
+                "<gray>Choose tools and arrange their slots.</gray>"));
+        inventory.setItem(22, button("world-menu-preview", worldName, Material.COMPASS,
+                "<gradient:#4158D0:#C850C0><bold>Preview Menu</bold></gradient>",
+                "<gray>Preview this player-facing layout.</gray>",
+                player.getWorld().getName().equalsIgnoreCase(worldName)
+                        ? "<green>Activation controls are live.</green>"
+                        : "<yellow>Travel here to toggle tools.</yellow>"));
+        inventory.setItem(24, button("world-menus", "", Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to all world menus.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openWorldMenuTools(Player player, String worldName, int requestedPage) {
+        WorldToolMenu menu = worldMenus.find(worldName).orElse(null);
+        if (menu == null || !requireAdmin(player)) {
+            openWorldMenuManager(player, 0);
+            return;
+        }
+        List<ToolDefinition> definitions = tools.all().stream()
+                .sorted(Comparator.comparing(ToolDefinition::id))
+                .toList();
+        int pages = pageCount(definitions.size(), GRID_SLOTS.length);
+        int page = clampPage(requestedPage, pages);
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.WORLD_MENU_TOOLS,
+                null, page, 0, worldName);
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<green><bold>Reserved Tools</bold></green> <dark_gray>• "
+                        + messages.plain(worldName) + " • " + (page + 1) + "/" + pages + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+        int offset = page * GRID_SLOTS.length;
+        for (int index = 0; index < GRID_SLOTS.length && offset + index < definitions.size(); index++) {
+            ToolDefinition definition = definitions.get(offset + index);
+            boolean assigned = menu.contains(definition.id());
+            boolean allowed = definition.isAllowedWorld(worldName);
+            int slot = menu.slot(definition.id()).orElse(-1);
+            inventory.setItem(GRID_SLOTS[index], button("world-menu-tool", definition.id(),
+                    allowed ? definition.firstLevel().material() : Material.GRAY_DYE,
+                    (assigned ? "<green>✓ </green>" : "") + definition.displayName(),
+                    "<dark_gray>" + messages.plain(definition.id()) + "</dark_gray>",
+                    "<gray>Allowed in world:</gray> " + (allowed ? "<green>yes</green>" : "<red>no</red>"),
+                    assigned ? "<gray>Menu slot:</gray> <white>" + slot + "</white>"
+                            : "<dark_gray>Not reserved</dark_gray>", "",
+                    allowed ? "<yellow>Left-click to " + (assigned ? "remove" : "reserve") + ".</yellow>"
+                            : "<red>Add this world in the tool editor first.</red>",
+                    assigned ? "<aqua>Right-click to change its slot.</aqua>" : ""));
+        }
+        addNavigation(inventory, page, pages, "world-menu-tools-page");
+        inventory.setItem(45, button("world-menu-editor", worldName, Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to the world menu editor.</gray>"));
         player.openInventory(inventory);
     }
 
@@ -351,8 +540,11 @@ public final class GuiManager implements Listener {
         fill(inventory);
         inventory.setItem(10, toggleButton("global-toggle", "settings.enforce-bound-world",
                 Material.ENDER_EYE, "Enforce Bound World", settings.enforceBoundWorld()));
-        inventory.setItem(12, toggleButton("global-toggle", "settings.enforce-owner",
-                Material.PLAYER_HEAD, "Enforce Owner", settings.enforceOwner()));
+        inventory.setItem(12, button("noop", "", Material.PLAYER_HEAD,
+                "<green><bold>Player Binding Enforced</bold></green>",
+                "<green>Always enabled in PlexonTools 3.5.</green>", "",
+                "<gray>Bound tools cannot be transferred or used</gray>",
+                "<gray>by another player, including administrators.</gray>"));
         inventory.setItem(14, toggleButton("global-toggle", "effects.level-up-particles",
                 Material.FIREWORK_STAR, "Level-up Particles", settings.levelUpParticles()));
         inventory.setItem(16, button("global-sound", "", Material.NOTE_BLOCK,
@@ -534,16 +726,20 @@ public final class GuiManager implements Listener {
         inventory.setItem(14, button("level-lore", tool.id(), Material.BOOK,
                 "<aqua><bold>Lore</bold></aqua>", "<white>" + level.lore().size() + " line(s)</white>", "",
                 "<gray>Edit, move, add, or delete individual lines.</gray>"));
-        inventory.setItem(15, toggleButton("level-unbreakable", tool.id(), Material.OBSIDIAN,
-                "Unbreakable", level.unbreakable()));
+        inventory.setItem(15, button("noop", tool.id(), Material.OBSIDIAN,
+                "<green><bold>Unbreakable</bold></green>",
+                "<green>Always enabled for bound tools.</green>", "",
+                "<dark_gray>This protection is enforced by PlexonTools 3.5.</dark_gray>"));
         inventory.setItem(16, button("level-glint", tool.id(), Material.GLOW_INK_SAC,
                 "<light_purple><bold>Enchantment glint</bold></light_purple>",
                 "<white>" + level.glint().displayName() + "</white>", "",
                 "<gray>Click to cycle automatic, on, and off.</gray>"));
-        inventory.setItem(19, toggleButton("level-hide-enchants", tool.id(), Material.BOOKSHELF,
-                "Hide enchantments", level.hideEnchantments()));
-        inventory.setItem(20, toggleButton("level-hide-attributes", tool.id(), Material.IRON_CHESTPLATE,
-                "Hide attributes", level.hideAttributes()));
+        inventory.setItem(19, button("noop", tool.id(), Material.BOOKSHELF,
+                "<green><bold>Enchantments Hidden</bold></green>",
+                "<green>Always enabled for a clean tooltip.</green>"));
+        inventory.setItem(20, button("noop", tool.id(), Material.IRON_CHESTPLATE,
+                "<green><bold>Vanilla Details Hidden</bold></green>",
+                "<green>Attributes and additional tooltip data are hidden.</green>"));
         inventory.setItem(21, button("level-model-data", tool.id(), Material.PAINTING,
                 "<aqua><bold>Custom model data</bold></aqua>",
                 "<white>" + (level.customModelData() == null ? "Not set" : level.customModelData()) + "</white>", "",
@@ -919,7 +1115,8 @@ public final class GuiManager implements Listener {
         if (action == null) {
             return;
         }
-        if (holder.view() != PlexonGuiHolder.View.SHOWCASE
+        if (holder.view() != PlexonGuiHolder.View.WORLD_TOOL_MENU
+                && holder.view() != PlexonGuiHolder.View.SHOWCASE
                 && holder.view() != PlexonGuiHolder.View.CATEGORY_SELECT
                 && !requireAdmin(player)) {
             return;
@@ -928,6 +1125,7 @@ public final class GuiManager implements Listener {
         switch (action) {
             case "close" -> player.closeInventory();
             case "showcase", "showcase-entry" -> openPlayerEntry(player, player);
+            case "toggle-world-tool" -> toggleWorldTool(player, holder, value);
             case "showcase-page" -> {
                 Player subject = showcaseSubject(holder, player);
                 if (subject != null) {
@@ -955,6 +1153,19 @@ public final class GuiManager implements Listener {
             case "admin-dashboard" -> openAdminDashboard(player);
             case "admin-list" -> openAdminList(player, 0);
             case "admin-page" -> openAdminList(player, parseInt(value, 0));
+            case "world-menus" -> openWorldMenuManager(player, 0);
+            case "world-menus-page" -> openWorldMenuManager(player, parseInt(value, 0));
+            case "world-menu-editor" -> openWorldMenuEditor(player, value);
+            case "create-world-menu" -> promptCreateWorldMenu(player);
+            case "world-menu-title" -> promptWorldMenuTitle(player, value);
+            case "world-menu-rows" -> cycleWorldMenuRows(player, value);
+            case "world-menu-filler" -> setWorldMenuFiller(player, value, event);
+            case "world-menu-filler-name" -> promptWorldMenuFillerName(player, value);
+            case "world-menu-tools" -> openWorldMenuTools(player, value, 0);
+            case "world-menu-tools-page" -> openWorldMenuTools(
+                    player, holder.context(), parseInt(value, 0));
+            case "world-menu-tool" -> editWorldMenuTool(player, holder.context(), value, event);
+            case "world-menu-preview" -> openWorldToolMenu(player, player, value);
             case "categories" -> openCategoryManager(player, 0);
             case "categories-page" -> openCategoryManager(player, parseInt(value, 0));
             case "category-editor" -> openCategoryEditor(player, value);
@@ -1079,6 +1290,177 @@ public final class GuiManager implements Listener {
         return subject;
     }
 
+    private void toggleWorldTool(Player viewer, PlexonGuiHolder holder, String toolId) {
+        Player subject = showcaseSubject(holder, viewer);
+        if (subject == null) {
+            return;
+        }
+        String worldName = holder.context() == null
+                ? subject.getWorld().getName() : holder.context();
+        ToolDefinition definition = tools.find(toolId).orElse(null);
+        if (definition == null || !worldMenus.menuFor(worldName).contains(toolId)
+                || !subject.getWorld().getName().equalsIgnoreCase(worldName)) {
+            messages.send(viewer, "activation-unavailable");
+            openWorldToolMenu(viewer, subject, worldName);
+            return;
+        }
+        ToolActivationService.ToggleResult result = activations.toggle(subject, definition, worldName);
+        switch (result) {
+            case ACTIVATED -> messages.send(subject, "tool-activated", Map.of(
+                    "tool", definition.displayName(), "world", messages.plain(worldName)));
+            case DEACTIVATED -> messages.send(subject, "tool-deactivated", Map.of(
+                    "tool", definition.displayName(), "world", messages.plain(worldName)));
+            case INVENTORY_FULL -> messages.send(subject, "activation-inventory-full");
+            case UNAVAILABLE -> messages.send(subject, "activation-unavailable");
+        }
+        openWorldToolMenu(viewer, subject, worldName);
+    }
+
+    private void promptCreateWorldMenu(Player player) {
+        prompts.begin(player,
+                messages.parse("<green><bold>World menu name</bold></green>"
+                        + " <gray>Enter the exact world name.</gray>"),
+                input -> {
+                    try {
+                        WorldToolMenu menu = worldMenus.ensureWorld(input);
+                        messages.send(player, "editor-saved", Map.of(
+                                "field", "world menu", "tool", messages.plain(menu.worldName())));
+                        openWorldMenuEditor(player, menu.worldName());
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                        openWorldMenuManager(player, 0);
+                    }
+                },
+                () -> openWorldMenuManager(player, 0));
+    }
+
+    private void promptWorldMenuTitle(Player player, String worldName) {
+        prompts.begin(player,
+                messages.parse("<yellow><bold>World menu title</bold></yellow>"
+                        + " <gray>Enter a MiniMessage title. <white>{world}</white> is supported.</gray>"),
+                input -> {
+                    try {
+                        messages.parse(input.replace("{world}", messages.plain(worldName)));
+                        worldMenus.setTitle(worldName, input);
+                        messages.send(player, "editor-saved", Map.of(
+                                "field", "world menu title", "tool", messages.plain(worldName)));
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                    }
+                    openWorldMenuEditor(player, worldName);
+                },
+                () -> openWorldMenuEditor(player, worldName));
+    }
+
+    private void cycleWorldMenuRows(Player player, String worldName) {
+        try {
+            WorldToolMenu menu = worldMenus.find(worldName).orElseThrow();
+            int rows = menu.rows() == 6 ? 3 : menu.rows() + 1;
+            worldMenus.setRows(worldName, rows);
+            messages.send(player, "editor-saved", Map.of(
+                    "field", "world menu size", "tool", messages.plain(worldName)));
+        } catch (Exception exception) {
+            showError(player, exception);
+        }
+        openWorldMenuEditor(player, worldName);
+    }
+
+    private void setWorldMenuFiller(
+            Player player,
+            String worldName,
+            InventoryClickEvent event
+    ) {
+        Material material = selectedMaterial(player, event);
+        try {
+            if (material == null) {
+                throw new IllegalArgumentException(
+                        "Place an item on your cursor or hold one in your main hand.");
+            }
+            worldMenus.setFillerMaterial(worldName, material);
+            messages.send(player, "editor-saved", Map.of(
+                    "field", "world menu filler", "tool", messages.plain(worldName)));
+        } catch (Exception exception) {
+            showError(player, exception);
+        }
+        openWorldMenuEditor(player, worldName);
+    }
+
+    private void promptWorldMenuFillerName(Player player, String worldName) {
+        prompts.begin(player,
+                messages.parse("<light_purple><bold>Filler name</bold></light_purple>"
+                        + " <gray>Enter MiniMessage text or <white>none</white> for a blank name.</gray>"),
+                input -> {
+                    try {
+                        String name = input.equalsIgnoreCase("none") ? " " : input;
+                        messages.parse(name);
+                        worldMenus.setFillerName(worldName, name);
+                        messages.send(player, "editor-saved", Map.of(
+                                "field", "world menu filler name", "tool", messages.plain(worldName)));
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                    }
+                    openWorldMenuEditor(player, worldName);
+                },
+                () -> openWorldMenuEditor(player, worldName));
+    }
+
+    private void editWorldMenuTool(
+            Player player,
+            String worldName,
+            String toolId,
+            InventoryClickEvent event
+    ) {
+        ToolDefinition definition = tools.find(toolId).orElse(null);
+        WorldToolMenu menu = worldMenus.find(worldName).orElse(null);
+        if (definition == null || menu == null) {
+            openWorldMenuManager(player, 0);
+            return;
+        }
+        if (event.isRightClick() && menu.contains(toolId)) {
+            promptWorldMenuToolSlot(player, worldName, toolId);
+            return;
+        }
+        if (!menu.contains(toolId) && !definition.isAllowedWorld(worldName)) {
+            showError(player, new IllegalArgumentException(
+                    "Allow this world in the tool editor before reserving the tool."));
+            openWorldMenuTools(player, worldName, 0);
+            return;
+        }
+        try {
+            boolean added = worldMenus.toggleTool(worldName, toolId);
+            messages.send(player, "editor-saved", Map.of(
+                    "field", added ? "world tool reservation" : "world tool removal",
+                    "tool", definition.displayName()));
+            if (!added) {
+                Bukkit.getOnlinePlayers().forEach(activations::reconcile);
+            }
+        } catch (Exception exception) {
+            showError(player, exception);
+        }
+        openWorldMenuTools(player, worldName, 0);
+    }
+
+    private void promptWorldMenuToolSlot(Player player, String worldName, String toolId) {
+        WorldToolMenu menu = worldMenus.find(worldName).orElseThrow();
+        prompts.begin(player,
+                messages.parse("<aqua><bold>World menu slot</bold></aqua>"
+                        + " <gray>Enter an unused inner slot for this <white>"
+                        + menu.rows() + "-row</white> menu.</gray>"),
+                input -> {
+                    try {
+                        worldMenus.setToolSlot(worldName, toolId, Integer.parseInt(input.trim()));
+                        messages.send(player, "editor-saved", Map.of(
+                                "field", "world menu tool slot",
+                                "tool", tools.find(toolId).map(ToolDefinition::displayName)
+                                        .orElse(messages.plain(toolId))));
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                    }
+                    openWorldMenuTools(player, worldName, 0);
+                },
+                () -> openWorldMenuTools(player, worldName, 0));
+    }
+
     private void createCategory(Player player) {
         prompts.begin(player,
                 messages.parse("<light_purple><bold>New category ID</bold></light_purple>"
@@ -1200,7 +1582,6 @@ public final class GuiManager implements Listener {
     private void toggleGlobalSetting(Player player, String path) {
         if (!List.of(
                 "settings.enforce-bound-world",
-                "settings.enforce-owner",
                 "effects.level-up-particles"
         ).contains(path)) {
             showError(player, new IllegalArgumentException("Unknown global setting."));
@@ -1854,7 +2235,8 @@ public final class GuiManager implements Listener {
             openAdminList(player, 0);
             return;
         }
-        if (!grants.grant(player, definition, true)) {
+        ToolGrantService.GrantResult grantResult = grants.grant(player, definition, true);
+        if (grantResult == ToolGrantService.GrantResult.INVALID_WORLD) {
             messages.send(player, "invalid-world", Map.of(
                     "tool", definition.displayName(),
                     "world", messages.plain(player.getWorld().getName())));
@@ -1915,6 +2297,39 @@ public final class GuiManager implements Listener {
         player.closeInventory();
         messages.send(player, "no-permission");
         return false;
+    }
+
+    private ItemStack worldToolIcon(Player player, ToolDefinition tool, String worldName) {
+        boolean allowed = tool.isAllowedWorld(worldName);
+        boolean active = allowed && activations.isActive(player, tool, worldName);
+        Optional<ToolState> state = activations.stateFor(player, tool, worldName);
+        Material material = state.flatMap(value -> tool.level(value.level()))
+                .map(ToolLevel::material)
+                .orElse(tool.firstLevel().material());
+        List<Component> lore = new ArrayList<>();
+        lore.add(messages.parse("<dark_gray>ID: " + messages.plain(tool.id()) + "</dark_gray>"));
+        lore.add(Component.empty());
+        lore.add(messages.parse("<gray>Tracks:</gray> <white>"
+                + messages.plain(tool.trackingType().displayName()) + "</white>"));
+        state.ifPresent(value -> {
+            Map<String, String> values = itemService.placeholders(tool, value);
+            lore.add(messages.parse("<gray>Saved level:</gray> <yellow>{level}/{max_level}</yellow>", values));
+            lore.add(messages.parse("<gray>Saved progress:</gray> <white>{current}/{required}</white>", values));
+        });
+        lore.add(Component.empty());
+        if (!allowed) {
+            lore.add(messages.parse("<red><bold>Unavailable in this world</bold></red>"));
+        } else if (active) {
+            lore.add(messages.parse("<green><bold>● ACTIVE</bold></green>"));
+            lore.add(messages.parse("<yellow>Click to deactivate and store it.</yellow>"));
+        } else {
+            lore.add(messages.parse("<red><bold>○ INACTIVE</bold></red>"));
+            lore.add(messages.parse("<green>Click to activate this bound tool.</green>"));
+        }
+        ItemStack icon = ItemFactory.create(allowed ? material : Material.GRAY_DYE,
+                messages.parse(tool.displayName()), lore, active);
+        tag(icon, "toggle-world-tool", tool.id());
+        return icon;
     }
 
     private ItemStack showcaseIcon(Player player, ToolDefinition tool) {
@@ -2025,7 +2440,13 @@ public final class GuiManager implements Listener {
     }
 
     private void fill(Inventory inventory) {
-        ItemStack filler = ItemFactory.create(Material.GRAY_STAINED_GLASS_PANE, Component.text(" "), List.of());
+        fill(inventory, Material.GRAY_STAINED_GLASS_PANE, " ");
+    }
+
+    private void fill(Inventory inventory, Material material, String name) {
+        Component displayName = name == null || name.isBlank()
+                ? Component.text(" ") : messages.parse(name);
+        ItemStack filler = ItemFactory.create(material, displayName, List.of());
         for (int slot = 0; slot < inventory.getSize(); slot++) {
             inventory.setItem(slot, filler);
         }

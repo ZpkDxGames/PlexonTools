@@ -154,10 +154,10 @@ public final class ToolConfigRepository {
             config.set(root + ".levels.1.requirement_mode", RequirementMode.GENERAL.name());
             config.set(root + ".levels.1.requirement", 500L);
             config.set(root + ".levels.1.enchantments", Map.of());
-            config.set(root + ".levels.1.item.unbreakable", false);
+            config.set(root + ".levels.1.item.unbreakable", true);
             config.set(root + ".levels.1.item.glint", GlintMode.AUTO.name());
-            config.set(root + ".levels.1.item.hide_enchantments", false);
-            config.set(root + ".levels.1.item.hide_attributes", false);
+            config.set(root + ".levels.1.item.hide_enchantments", true);
+            config.set(root + ".levels.1.item.hide_attributes", true);
             config.set(root + ".levels.1.abilities", null);
             config.set(root + ".levels.1.lore", settings.defaultLore());
         });

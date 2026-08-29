@@ -25,6 +25,8 @@ public final class PluginSettings {
     private String levelUpSound;
     private boolean levelUpParticles;
     private List<String> defaultLore;
+    private String requirementLine;
+    private String maximumRequirementLine;
 
     public void load(FileConfiguration config) {
         enforceBoundWorld = config.getBoolean("settings.enforce-bound-world", true);
@@ -54,6 +56,13 @@ public final class PluginSettings {
                 "<gradient:#4158D0:#C850C0><bold>PlexonTools Editor</bold></gradient>");
         levelUpSound = config.getString("effects.level-up-sound", "ENTITY_PLAYER_LEVELUP");
         levelUpParticles = config.getBoolean("effects.level-up-particles", true);
+        requirementLine = config.getString("default_lore_format.stats.requirement_line",
+                "<dark_gray> •</dark_gray> <white>{requirement_goal}</white> "
+                        + "<dark_gray>—</dark_gray> <aqua>{requirement_current}</aqua>"
+                        + "<dark_gray>/</dark_gray><green>{requirement_required}</green>");
+        maximumRequirementLine = config.getString(
+                "default_lore_format.stats.maximum_requirement_line",
+                "<dark_gray> •</dark_gray> <green>Maximum level reached</green>");
         defaultLore = modernDefaultLore(config);
         if (defaultLore.isEmpty()) {
             defaultLore = config.getStringList("default-lore-format.lines");
@@ -63,7 +72,8 @@ public final class PluginSettings {
                     "<gradient:#4158D0:#C850C0><bold>⚡ PLEXON TOOL ⚡</bold></gradient>",
                     "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>",
                     "<gray>Level: <gradient:#FF9A8B:#FF6A88><bold>Lvl {level}</bold></gradient>",
-                    "<gray>Objective: <white>{goal_type_description}</white>",
+                    "<gray>Objectives:</gray>",
+                    "{requirement_lines}",
                     "<gray>Progress: <gradient:#00DBDE:#FC00FF>{current}</gradient><dark_gray>/</dark_gray><green>{required}</green> <gray>({percentage}%)</gray>",
                     "{progress_bar}",
                     "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>",
@@ -96,6 +106,8 @@ public final class PluginSettings {
     public String levelUpSound() { return levelUpSound; }
     public boolean levelUpParticles() { return levelUpParticles; }
     public List<String> defaultLore() { return defaultLore; }
+    public String requirementLine() { return requirementLine; }
+    public String maximumRequirementLine() { return maximumRequirementLine; }
 
     private static List<String> modernDefaultLore(FileConfiguration config) {
         if (!config.isConfigurationSection("default_lore_format")) {
@@ -105,7 +117,9 @@ public final class PluginSettings {
                 config.getString("default_lore_format.header", ""),
                 config.getString("default_lore_format.divider_top", ""),
                 config.getString("default_lore_format.stats.level", ""),
-                config.getString("default_lore_format.stats.tracking_goal", ""),
+                config.getString("default_lore_format.stats.objective_header",
+                        "<gray>Objectives:</gray>"),
+                "{requirement_lines}",
                 config.getString("default_lore_format.stats.progress_text", ""),
                 config.getString("default_lore_format.stats.progress_bar", ""),
                 config.getString("default_lore_format.divider_bottom", ""),

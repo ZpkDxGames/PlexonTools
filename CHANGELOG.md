@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.5.0 — 2026-08-29
+
+- Replaced the default `/pt` category selector with persistent, per-world tool activation menus.
+- Added `menus.yml` plus in-game editing for world menu titles, rows, fillers, reserved tools, and slots.
+- Added persistent active/inactive state to the v4 instance registry and safe restoration across join, respawn, reload, and world transitions.
+- Added permanent player binding, manual-drop cancellation, death retention, external-inventory protection, foreign-owner pickup prevention, and duplicate reconciliation.
+- Made every Plexon tool unbreakable and removed the former per-level toggle from the effective runtime profile.
+- Forced clean tooltip flags for enchantments, stored enchantments, attributes, unbreakable state, and additional vanilla details.
+- Added `{requirement_lines}` expansion with independent SPECIFIC target rows and new per-requirement placeholders.
+- Preserved legacy objective templates by expanding a SPECIFIC `{goal_type_description}` line once per target.
+- Changed full-inventory behavior so protected tools are never dropped; activation remains pending until a slot is available.
+- Added automatic 3.0 registry/configuration migration, refreshed documentation, and 3.5 release metadata.
+
 ## 3.0.0 — 2026-08-29
 
 - Added Mining, Combat, Farming, Utility, and custom category navigation with `/pt <category> [player]` and `/pt all [player]` routing.
