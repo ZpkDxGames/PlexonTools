@@ -61,8 +61,9 @@ public final class ToolProgressListener implements Listener {
             event.setCancelled(settings.cancelBlockBreaks());
             return;
         }
-        if (definition.get().tracks(event.getBlock().getType())) {
-            progression.addProgress(player, item, definition.get(), 1L);
+        if (definition.get().tracks(event.getBlock().getType(), state.get().level())) {
+            progression.addProgress(player, item, definition.get(),
+                    event.getBlock().getType().name(), 1L);
         }
     }
 
@@ -81,9 +82,10 @@ public final class ToolProgressListener implements Listener {
         if (definition.isEmpty() || !definition.get().enabled()) {
             return;
         }
-        if (progression.canUse(player, definition.get(), state.get(), false)
-                && definition.get().tracks(event.getEntityType())) {
-            progression.addProgress(player, item, definition.get(), 1L);
+        if (progression.canUse(player, definition.get(), state.get(), true)
+                && definition.get().tracks(event.getEntityType(), state.get().level())) {
+            progression.addProgress(player, item, definition.get(),
+                    event.getEntityType().name(), 1L);
         }
     }
 

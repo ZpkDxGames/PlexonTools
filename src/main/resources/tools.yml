@@ -2,37 +2,56 @@ tools:
   magma_breaker:
     enabled: true
     display_name: "<gradient:#FF4500:#FFA500><bold>Magma Breaker</bold></gradient>"
-    base_material: NETHERITE_PICKAXE
+    base_material: IRON_PICKAXE
     allowed_worlds:
       - world
       - world_nether
     tracking:
       type: BLOCKS_BROKEN
+      mode: SPECIFIC
       targets:
-        - STONE
-        - COBBLESTONE
-        - DEEPSLATE
+        STONE: 500
+        COBBLESTONE: 250
+        DEEPSLATE: 200
     levels:
       1:
-        requirement: 500
+        requirement_mode: SPECIFIC
         enchantments:
           EFFICIENCY: 1
           UNBREAKING: 1
-        lore:
-          - "<gray>A scorching pickaxe forged in the depths.</gray>"
-          - "<dark_gray>Bound world:</dark_gray> <white>{world}</white>"
-          - "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <orange>{current}/{required}</orange> blocks</gray>"
-          - "{bar}"
+        item:
+          unbreakable: false
+          glint: AUTO
+          hide_enchantments: false
+          hide_attributes: false
       2:
-        requirement: 1500
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 1000
+          COBBLESTONE: 500
+          DEEPSLATE: 400
+        display_name: "<gradient:#FF8C00:#FFD700><bold>Emberforged Breaker</bold></gradient>"
+        material: DIAMOND_PICKAXE
         enchantments:
-          EFFICIENCY: 2
-          UNBREAKING: 2
+          EFFICIENCY: 3
+          UNBREAKING: 3
           FORTUNE: 1
-        material_upgrade: NETHERITE_PICKAXE
-        lore:
-          - "<gray>A scorching pickaxe forged in the depths.</gray>"
-          - "<gold><bold>Upgraded tier!</bold></gold>"
-          - "<dark_gray>Bound world:</dark_gray> <white>{world}</white>"
-          - "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <green>MAX</green></gray>"
-          - "{bar}"
+        item:
+          unbreakable: false
+          glint: AUTO
+          hide_enchantments: false
+          hide_attributes: false
+      3:
+        requirement_mode: GENERAL
+        requirement: 3000
+        display_name: "<gradient:#FF4500:#FFA500><bold>Magma Breaker</bold></gradient>"
+        material: NETHERITE_PICKAXE
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 4
+          FORTUNE: 3
+        item:
+          unbreakable: true
+          glint: ON
+          hide_enchantments: false
+          hide_attributes: false

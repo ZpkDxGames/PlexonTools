@@ -37,7 +37,7 @@ public final class PlexonTools extends JavaPlugin {
             settings.load(getConfig());
             messages = new MessageService(this);
             messages.reload();
-            tools = new ToolConfigRepository(this);
+            tools = new ToolConfigRepository(this, settings);
             tools.reload();
             instanceRegistry = new InstanceRegistry(this);
             instanceRegistry.load();

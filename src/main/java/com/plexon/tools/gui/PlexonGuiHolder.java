@@ -11,13 +11,19 @@ public final class PlexonGuiHolder implements InventoryHolder {
     private final String toolId;
     private final int page;
     private final int level;
+    private final String context;
     private Inventory inventory;
 
     public PlexonGuiHolder(View view, String toolId, int page, int level) {
+        this(view, toolId, page, level, null);
+    }
+
+    public PlexonGuiHolder(View view, String toolId, int page, int level, String context) {
         this.view = view;
         this.toolId = toolId;
         this.page = page;
         this.level = level;
+        this.context = context;
     }
 
     public void attach(Inventory inventory) {
@@ -33,6 +39,7 @@ public final class PlexonGuiHolder implements InventoryHolder {
     public String toolId() { return toolId; }
     public int page() { return page; }
     public int level() { return level; }
+    public String context() { return context; }
 
     public enum View {
         SHOWCASE,
@@ -40,6 +47,11 @@ public final class PlexonGuiHolder implements InventoryHolder {
         ADMIN_EDITOR,
         WORLDS,
         LEVELS,
-        LEVEL_EDITOR
+        LEVEL_EDITOR,
+        REQUIREMENT,
+        TARGET_SELECTOR,
+        TARGET_AMOUNT,
+        ENCHANTMENTS,
+        LORE
     }
 }

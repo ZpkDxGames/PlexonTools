@@ -16,6 +16,20 @@ progress-bar:
   filled-format: "<gradient:#41E296:#A8FF78>"
   empty-format: "<dark_gray>"
 
+# Used when a level does not declare its own lore list in tools.yml.
+# Both {placeholder} and <placeholder> aliases are accepted.
+default-lore-format:
+  lines:
+    - "<gradient:#4158D0:#C850C0><bold>⚡ PLEXON TOOL ⚡</bold></gradient>"
+    - "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>"
+    - "<gray>Level: <gradient:#FF9A8B:#FF6A88><bold>Lvl {level}</bold></gradient>"
+    - "<gray>Objective: <white>{goal_type_description}</white>"
+    - "<gray>Progress: <gradient:#00DBDE:#FC00FF>{current}</gradient><dark_gray>/</dark_gray><green>{required}</green> <gray>({percentage}%)</gray>"
+    - "{progress_bar}"
+    - "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>"
+    - "<dark_gray>Authorized World: <gradient:#FEE140:#FA709A>{bound_world}</gradient>"
+    - "<dark_gray>Owner: <white>{owner_name}</white>"
+
 showcase:
   title: "<gradient:#4158D0:#C850C0><bold>PlexonTools</bold></gradient>"
   show-world-locked-tools: true

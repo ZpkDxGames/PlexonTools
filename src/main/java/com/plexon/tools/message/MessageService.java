@@ -59,6 +59,7 @@ public final class MessageService {
         String rendered = input == null ? "" : input;
         for (Map.Entry<String, String> entry : placeholders.entrySet()) {
             rendered = rendered.replace("{" + entry.getKey() + "}", entry.getValue());
+            rendered = rendered.replace("<" + entry.getKey() + ">", entry.getValue());
         }
         return miniMessage.deserialize(rendered);
     }

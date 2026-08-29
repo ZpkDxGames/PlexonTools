@@ -2,112 +2,143 @@
 
 Progressive, world-bound custom tools for Paper servers in the Plexon ecosystem.
 
-PlexonTools lets administrators define pickaxes, swords, axes, shovels, and other item-based tools that grow as players use them. Every granted item receives a unique identity, owner, world binding, progression level, and stat counter through Paper's Persistent Data Container API.
+PlexonTools lets administrators build tools that evolve as players use them. Every granted item has a unique identity, owner, world binding, current level, and item-local progression state backed by Paper's Persistent Data Container API.
 
-> **Current release:** `1.0.0-beta.1`
-> **Creator:** Tonim (`ZpkDxGames`)
+> **Current release:** `2.0.0` — **Creator:** Tonim (`ZpkDxGames`)
 
 ## Requirements
 
 - Paper `1.21.4`
 - Java `21`
-- No required runtime dependencies
+- No runtime dependencies
 
-## Highlights
+## 2.0 highlights
 
-- Block-break and mob-kill progression with optional target filters
-- Multiple levels with independent requirements, enchantments, lore, and material upgrades
-- Strict owner and bound-world checks with configurable bypass permissions
-- MiniMessage names, lore, messages, gradients, and progress bars
-- Player showcase GUI with live stats from owned inventory tools
-- In-game admin editor for tools, worlds, targets, thresholds, rewards, and lore
-- Unique per-item UUIDs plus a cached `data.yml` instance registry
-- Overflow-safe multi-level advancement (one event can cross multiple thresholds)
-- Configuration caches on the event hot path; no disk writes per block or kill
+- GENERAL requirements count one shared total across all blocks or living mobs.
+- SPECIFIC requirements maintain independent, persistent quotas for every selected material or entity.
+- Per-level requirement modes, targets, amounts, display names, materials, enchantments, lore, glint, item flags, and custom model data.
+- Searchable target browser plus `+1`, `+10`, `+100`, `+1000`, matching decrement controls, and exact chat entry.
+- Visual enchantment controls and line-by-line lore editing.
+- Level duplication, reordering, deletion, automatic renumbering, resolved previews, and overflow-safe advancement.
+- Strict owner and world checks with action-bar warnings and narrow bypass permissions.
+- Standard MiniMessage lore with dynamic objective, aggregate or per-target progress, owner, world, and progress-bar values.
+- Transactional configuration writes and a cached immutable runtime registry; no disk I/O occurs per progression event.
+- In-place compatibility with beta.1 and beta.2 configurations and issued items.
 
 ## Installation
 
-1. Build the project with Java 21:
-
-   ```bash
-   gradle clean build
-   ```
-
-2. Copy `build/libs/PlexonTools-1.0.0-beta.1.jar` into the server's `plugins` directory.
+1. Download `PlexonTools-2.0.0.jar` from the GitHub release.
+2. Copy it into the server's `plugins` directory.
 3. Start Paper once to generate `config.yml`, `messages.yml`, `tools.yml`, and `data.yml`.
-4. Edit `tools.yml` manually or use `/pt gui`, then run `/pt reload`.
+4. Use `/pt gui` or edit `tools.yml`, then run `/pt reload`.
+
+To build from source, run `gradle clean build` with Java 21.
+
+## Documentation
+
+- [Capabilities and customization reference](docs/CAPABILITIES.md)
+- [Administrative GUI guide](docs/ADMIN_EDITOR.md)
+- [Architecture and persistence](docs/ARCHITECTURE.md)
 
 ## Commands
 
 | Command | Permission | Purpose |
 |---|---|---|
 | `/pt` | `plexontools.use` | Open the player tool showcase |
-| `/pt give <player> <tool_id>` | `plexontools.give` | Create and grant a uniquely identified tool |
+| `/pt give <player> <tool_id>` | `plexontools.give` | Grant a uniquely identified tool |
 | `/pt gui` | `plexontools.gui` | Open the administrative editor |
-| `/pt reload` | `plexontools.reload` | Reload settings, messages, and tool definitions |
+| `/pt reload` | `plexontools.reload` | Reload settings, messages, and definitions |
 
 Aliases: `/plexontool` and `/plexontools`.
 
 `plexontools.admin` grants every administrative permission. The narrower bypass permissions are `plexontools.bypass.world` and `plexontools.bypass.owner`.
 
-## Progression semantics
+## Requirement engine
 
-A new instance begins at level `1`. The `requirement` configured on a level is the progress needed to advance **from that level to the next one**. When a tool advances, that requirement is subtracted and overflow carries forward. At the final configured level, progress is still recorded but no further upgrade occurs.
+A level's requirement is the work needed to advance **from that level to the next**. Overflow carries forward when the next level accepts it. At the final level, matching activity continues to be recorded without another upgrade.
 
-Each level describes the complete enchantment state for that level. On an upgrade, old enchantments are replaced by the new level's table. `material_upgrade` is optional; when omitted, the current material is retained.
+GENERAL mode counts any event of the configured tracking type:
 
-Available lore placeholders:
+```yaml
+tracking:
+  type: BLOCKS_BROKEN
+  mode: GENERAL
+  amount: 1000
+```
 
-- `{tool}` and `{tool_id}`
-- `{uuid}`
-- `{level}` and `{max_level}`
-- `{current}` and `{required}` (`MAX` at the final level)
-- `{world}` and `{owner}`
-- `{bar}`
+SPECIFIC mode requires every configured quota:
 
-## World and ownership isolation
+```yaml
+tracking:
+  type: BLOCKS_BROKEN
+  mode: SPECIFIC
+  targets:
+    STONE: 500
+    DEEPSLATE: 200
+```
 
-`allowed_worlds` controls where a definition may exist. When `/pt give` creates an instance, it binds that item to the recipient's current world. With the default settings, both conditions must pass before the item can break blocks, attack, interact, take durability damage, or gain progress:
-
-1. The current world is in the definition's allowlist.
-2. The current world matches the instance's immutable `plexontools:bound_world` value.
-
-The instance owner is stored in PDC and the registry. Other players cannot use it unless they have the owner bypass permission.
-
-## Example
+Levels inherit the root mode and values unless they declare `requirement_mode`, `requirement`, or `requirements`:
 
 ```yaml
 tools:
   magma_breaker:
     enabled: true
     display_name: "<gradient:#FF4500:#FFA500><bold>Magma Breaker</bold></gradient>"
-    base_material: NETHERITE_PICKAXE
+    base_material: IRON_PICKAXE
     allowed_worlds: [world, world_nether]
     tracking:
       type: BLOCKS_BROKEN
-      targets: [STONE, COBBLESTONE, DEEPSLATE]
+      mode: SPECIFIC
+      targets:
+        STONE: 500
+        COBBLESTONE: 250
     levels:
       1:
-        requirement: 500
-        enchantments:
-          EFFICIENCY: 1
-          UNBREAKING: 1
-        lore:
-          - "<gray>Progress: <orange>{current}/{required}</orange></gray>"
-          - "{bar}"
+        requirement_mode: SPECIFIC
+        enchantments: {EFFICIENCY: 1, UNBREAKING: 1}
       2:
-        requirement: 1500
-        enchantments:
-          EFFICIENCY: 2
-          UNBREAKING: 2
-          FORTUNE: 1
-        material_upgrade: NETHERITE_PICKAXE
-        lore:
-          - "<gold><bold>Upgraded tier!</bold></gold>"
-          - "<gray>Level {level}/{max_level}</gray>"
+        requirement_mode: SPECIFIC
+        requirements: {STONE: 1000, COBBLESTONE: 500}
+        display_name: "<gradient:#00DBDE:#FC00FF><bold>Emberforged Breaker</bold></gradient>"
+        material: DIAMOND_PICKAXE
+        enchantments: {EFFICIENCY: 3, FORTUNE: 1}
+        item:
+          glint: ON
+          custom_model_data: 1002
 ```
 
-An empty `tracking.targets` list means every block or living entity for that tracking type.
+`display_name` and `material` are inherited from the most recent earlier profile. `material_upgrade` remains accepted as a legacy alias. Enchantments, lore, and item options are complete per-level states.
+
+## Lore placeholders
+
+Both `{placeholder}` and `<placeholder>` forms are accepted.
+
+- Identity: `tool`, `tool_id`, `level_name`, `uuid`
+- Progress: `level`, `max_level`, `next_level`, `current`, `current_xp`, `required`, `required_xp`, `remaining`, `percent`, `percentage`, `total`, `bar`, `progress_bar`
+- Requirement: `requirement_mode`, `goal_type_description`, `target_progress`, `tracking`, `targets`
+- Binding: `world`, `bound_world`, `owner`, `owner_name`, `owner_uuid`
+- Profile: `material`, `enchantments`
+
+`required` and `next_level` render as `MAX` at the final level. The default layout lives under `default-lore-format.lines` in `config.yml`; any level can override it with its own `lore` list.
+
+## Upgrading from beta releases
+
+Back up the plugin directory, replace the JAR, and restart Paper. Existing `tools.yml`, `data.yml`, and mandatory item PDC keys remain valid.
+
+- A beta `tracking.targets` list keeps its original semantics: any listed target contributes to one shared total.
+- A 2.0 `tracking.targets` map defines independent SPECIFIC quotas.
+- Existing items without `stat_breakdown` load with an empty breakdown and continue normally.
+- Existing items receive the current resolved level profile when their progress next changes.
+
+The plugin does not rewrite an existing bundled configuration on startup.
+
+## Tracking note
+
+Block tracking is material-based. Matching player-placed blocks count as progress; PlexonTools does not maintain block-origin history in 2.0.
+
+## World and ownership isolation
+
+`allowed_worlds` controls where a definition may progress. `/pt give` also binds each physical instance to the recipient's current world. With default settings, the allowlist, immutable bound world, and owner must all match. Unauthorized attempts are blocked from progression and report the configured action-bar warning.
 
 ## License
 
