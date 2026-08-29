@@ -34,6 +34,12 @@ PlexonTools lets administrators build tools that evolve as players use them. Eve
 
 To build from source, run `gradle clean build` with Java 21.
 
+## Documentation
+
+- [Capabilities and customization reference](docs/CAPABILITIES.md)
+- [Administrative GUI guide](docs/ADMIN_EDITOR.md)
+- [Architecture and persistence](docs/ARCHITECTURE.md)
+
 ## Commands
 
 | Command | Permission | Purpose |
