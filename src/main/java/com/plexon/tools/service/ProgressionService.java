@@ -4,9 +4,10 @@ import com.plexon.tools.config.PluginSettings;
 import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.item.ToolState;
 import com.plexon.tools.message.MessageService;
+import com.plexon.tools.model.LevelRequirement;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.storage.InstanceRegistry;
-import com.plexon.tools.util.ProgressionMath;
+import com.plexon.tools.util.RequirementProgression;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import org.bukkit.NamespacedKey;
@@ -14,6 +15,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
@@ -74,19 +76,44 @@ public final class ProgressionService {
         return true;
     }
 
-    public ToolState addProgress(Player player, ItemStack item, ToolDefinition definition, long amount) {
+    public ToolState addProgress(
+            Player player,
+            ItemStack item,
+            ToolDefinition definition,
+            String target,
+            long amount
+    ) {
+        return addProgress(player, item, EquipmentSlot.HAND, definition, target, amount);
+    }
+
+    public ToolState addProgress(
+            Player player,
+            ItemStack item,
+            EquipmentSlot hand,
+            ToolDefinition definition,
+            String target,
+            long amount
+    ) {
         ToolState current = itemService.read(item)
                 .orElseThrow(() -> new IllegalArgumentException("Item is not a valid Plexon tool."));
+        if (!current.categoryId().equalsIgnoreCase(definition.category())) {
+            current = current.withCategory(definition.category());
+        }
 
-        NavigableMap<Integer, Long> requirements = new TreeMap<>();
+        NavigableMap<Integer, LevelRequirement> requirements = new TreeMap<>();
         definition.levels().forEach((number, level) -> requirements.put(number, level.requirement()));
-        ProgressionMath.Result result = ProgressionMath.advance(
-                current.level(), current.progress(), amount, requirements);
-        ToolState updated = current.withProgress(result.level(), result.progress());
+        RequirementProgression.Result result = RequirementProgression.advance(
+                current.level(), current.progress(), current.targetProgress(), target, amount, requirements);
+        ToolState updated = current.withProgress(
+                result.level(), result.progress(), result.targetProgress());
         ItemStack updatedItem = result.levelsGained() > 0
                 ? itemService.apply(item, definition, updated)
                 : itemService.refreshProgress(item, definition, updated);
-        player.getInventory().setItemInMainHand(updatedItem);
+        if (hand == EquipmentSlot.OFF_HAND) {
+            player.getInventory().setItemInOffHand(updatedItem);
+        } else {
+            player.getInventory().setItemInMainHand(updatedItem);
+        }
         instanceRegistry.update(updated, amount, player.getName());
 
         if (result.levelsGained() > 0) {
@@ -101,7 +128,9 @@ public final class ProgressionService {
 
     private void announceUpgrade(Player player, ToolDefinition definition, ToolState state) {
         Map<String, String> placeholders = Map.of(
-                "tool", definition.displayName(),
+                "tool", definition.level(state.level())
+                        .map(com.plexon.tools.model.ToolLevel::displayName)
+                        .orElse(definition.displayName()),
                 "level", Integer.toString(state.level())
         );
         messages.sendWithoutPrefix(player, "level-up", placeholders);

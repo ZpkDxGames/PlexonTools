@@ -1,113 +1,133 @@
 # PlexonTools
 
-Progressive, world-bound custom tools for Paper servers in the Plexon ecosystem.
+PlexonTools is a Paper-native progression engine for unique, category-driven custom tools. Every granted item has its own UUID, owner, world binding, level, aggregate progress, and optional per-target counters stored directly in Persistent Data Container metadata.
 
-PlexonTools lets administrators define pickaxes, swords, axes, shovels, and other item-based tools that grow as players use them. Every granted item receives a unique identity, owner, world binding, progression level, and stat counter through Paper's Persistent Data Container API.
-
-> **Current release:** `1.0.0-beta.1`
-> **Creator:** Tonim (`ZpkDxGames`)
+> **Current release:** `3.0.0` — **Creator:** Tonim (`ZpkDxGames`)
 
 ## Requirements
 
 - Paper `1.21.4`
 - Java `21`
-- No required runtime dependencies
+- No runtime dependencies
+- No NMS or CraftBukkit implementation access
 
-## Highlights
+## 3.0 highlights
 
-- Block-break and mob-kill progression with optional target filters
-- Multiple levels with independent requirements, enchantments, lore, and material upgrades
-- Strict owner and bound-world checks with configurable bypass permissions
-- MiniMessage names, lore, messages, gradients, and progress bars
-- Player showcase GUI with live stats from owned inventory tools
-- In-game admin editor for tools, worlds, targets, thresholds, rewards, and lore
-- Unique per-item UUIDs plus a cached `data.yml` instance registry
-- Overflow-safe multi-level advancement (one event can cross multiple thresholds)
-- Configuration caches on the event hot path; no disk writes per block or kill
+- Six tracking types: blocks broken, mobs killed, items farmed, fish caught, damage dealt, and blocks placed.
+- GENERAL shared totals and SPECIFIC per-target quotas on every level, with compatible overflow carried forward.
+- Category selection and per-category player showcases configured through `categories.yml`.
+- Per-level Auto Smelt, protected-aware 3×3 mining, EXP Booster, potion effect, and Magnet abilities.
+- An in-game dashboard for tools, categories, global settings, requirements, targets, levels, item profiles, and abilities.
+- `<!italic>` normalization for every MiniMessage deserialization, including names, lore, messages, and GUIs.
+- Item PDC mutations and progression calculations stay in memory; the audit registry checkpoints asynchronously.
+- Backward-compatible loading for 2.0 definitions, issued items, list filters, and `data.yml` records.
 
 ## Installation
 
-1. Build the project with Java 21:
+1. Download `PlexonTools-3.0.0.jar` from the GitHub release.
+2. Place it in the Paper server's `plugins` directory.
+3. Start the server once to generate `config.yml`, `messages.yml`, `categories.yml`, `tools.yml`, and `data.yml`.
+4. Customize through `/pt gui` or YAML, then run `/pt reload`.
 
-   ```bash
-   gradle clean build
-   ```
-
-2. Copy `build/libs/PlexonTools-1.0.0-beta.1.jar` into the server's `plugins` directory.
-3. Start Paper once to generate `config.yml`, `messages.yml`, `tools.yml`, and `data.yml`.
-4. Edit `tools.yml` manually or use `/pt gui`, then run `/pt reload`.
+Build from source with Java 21 and `gradle clean build`.
 
 ## Commands
 
 | Command | Permission | Purpose |
 |---|---|---|
-| `/pt` | `plexontools.use` | Open the player tool showcase |
-| `/pt give <player> <tool_id>` | `plexontools.give` | Create and grant a uniquely identified tool |
-| `/pt gui` | `plexontools.gui` | Open the administrative editor |
-| `/pt reload` | `plexontools.reload` | Reload settings, messages, and tool definitions |
+| `/pt` | `plexontools.use` | Open categories, or the showcase when one category exists |
+| `/pt <category> [player]` | `plexontools.use`; target requires `plexontools.admin` | Open one category |
+| `/pt all [player]` | `plexontools.use`; target requires `plexontools.admin` | Open the unified showcase |
+| `/pt give <player> <tool_id> [world]` | `plexontools.give` | Grant a unique instance bound to an allowed world |
+| `/pt gui` | `plexontools.gui` | Open the administrative dashboard |
+| `/pt reload` | `plexontools.reload` | Reload settings, messages, categories, and tools |
 
-Aliases: `/plexontool` and `/plexontools`.
+Aliases: `/plexontool` and `/plexontools`. `plexontools.admin` includes all administrative and bypass capabilities.
 
-`plexontools.admin` grants every administrative permission. The narrower bypass permissions are `plexontools.bypass.world` and `plexontools.bypass.owner`.
+## Tracking and requirements
 
-## Progression semantics
+| Tracking type | Accepted activity | Target kind |
+|---|---|---|
+| `BLOCKS_BROKEN` | Successful block breaks | Bukkit `Material` blocks |
+| `MOBS_KILLED` | Living entities killed by the holder | Bukkit `EntityType` |
+| `ITEMS_FARMED` | Mature crops broken or harvested | Supported crop materials |
+| `FISH_CAUGHT` | Cod, salmon, tropical fish, or pufferfish reeled in | Fish item materials |
+| `DAMAGE_DEALT` | Final damage dealt to living entities | Bukkit `EntityType` |
+| `BLOCKS_PLACED` | Successful block placements | Bukkit `Material` blocks |
 
-A new instance begins at level `1`. The `requirement` configured on a level is the progress needed to advance **from that level to the next one**. When a tool advances, that requirement is subtracted and overflow carries forward. At the final configured level, progress is still recorded but no further upgrade occurs.
-
-Each level describes the complete enchantment state for that level. On an upgrade, old enchantments are replaced by the new level's table. `material_upgrade` is optional; when omitted, the current material is retained.
-
-Available lore placeholders:
-
-- `{tool}` and `{tool_id}`
-- `{uuid}`
-- `{level}` and `{max_level}`
-- `{current}` and `{required}` (`MAX` at the final level)
-- `{world}` and `{owner}`
-- `{bar}`
-
-## World and ownership isolation
-
-`allowed_worlds` controls where a definition may exist. When `/pt give` creates an instance, it binds that item to the recipient's current world. With the default settings, both conditions must pass before the item can break blocks, attack, interact, take durability damage, or gain progress:
-
-1. The current world is in the definition's allowlist.
-2. The current world matches the instance's immutable `plexontools:bound_world` value.
-
-The instance owner is stored in PDC and the registry. Other players cannot use it unless they have the owner bypass permission.
-
-## Example
+A level's requirement is the activity needed to advance from that level to the next. GENERAL mode uses one counter:
 
 ```yaml
-tools:
-  magma_breaker:
-    enabled: true
-    display_name: "<gradient:#FF4500:#FFA500><bold>Magma Breaker</bold></gradient>"
-    base_material: NETHERITE_PICKAXE
-    allowed_worlds: [world, world_nether]
-    tracking:
-      type: BLOCKS_BROKEN
-      targets: [STONE, COBBLESTONE, DEEPSLATE]
-    levels:
-      1:
-        requirement: 500
-        enchantments:
-          EFFICIENCY: 1
-          UNBREAKING: 1
-        lore:
-          - "<gray>Progress: <orange>{current}/{required}</orange></gray>"
-          - "{bar}"
-      2:
-        requirement: 1500
-        enchantments:
-          EFFICIENCY: 2
-          UNBREAKING: 2
-          FORTUNE: 1
-        material_upgrade: NETHERITE_PICKAXE
-        lore:
-          - "<gold><bold>Upgraded tier!</bold></gold>"
-          - "<gray>Level {level}/{max_level}</gray>"
+tracking:
+  type: DAMAGE_DEALT
+  mode: GENERAL
+  amount: 1000
 ```
 
-An empty `tracking.targets` list means every block or living entity for that tracking type.
+SPECIFIC mode requires every quota:
+
+```yaml
+tracking:
+  type: BLOCKS_BROKEN
+  mode: SPECIFIC
+  targets:
+    STONE: 500
+    DEEPSLATE: 250
+```
+
+Levels can override root requirements with `requirement_mode`, `requirement`, or `requirements`.
+
+## Categories and abilities
+
+Every tool has a `category` that resolves against `categories.yml`. Categories control their MiniMessage name, icon, showcase slot, and description.
+
+Abilities are complete per-level states. The legacy list form and the configurable map form are both accepted:
+
+```yaml
+levels:
+  2:
+    abilities:
+      AUTO_SMELT:
+        enabled: true
+      AREA_MINE_3X3:
+        enabled: true
+      EXP_BOOSTER:
+        multiplier: 1.75
+      MOB_POTION_EFFECT:
+        effect: minecraft:haste
+        level: 2
+        duration_ticks: 100
+        target: HOLDER
+      MAGNET:
+        enabled: true
+```
+
+The 3×3 ability operates only on pickaxe, shovel, and axe material families. It checks synthetic block-break events before removing adjacent blocks so protection plugins can cancel them.
+
+## Lore placeholders
+
+Both `{placeholder}` and `<placeholder>` forms are accepted.
+
+- Identity: `tool`, `tool_id`, `level_name`, `uuid`, `category`, `category_name`
+- Progress: `level`, `max_level`, `next_level`, `current`, `required`, `remaining`, `percentage`, `total`, `progress_bar`
+- Requirement: `requirement_mode`, `goal_type_description`, `target_progress`, `tracking`, `targets`
+- Binding: `bound_world`, `owner_name`, `owner_uuid`
+- Profile: `material`, `enchantments`
+
+The structured default layout lives under `default_lore_format` in `config.yml`.
+
+## Persistence
+
+The item is the progression source of truth. It carries `id`, `uuid`, `level`, `stat_count`, `category`, `bound_world`, `owner`, and optional `stat_breakdown` keys in the `plexontools` namespace. `data.yml` is an audit snapshot written periodically from an immutable in-memory copy and atomically replaced where the filesystem supports it.
+
+Block-break tracking remains material-based: matching player-placed blocks also count because PlexonTools does not maintain block-origin history.
+
+## Documentation
+
+- [Capabilities and configuration](docs/CAPABILITIES.md)
+- [Administrative GUI](docs/ADMIN_EDITOR.md)
+- [Architecture and persistence](docs/ARCHITECTURE.md)
+- [Migrating from 2.0](docs/MIGRATION_3.md)
 
 ## License
 

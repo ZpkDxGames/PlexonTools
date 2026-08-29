@@ -4,7 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 
 import java.util.Collections;
-import java.util.Locale;
+import java.util.LinkedHashSet;
 import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.Set;
@@ -16,15 +16,19 @@ public record ToolDefinition(
         String displayName,
         Material baseMaterial,
         Set<String> allowedWorlds,
+        String category,
         TrackingType trackingType,
-        Set<Material> blockTargets,
-        Set<EntityType> entityTargets,
+        RequirementMode defaultRequirementMode,
         NavigableMap<Integer, ToolLevel> levels
 ) {
     public ToolDefinition {
         allowedWorlds = Set.copyOf(allowedWorlds);
-        blockTargets = Set.copyOf(blockTargets);
-        entityTargets = Set.copyOf(entityTargets);
+        if (category == null || category.isBlank()) {
+            throw new IllegalArgumentException("Tool category is required.");
+        }
+        if (defaultRequirementMode == null) {
+            throw new IllegalArgumentException("Default requirement mode is required.");
+        }
         levels = Collections.unmodifiableNavigableMap(new TreeMap<>(levels));
     }
 
@@ -49,24 +53,35 @@ public record ToolDefinition(
         return allowedWorlds.stream().anyMatch(world -> world.equalsIgnoreCase(worldName));
     }
 
-    public boolean tracks(Material material) {
-        return trackingType == TrackingType.BLOCKS_BROKEN
-                && (blockTargets.isEmpty() || blockTargets.contains(material));
+    public boolean tracks(Material material, int level) {
+        return trackingType.usesMaterialTargets()
+                && level(level).map(profile -> profile.requirement().accepts(material.name())).orElse(false);
     }
 
-    public boolean tracks(EntityType entityType) {
-        return trackingType == TrackingType.MOBS_KILLED
-                && (entityTargets.isEmpty() || entityTargets.contains(entityType));
+    public boolean tracks(EntityType entityType, int level) {
+        return trackingType.usesEntityTargets()
+                && level(level).map(profile -> profile.requirement().accepts(entityType.name())).orElse(false);
+    }
+
+    public boolean tracks(String target, int level) {
+        return level(level).map(profile -> profile.requirement().accepts(target)).orElse(false);
     }
 
     public Set<String> targetNames() {
-        if (trackingType == TrackingType.BLOCKS_BROKEN) {
-            return blockTargets.stream()
-                    .map(material -> material.name().toUpperCase(Locale.ROOT))
-                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
-        }
-        return entityTargets.stream()
-                .map(type -> type.name().toUpperCase(Locale.ROOT))
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        Set<String> targets = new LinkedHashSet<>();
+        levels.values().forEach(level -> targets.addAll(level.requirement().targets().keySet()));
+        return Set.copyOf(targets);
+    }
+
+    public Set<String> targetNames(int level) {
+        return level(level).map(profile -> profile.requirement().targets().keySet()).orElse(Set.of());
+    }
+
+    public boolean hasMixedRequirementModes() {
+        return levels.values().stream()
+                .map(level -> level.requirement().mode())
+                .distinct()
+                .limit(2)
+                .count() > 1L;
     }
 }

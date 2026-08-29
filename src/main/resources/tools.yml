@@ -1,38 +1,206 @@
 tools:
   magma_breaker:
     enabled: true
+    category: mining
     display_name: "<gradient:#FF4500:#FFA500><bold>Magma Breaker</bold></gradient>"
-    base_material: NETHERITE_PICKAXE
-    allowed_worlds:
-      - world
-      - world_nether
+    base_material: IRON_PICKAXE
+    allowed_worlds: [world, world_nether]
     tracking:
       type: BLOCKS_BROKEN
+      mode: SPECIFIC
       targets:
-        - STONE
-        - COBBLESTONE
-        - DEEPSLATE
+        STONE: 500
+        DEEPSLATE: 250
+        NETHERRACK: 1000
     levels:
       1:
-        requirement: 500
+        requirement_mode: SPECIFIC
         enchantments:
-          EFFICIENCY: 1
-          UNBREAKING: 1
-        lore:
-          - "<gray>A scorching pickaxe forged in the depths.</gray>"
-          - "<dark_gray>Bound world:</dark_gray> <white>{world}</white>"
-          - "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <orange>{current}/{required}</orange> blocks</gray>"
-          - "{bar}"
-      2:
-        requirement: 1500
-        enchantments:
-          EFFICIENCY: 2
+          EFFICIENCY: 3
           UNBREAKING: 2
-          FORTUNE: 1
+        abilities:
+          - AUTO_SMELT
+        item:
+          glint: AUTO
+      2:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 1000
+          DEEPSLATE: 500
+          NETHERRACK: 2000
+        display_name: "<gradient:#FF8C00:#FFD700><bold>Emberforged Breaker</bold></gradient>"
         material_upgrade: NETHERITE_PICKAXE
-        lore:
-          - "<gray>A scorching pickaxe forged in the depths.</gray>"
-          - "<gold><bold>Upgraded tier!</bold></gold>"
-          - "<dark_gray>Bound world:</dark_gray> <white>{world}</white>"
-          - "<gray>Level <yellow>{level}</yellow>/<yellow>{max_level}</yellow> <dark_gray>•</dark_gray> <green>MAX</green></gray>"
-          - "{bar}"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.75
+        item:
+          glint: ON
+
+  hunter_blade:
+    enabled: true
+    category: combat
+    display_name: "<gradient:#E55D87:#5FC3E4><bold>Hunter Blade</bold></gradient>"
+    base_material: IRON_SWORD
+    allowed_worlds: [world]
+    tracking:
+      type: MOBS_KILLED
+      mode: GENERAL
+      amount: 100
+    levels:
+      1:
+        requirement_mode: GENERAL
+        requirement: 100
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 2
+        abilities:
+          MAGNET:
+            enabled: true
+      2:
+        requirement_mode: GENERAL
+        requirement: 250
+        material: DIAMOND_SWORD
+        enchantments:
+          SHARPNESS: 4
+          LOOTING: 2
+          UNBREAKING: 3
+        abilities:
+          MAGNET:
+            enabled: true
+          MOB_POTION_EFFECT:
+            effect: minecraft:speed
+            level: 2
+            duration_ticks: 100
+            target: HOLDER
+
+  harvest_scythe:
+    enabled: true
+    category: farming
+    display_name: "<gradient:#11998E:#38EF7D><bold>Harvest Scythe</bold></gradient>"
+    base_material: GOLDEN_HOE
+    allowed_worlds: [world]
+    tracking:
+      type: ITEMS_FARMED
+      mode: SPECIFIC
+      targets:
+        WHEAT: 250
+        CARROTS: 250
+        POTATOES: 250
+    levels:
+      1:
+        requirement_mode: SPECIFIC
+        enchantments:
+          UNBREAKING: 3
+        abilities:
+          MAGNET:
+            enabled: true
+      2:
+        requirement_mode: GENERAL
+        requirement: 1500
+        material: NETHERITE_HOE
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 4
+        abilities:
+          MAGNET:
+            enabled: true
+          MOB_POTION_EFFECT:
+            effect: minecraft:haste
+            level: 2
+            duration_ticks: 100
+            target: HOLDER
+
+  deepwater_rod:
+    enabled: true
+    category: utility
+    display_name: "<gradient:#00C6FF:#0072FF><bold>Deepwater Rod</bold></gradient>"
+    base_material: FISHING_ROD
+    allowed_worlds: [world]
+    tracking:
+      type: FISH_CAUGHT
+      mode: GENERAL
+      amount: 75
+    levels:
+      1:
+        requirement_mode: GENERAL
+        requirement: 75
+        enchantments:
+          LURE: 2
+          LUCK_OF_THE_SEA: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.5
+      2:
+        requirement_mode: SPECIFIC
+        requirements:
+          COD: 100
+          SALMON: 75
+          PUFFERFISH: 15
+        enchantments:
+          LURE: 3
+          LUCK_OF_THE_SEA: 3
+          UNBREAKING: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 2.0
+          MAGNET:
+            enabled: true
+
+  titan_axe:
+    enabled: true
+    category: combat
+    display_name: "<gradient:#F7971E:#FFD200><bold>Titan Axe</bold></gradient>"
+    base_material: DIAMOND_AXE
+    allowed_worlds: [world]
+    tracking:
+      type: DAMAGE_DEALT
+      mode: GENERAL
+      amount: 1000
+    levels:
+      1:
+        requirement_mode: GENERAL
+        requirement: 1000
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+        abilities:
+          MOB_POTION_EFFECT:
+            effect: minecraft:slowness
+            level: 1
+            duration_ticks: 60
+            target: TARGET
+
+  architect_bricks:
+    enabled: true
+    category: utility
+    display_name: "<gradient:#FDC830:#F37335><bold>Architect Bricks</bold></gradient>"
+    base_material: BRICKS
+    allowed_worlds: [world]
+    tracking:
+      type: BLOCKS_PLACED
+      mode: SPECIFIC
+      targets:
+        BRICKS: 500
+    levels:
+      1:
+        requirement_mode: SPECIFIC
+        enchantments: {}
+        item:
+          glint: ON
+      2:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE_BRICKS: 1000
+        display_name: "<gradient:#FFE259:#FFA751><bold>Master Architect Bricks</bold></gradient>"
+        material: STONE_BRICKS
+        enchantments: {}
+        item:
+          glint: ON

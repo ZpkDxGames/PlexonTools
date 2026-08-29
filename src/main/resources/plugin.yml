@@ -1,7 +1,7 @@
 name: PlexonTools
 version: '${version}'
 main: com.plexon.tools.PlexonTools
-description: Progressive, world-bound custom tools for the Plexon ecosystem.
+description: Category-driven progressive tools for the Plexon ecosystem.
 api-version: '1.21'
 load: POSTWORLD
 author: ZpkDxGames
@@ -10,7 +10,7 @@ website: https://github.com/ZpkDxGames/PlexonTools
 commands:
   plexontools:
     description: Opens and manages PlexonTools.
-    usage: /<command> [give <player> <tool_id>|reload|gui]
+    usage: /<command> [<category>|all] [player] | give <player> <tool_id> [world] | reload | gui
     aliases: [pt, plexontool]
     permission: plexontools.use
 
@@ -19,7 +19,7 @@ permissions:
     description: Opens the player tool showcase.
     default: true
   plexontools.admin:
-    description: Grants every PlexonTools administrative capability.
+    description: Grants every administrative capability, including opening player GUIs remotely.
     default: op
     children:
       plexontools.use: true

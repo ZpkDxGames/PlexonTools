@@ -29,7 +29,7 @@ public final class MessageService {
         YamlConfiguration candidate = new YamlConfiguration();
         candidate.load(file);
         messages = candidate;
-        prefix = messages.getString("prefix", "");
+        prefix = messages.getString("messages.prefix", messages.getString("prefix", ""));
     }
 
     public void send(CommandSender sender, String key) {
@@ -37,30 +37,31 @@ public final class MessageService {
     }
 
     public void send(CommandSender sender, String key, Map<String, String> placeholders) {
-        String body = messages.getString(key, "<red>Missing message: " + plain(key) + "</red>");
+        String body = value(key);
         sender.sendMessage(parse(prefix + body, placeholders));
     }
 
     public void sendWithoutPrefix(Audience audience, String key, Map<String, String> placeholders) {
-        String body = messages.getString(key, "<red>Missing message: " + plain(key) + "</red>");
+        String body = value(key);
         audience.sendMessage(parse(body, placeholders));
     }
 
     public void actionBar(Player player, String key, Map<String, String> placeholders) {
-        String body = messages.getString(key, "<red>Missing message: " + plain(key) + "</red>");
+        String body = value(key);
         player.sendActionBar(parse(body, placeholders));
     }
 
     public Component parse(String input) {
-        return miniMessage.deserialize(input == null ? "" : input);
+        return miniMessage.deserialize(normalizeItalics(input));
     }
 
     public Component parse(String input, Map<String, String> placeholders) {
         String rendered = input == null ? "" : input;
         for (Map.Entry<String, String> entry : placeholders.entrySet()) {
             rendered = rendered.replace("{" + entry.getKey() + "}", entry.getValue());
+            rendered = rendered.replace("<" + entry.getKey() + ">", entry.getValue());
         }
-        return miniMessage.deserialize(rendered);
+        return miniMessage.deserialize(normalizeItalics(rendered));
     }
 
     public String plain(String value) {
@@ -69,5 +70,15 @@ public final class MessageService {
 
     public JavaPlugin plugin() {
         return plugin;
+    }
+
+    private String value(String key) {
+        return messages.getString("messages." + key,
+                messages.getString(key, "<red>Missing message: " + plain(key) + "</red>"));
+    }
+
+    private static String normalizeItalics(String input) {
+        String value = input == null ? "" : input;
+        return value.startsWith("<!italic>") ? value : "<!italic>" + value;
     }
 }
