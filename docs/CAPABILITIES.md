@@ -97,7 +97,11 @@ worlds:
         slot: 10
 ```
 
-World menus accept three to six rows. Tool slots must be unique inner content slots. A reservation is usable only when the definition is enabled and the same world appears in its `allowed_worlds` list.
+World menus accept three to six rows. Pinned tool slots must be unique inner content slots. A tool is available only when its definition is enabled and the same world appears in its `allowed_worlds` list.
+
+By default, enabled definitions appear automatically when the current world is in `allowed_worlds`; `menus.yml` entries only pin exact card positions. `world-menu.auto-show-allowed-tools: false` enables strict membership. Automatic placement reserves the slot beneath each card for its ON/OFF panel when possible, and a blocked card remains directly clickable.
+
+`config.yml` provides default MiniMessage templates for the tool-card display name/lore and both panel states. Their placeholders include the normal item-profile values plus `status`, `state`, `state_symbol`, `toggle_action`, and `toggle_hint`. The same values are editable through `/pt gui` → **Player Menu Appearance**.
 
 ## Category configuration
 
@@ -136,8 +140,8 @@ Owner binding cannot be bypassed in 3.5. `plexontools.bypass.world` retains its 
 
 | File | Purpose |
 |---|---|
-| `config.yml` | Enforcement, effects, progress bars, GUI titles, and default lore |
-| `menus.yml` | Per-world `/pt` layouts and reserved tool slots |
+| `config.yml` | Enforcement, effects, progress bars, player-menu templates, and default item lore |
+| `menus.yml` | Per-world `/pt` layouts and exact tool-slot pins |
 | `categories.yml` | Category names, icons, slots, and descriptions |
 | `tools.yml` | Tool definitions, requirements, profiles, and abilities |
 | `messages.yml` | MiniMessage feedback |

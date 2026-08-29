@@ -68,6 +68,7 @@ public final class PlexonGuiHolder implements InventoryHolder {
         WORLD_MENUS,
         WORLD_MENU_EDITOR,
         WORLD_MENU_TOOLS,
+        WORLD_MENU_STYLE,
         ADMIN_LIST,
         ADMIN_EDITOR,
         WORLDS,

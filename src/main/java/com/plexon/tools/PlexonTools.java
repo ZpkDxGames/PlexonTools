@@ -63,7 +63,7 @@ public final class PlexonTools extends JavaPlugin {
             abilities = new AbilityService(this, tools, itemService, progression);
             ToolGrantService grants = new ToolGrantService(itemService, instanceRegistry, messages);
             activations = new ToolActivationService(
-                    tools, worldMenus, itemService, instanceRegistry, messages);
+                    tools, worldMenus, settings, itemService, instanceRegistry, messages);
             prompts = new ChatPromptService(this, messages);
             GuiManager gui = new GuiManager(this, categories, tools, worldMenus, itemService,
                     activations, grants, prompts, settings, messages);

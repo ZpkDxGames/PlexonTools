@@ -1,5 +1,7 @@
 # Player-facing /pt menus. Admins can edit these in /pt gui.
-# Tool entries are world reservations: only listed tools can be activated there.
+# Tool entries pin exact slots. By default, every enabled tool that allows the
+# world is shown automatically; set world-menu.auto-show-allowed-tools to false
+# in config.yml if every visible tool must also be listed here.
 defaults:
   title: "<gradient:#4158D0:#C850C0><bold>World Tools</bold></gradient> <dark_gray>• {world}</dark_gray>"
   rows: 4

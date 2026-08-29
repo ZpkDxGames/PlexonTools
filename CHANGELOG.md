@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.5.1 — 2026-08-29
+
+- Fixed allowed tools not appearing in custom worlds such as `Survival_World` unless admins also created a separate `menus.yml` reservation.
+- Added `world-menu.auto-show-allowed-tools`; enabled by default while strict explicit membership remains optional.
+- Added configurable tool-card material, display name, lore, active glint, and placeholder rendering in `config.yml`.
+- Added separately configurable active/inactive toggle panels directly beneath tool cards when layout space is available.
+- Added an in-game **Player Menu Appearance** editor for tool cards, ON/OFF panels, materials, names, lore, glint, and availability behavior.
+- Reframed `menus.yml` tool entries as exact layout pins and made automatic placement panel-aware.
+- Preserved loaded-world capitalization in the administrative world list.
+
 ## 3.5.0 — 2026-08-29
 
 - Replaced the default `/pt` category selector with persistent, per-world tool activation menus.

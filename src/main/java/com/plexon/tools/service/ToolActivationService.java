@@ -1,6 +1,7 @@
 package com.plexon.tools.service;
 
 import com.plexon.tools.config.ToolConfigRepository;
+import com.plexon.tools.config.PluginSettings;
 import com.plexon.tools.config.WorldMenuRepository;
 import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.item.ToolState;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public final class ToolActivationService {
     private final ToolConfigRepository tools;
     private final WorldMenuRepository worldMenus;
+    private final PluginSettings settings;
     private final ToolItemService itemService;
     private final InstanceRegistry registry;
     private final MessageService messages;
@@ -27,12 +29,14 @@ public final class ToolActivationService {
     public ToolActivationService(
             ToolConfigRepository tools,
             WorldMenuRepository worldMenus,
+            PluginSettings settings,
             ToolItemService itemService,
             InstanceRegistry registry,
             MessageService messages
     ) {
         this.tools = tools;
         this.worldMenus = worldMenus;
+        this.settings = settings;
         this.itemService = itemService;
         this.registry = registry;
         this.messages = messages;
@@ -42,6 +46,12 @@ public final class ToolActivationService {
         return matchingInventoryState(player, definition.id(), worldName).isPresent()
                 || registry.findOwned(player.getUniqueId(), definition.id(), worldName).stream()
                         .anyMatch(InstanceRegistry.InstanceRecord::active);
+    }
+
+    public boolean isAvailable(ToolDefinition definition, String worldName) {
+        return definition != null && definition.enabled() && definition.isAllowedWorld(worldName)
+                && (settings.worldMenuAutoShowAllowedTools()
+                        || worldMenus.menuFor(worldName).contains(definition.id()));
     }
 
     public Optional<ToolState> stateFor(Player player, ToolDefinition definition, String worldName) {
@@ -56,7 +66,7 @@ public final class ToolActivationService {
     }
 
     public ToggleResult toggle(Player player, ToolDefinition definition, String worldName) {
-        if (!definition.enabled() || !definition.isAllowedWorld(worldName)) {
+        if (!isAvailable(definition, worldName)) {
             return ToggleResult.UNAVAILABLE;
         }
         return isActive(player, definition, worldName)
@@ -65,7 +75,7 @@ public final class ToolActivationService {
     }
 
     public ToggleResult activate(Player player, ToolDefinition definition, String worldName) {
-        if (!definition.enabled() || !definition.isAllowedWorld(worldName)) {
+        if (!isAvailable(definition, worldName)) {
             return ToggleResult.UNAVAILABLE;
         }
 
@@ -170,10 +180,9 @@ public final class ToolActivationService {
                     state.toolId().toLowerCase(java.util.Locale.ROOT));
             ToolDefinition definition = tools.find(state.toolId()).orElse(null);
             if (selected == null || !selected.instanceId().equals(state.instanceId())
-                    || (selected.menuManaged()
-                            && !worldMenus.menuFor(currentWorld).contains(selected.toolId()))
                     || definition == null || !definition.enabled()
-                    || !definition.isAllowedWorld(currentWorld)) {
+                    || !definition.isAllowedWorld(currentWorld)
+                    || (selected.menuManaged() && !isAvailable(definition, currentWorld))) {
                 registry.setActive(state.instanceId(), false);
                 inventory.setItem(slot, null);
                 continue;
@@ -192,11 +201,10 @@ public final class ToolActivationService {
                     && cursorState.boundWorld().equalsIgnoreCase(currentWorld)
                     && selected != null
                     && selected.instanceId().equals(cursorState.instanceId())
-                    && (!selected.menuManaged()
-                            || worldMenus.menuFor(currentWorld).contains(selected.toolId()))
                     && !present.containsKey(cursorState.instanceId())
                     && definition != null && definition.enabled()
-                    && definition.isAllowedWorld(currentWorld);
+                    && definition.isAllowedWorld(currentWorld)
+                    && (!selected.menuManaged() || isAvailable(definition, currentWorld));
             if (valid) {
                 player.setItemOnCursor(itemService.refreshProgress(
                         cursor, definition, cursorState));
@@ -216,9 +224,8 @@ public final class ToolActivationService {
             }
             ToolDefinition definition = tools.find(record.toolId()).orElse(null);
             if (definition == null || !definition.enabled()
-                    || (record.menuManaged()
-                            && !worldMenus.menuFor(currentWorld).contains(record.toolId()))
-                    || !definition.isAllowedWorld(currentWorld)) {
+                    || !definition.isAllowedWorld(currentWorld)
+                    || (record.menuManaged() && !isAvailable(definition, currentWorld))) {
                 registry.setActive(record.instanceId(), false);
                 continue;
             }

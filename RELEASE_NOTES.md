@@ -1,12 +1,16 @@
-# PlexonTools 3.5.0
+# PlexonTools 3.5.1
 
-PlexonTools 3.5 changes custom tools from permanently carried items into persistent, world-scoped player entitlements. Players open `/pt` and decide which administrator-reserved tools are active in their current world; deactivating a tool stores it without losing any progress.
+PlexonTools 3.5 changes custom tools from permanently carried items into persistent, world-scoped player entitlements. Players open `/pt` and decide which administrator-available tools are active in their current world; deactivating a tool stores it without losing any progress.
+
+Version 3.5.1 makes `allowed_worlds` visible by default without requiring a second hidden `menus.yml` reservation. It also introduces configurable tool-card templates and a dedicated ON/OFF panel rendered directly below each tool when the menu has room, with a matching in-game appearance editor.
 
 ## World activation menus
 
-- Every world can have an independent title, row count, filler material/name, tool selection, and slot arrangement.
+- Every world can have an independent title, row count, filler material/name, and pinned slot arrangement.
 - Administrators configure the menus in `/pt gui` or `menus.yml`.
-- A tool must be reserved in the world menu and include that world in its `allowed_worlds` list.
+- An enabled tool appears automatically when its `allowed_worlds` list contains the current world; an optional strict mode also requires a `menus.yml` pin.
+- Default tool-card and ON/OFF-panel material, name, lore, and active glint are configurable in `config.yml` and the in-game appearance editor.
+- The ON/OFF panel is placed directly below its card when space is available; otherwise the card stays clickable.
 - Active tools are removed when the owner leaves their bound world and restored when they return.
 - Join, respawn, reload, and full-inventory reconciliation use the persistent registry rather than creating new instances.
 
@@ -28,6 +32,6 @@ PlexonTools 3.5 changes custom tools from permanently carried items into persist
 
 ## Compatibility
 
-The v4 registry reads v3 `data.yml` records as active by default. Existing items retain their UUID, level, aggregate progress, target counters, category, owner, and bound world. Existing `config.yml` files do not need the new lore keys: clean objective and requirement-row defaults are supplied by the plugin.
+The v4 registry reads v3 `data.yml` records as active by default. Existing items retain their UUID, level, aggregate progress, target counters, category, owner, and bound world. Existing `config.yml` files do not need the new lore or world-menu keys: clean defaults and automatic allowed-world visibility are supplied by the plugin.
 
 Paper 1.21.4 and Java 21 remain required. No NMS, CraftBukkit implementation access, or runtime dependency was added.

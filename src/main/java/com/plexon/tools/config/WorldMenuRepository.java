@@ -136,7 +136,7 @@ public final class WorldMenuRepository {
         WorldToolMenu menu = requireMenu(worldName);
         String normalizedTool = normalizeTool(toolId);
         if (!menu.contains(normalizedTool)) {
-            throw new IllegalArgumentException("That tool is not reserved in this world menu.");
+            throw new IllegalArgumentException("That tool is not pinned in this world menu.");
         }
         if (!WorldToolMenu.isContentSlot(menu.rows(), slot)) {
             throw new IllegalArgumentException(
@@ -230,10 +230,29 @@ public final class WorldMenuRepository {
     }
 
     private static int nextFreeSlot(WorldToolMenu menu) {
+        java.util.Set<Integer> cards = java.util.Set.copyOf(menu.toolSlots().values());
+        java.util.Set<Integer> panels = new java.util.LinkedHashSet<>();
+        for (int card : cards) {
+            int panel = card + 9;
+            if (panel < menu.size() && !cards.contains(panel)) {
+                panels.add(panel);
+            }
+        }
         for (int row = 1; row < menu.rows() - 1; row++) {
             for (int column = 1; column < 8; column++) {
                 int slot = row * 9 + column;
-                if (!menu.toolSlots().containsValue(slot)) {
+                int panel = slot + 9;
+                if (!cards.contains(slot) && !panels.contains(slot)
+                        && panel < menu.size() && !cards.contains(panel)
+                        && !panels.contains(panel)) {
+                    return slot;
+                }
+            }
+        }
+        for (int row = 1; row < menu.rows() - 1; row++) {
+            for (int column = 1; column < 8; column++) {
+                int slot = row * 9 + column;
+                if (!cards.contains(slot) && !panels.contains(slot)) {
                     return slot;
                 }
             }

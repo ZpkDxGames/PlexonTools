@@ -1,5 +1,6 @@
 package com.plexon.tools.config;
 
+import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.List;
@@ -27,6 +28,12 @@ public final class PluginSettings {
     private List<String> defaultLore;
     private String requirementLine;
     private String maximumRequirementLine;
+    private boolean worldMenuAutoShowAllowedTools;
+    private boolean worldMenuTogglePanelEnabled;
+    private boolean worldMenuToolCardActiveGlint;
+    private MenuItemTemplate worldMenuToolCard;
+    private MenuItemTemplate worldMenuActivePanel;
+    private MenuItemTemplate worldMenuInactivePanel;
 
     public void load(FileConfiguration config) {
         enforceBoundWorld = config.getBoolean("settings.enforce-bound-world", true);
@@ -56,6 +63,35 @@ public final class PluginSettings {
                 "<gradient:#4158D0:#C850C0><bold>PlexonTools Editor</bold></gradient>");
         levelUpSound = config.getString("effects.level-up-sound", "ENTITY_PLAYER_LEVELUP");
         levelUpParticles = config.getBoolean("effects.level-up-particles", true);
+        worldMenuAutoShowAllowedTools = config.getBoolean(
+                "world-menu.auto-show-allowed-tools", true);
+        worldMenuTogglePanelEnabled = config.getBoolean(
+                "world-menu.toggle-panel.enabled", true);
+        worldMenuToolCardActiveGlint = config.getBoolean(
+                "world-menu.tool-card.glint-when-active", true);
+        worldMenuToolCard = menuItem(config, "world-menu.tool-card", "TOOL", true,
+                "{tool}", List.of(
+                        "<dark_gray>{tool_id}</dark_gray>",
+                        "",
+                        "<gray>Level:</gray> <yellow>{level}/{max_level}</yellow>",
+                        "<gray>Progress:</gray> <aqua>{current}</aqua><dark_gray>/</dark_gray><green>{required}</green>",
+                        "<gray>Tracks:</gray> <white>{tracking}</white>",
+                        "",
+                        "<gray>Status:</gray> {status}",
+                        "{toggle_hint}"
+                ));
+        worldMenuActivePanel = menuItem(config, "world-menu.toggle-panel.active",
+                "LIME_STAINED_GLASS_PANE", false,
+                "<green><bold>✔ ENABLED</bold></green>", List.of(
+                        "<gray>{tool} is active in</gray> <white>{world}</white><gray>.</gray>",
+                        "<yellow>Click to deactivate and store it.</yellow>"
+                ));
+        worldMenuInactivePanel = menuItem(config, "world-menu.toggle-panel.inactive",
+                "RED_STAINED_GLASS_PANE", false,
+                "<red><bold>✘ DISABLED</bold></red>", List.of(
+                        "<gray>{tool} is stored for</gray> <white>{world}</white><gray>.</gray>",
+                        "<green>Click to activate it.</green>"
+                ));
         requirementLine = config.getString("default_lore_format.stats.requirement_line",
                 "<dark_gray> •</dark_gray> <white>{requirement_goal}</white> "
                         + "<dark_gray>—</dark_gray> <aqua>{requirement_current}</aqua>"
@@ -108,6 +144,12 @@ public final class PluginSettings {
     public List<String> defaultLore() { return defaultLore; }
     public String requirementLine() { return requirementLine; }
     public String maximumRequirementLine() { return maximumRequirementLine; }
+    public boolean worldMenuAutoShowAllowedTools() { return worldMenuAutoShowAllowedTools; }
+    public boolean worldMenuTogglePanelEnabled() { return worldMenuTogglePanelEnabled; }
+    public boolean worldMenuToolCardActiveGlint() { return worldMenuToolCardActiveGlint; }
+    public MenuItemTemplate worldMenuToolCard() { return worldMenuToolCard; }
+    public MenuItemTemplate worldMenuActivePanel() { return worldMenuActivePanel; }
+    public MenuItemTemplate worldMenuInactivePanel() { return worldMenuInactivePanel; }
 
     private static List<String> modernDefaultLore(FileConfiguration config) {
         if (!config.isConfigurationSection("default_lore_format")) {
@@ -127,5 +169,42 @@ public final class PluginSettings {
                 config.getString("default_lore_format.footer.bound_world", ""),
                 config.getString("default_lore_format.footer.owner", "")
         ).stream().filter(line -> !line.isEmpty()).toList();
+    }
+
+    private static MenuItemTemplate menuItem(
+            FileConfiguration config,
+            String path,
+            String defaultMaterial,
+            boolean allowToolMaterial,
+            String defaultName,
+            List<String> defaultLore
+    ) {
+        String material = config.getString(path + ".material", defaultMaterial);
+        material = material == null ? defaultMaterial : material.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!(allowToolMaterial && material.equals("TOOL"))) {
+            Material parsed = Material.matchMaterial(material);
+            if (parsed == null || !parsed.isItem() || parsed.isAir()) {
+                throw new IllegalArgumentException(path + ".material must be an item material"
+                        + (allowToolMaterial ? " or TOOL." : "."));
+            }
+        }
+        String displayName = config.getString(path + ".display-name", defaultName);
+        if (displayName == null || displayName.isBlank()) {
+            throw new IllegalArgumentException(path + ".display-name cannot be blank.");
+        }
+        List<String> lore = config.isList(path + ".lore")
+                ? config.getStringList(path + ".lore") : defaultLore;
+        return new MenuItemTemplate(material, displayName, List.copyOf(lore));
+    }
+
+    public record MenuItemTemplate(
+            String material,
+            String displayName,
+            List<String> lore
+    ) {
+        public Material resolveMaterial(Material toolMaterial) {
+            return material.equals("TOOL")
+                    ? toolMaterial : java.util.Objects.requireNonNull(Material.matchMaterial(material));
+        }
     }
 }

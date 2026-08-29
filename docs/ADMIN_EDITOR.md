@@ -7,6 +7,7 @@ Open `/pt gui` with `plexontools.gui`.
 - **Tool Manager** opens every definition and its live preview.
 - **Create New Tool** uses the held material, current world, first category, GENERAL block tracking, and a safe default profile.
 - **World Tool Menus** configures the player-facing `/pt` layout for every loaded or manually named world.
+- **Player Menu Appearance** edits the default tool card and ON/OFF panel used in `/pt`.
 - **Category Manager** retains internal tool organization and legacy showcase metadata.
 - **Global Settings** controls bound-world enforcement and level-up effects. Permanent owner binding is displayed but cannot be disabled.
 - **Live World Menu** previews the current world's activation GUI.
@@ -18,10 +19,15 @@ Select a loaded world or use **Add Unloaded World** to enter an exact name. Each
 - MiniMessage inventory title, including the `{world}` placeholder.
 - Three to six inventory rows.
 - Filler item material and MiniMessage display name.
-- The exact tools reserved for that world.
-- A unique inner content slot for every reserved tool.
+- Optional exact slot pins for selected tools.
 
-The tool must already allow that world in its Tool Editor. Left-click a tool to reserve/remove it and right-click an assigned tool to enter an exact slot. Shrinking a menu is rejected if an existing tool would fall outside the new content area.
+An enabled tool whose `allowed_worlds` includes this world appears automatically by default. Left-click a tool to pin or unpin its exact layout slot and right-click a pinned tool to enter a slot. Set **Auto-show Allowed Tools** off in **Player Menu Appearance** only when you want pins to act as strict menu membership. Shrinking a menu is rejected if an existing pin would fall outside the new content area.
+
+## Player menu appearance
+
+The appearance editor controls the default card material, display name, lore, active glint, and the active/inactive material, name, and lore for the ON/OFF panel. The card material may follow the player's saved tool level (`TOOL`) or use one fixed Bukkit material. Lore is entered as `;;`-separated MiniMessage lines.
+
+When enabled and unobstructed, the ON/OFF panel occupies the slot directly below its tool card. A custom pin can block that slot; in that case, the card itself remains clickable. The live card and panel preview uses an existing enabled definition.
 
 ## Tool editor
 

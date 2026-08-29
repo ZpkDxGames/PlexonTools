@@ -2,11 +2,12 @@
 
 ## Activation lifecycle
 
-1. `/pt` resolves the current world's immutable `WorldToolMenu` from `menus.yml`.
-2. A click toggles the owner's existing registry record or creates one unique instance on first activation.
-3. Deactivation copies the latest item PDC state into memory, marks the record inactive, and removes the physical item.
-4. Join, respawn, reload, and world-change reconciliation selects one active instance per tool/world and reconstructs missing items.
-5. Leaving the bound world removes the item without changing its active entitlement; returning restores it when inventory space exists.
+1. `/pt` selects enabled definitions whose `allowed_worlds` contains the current world; optional strict mode also requires membership in its immutable `WorldToolMenu`.
+2. Explicit `menus.yml` entries pin cards to exact slots, while unpinned available tools use panel-aware automatic placement.
+3. A click on the card or its panel toggles the owner's existing registry record or creates one unique instance on first activation.
+4. Deactivation copies the latest item PDC state into memory, marks the record inactive, and removes the physical item.
+5. Join, respawn, reload, and world-change reconciliation selects one active instance per tool/world and reconstructs missing items.
+6. Leaving the bound world removes the item without changing its active entitlement; returning restores it when inventory space exists.
 
 The activation registry—not an item entity on the ground—is the recovery source. A full inventory delays materialization and never drops a protected tool.
 
@@ -24,7 +25,8 @@ There is no YAML lookup or disk write in block, combat, farming, fishing, damage
 
 ## Definition graph
 
-- `WorldToolMenu` controls the player-facing world title, layout, filler, reservations, and slots.
+- `WorldToolMenu` controls the player-facing world title, layout, filler, and exact slot pins.
+- `PluginSettings` owns the default tool-card and toggle-panel templates plus automatic/strict membership mode.
 - `ToolCategory` remains internal organization and explicit legacy-showcase metadata.
 - `ToolDefinition` contains identity, category, world allowlist, tracking type, and ordered levels.
 - `ToolLevel` is the resolved item/requirement/ability profile for one numeric level.
@@ -62,7 +64,7 @@ Every registry mutation increments a revision counter. The async checkpoint task
 
 The parser accepts 2.0 list-filter and material-upgrade aliases. Missing item category PDC is treated as a legacy item and synchronized from its current definition on the next accepted refresh.
 
-Registry schema v4 adds `active` and `menu_managed`. Missing fields from a v3 record default to `true` and `false`, respectively: already-issued tools remain active, while world-menu reservations only revoke instances that a player has actually managed through that menu. Loading an older schema marks the registry dirty so the next checkpoint materializes both fields. The item profile fingerprint includes the 3.5 clean-tooltip revision, so existing items receive permanent unbreakable and hidden-tooltip flags on their next reconciliation.
+Registry schema v4 adds `active` and `menu_managed`. Missing fields from a v3 record default to `true` and `false`, respectively: already-issued tools remain active, while menu-managed instances are revoked when their definition is disabled or their bound world is removed from `allowed_worlds`. In optional strict mode, removing the corresponding menu pin also revokes them. Loading an older schema marks the registry dirty so the next checkpoint materializes both fields. The item profile fingerprint includes the 3.5 clean-tooltip revision, so existing items receive permanent unbreakable and hidden-tooltip flags on their next reconciliation.
 
 ## Protection lifecycle
 

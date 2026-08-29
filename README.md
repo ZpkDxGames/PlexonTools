@@ -2,7 +2,7 @@
 
 PlexonTools is a Paper-native progression engine for unique, world-activated custom tools. Every tool has its own UUID, permanent owner, world binding, activation state, level, aggregate progress, and optional per-target counters.
 
-> **Current release:** `3.5.0` — **Creator:** Tonim (`ZpkDxGames`)
+> **Current release:** `3.5.1` — **Creator:** Tonim (`ZpkDxGames`)
 
 ## Requirements
 
@@ -11,11 +11,12 @@ PlexonTools is a Paper-native progression engine for unique, world-activated cus
 - No runtime dependencies
 - No NMS or CraftBukkit implementation access
 
-## 3.5 highlights
+## 3.5.1 highlights
 
 - `/pt` is now a configurable per-world activation menu instead of a category browser.
-- Admins choose each world's title, rows, filler, reserved tools, and exact tool slots through `/pt gui` or `menus.yml`.
-- Players can activate and deactivate a reserved tool without losing its UUID, level, or progress.
+- A tool appears automatically when its `allowed_worlds` includes the current world; `menus.yml` pins exact slots instead of acting as a second hidden allowlist.
+- Admins customize each world's title, rows, filler, pinned slots, default tool cards, and ON/OFF panels through `/pt gui` or YAML.
+- Players can activate and deactivate an available tool without losing its UUID, level, or progress.
 - Active tools leave the inventory outside their bound world and safely return on join, respawn, or re-entry.
 - Bound tools are always unbreakable, owner-only, non-droppable, retained on death, and blocked from external inventories.
 - SPECIFIC objectives render one requirement per lore line; enchantments, attributes, unbreakable text, and additional vanilla details are hidden.
@@ -29,7 +30,7 @@ PlexonTools is a Paper-native progression engine for unique, world-activated cus
 
 ## Installation
 
-1. Download `PlexonTools-3.5.0.jar` from the GitHub release.
+1. Download `PlexonTools-3.5.1.jar` from the GitHub release.
 2. Place it in the Paper server's `plugins` directory.
 3. Start the server once to generate `config.yml`, `messages.yml`, `menus.yml`, `categories.yml`, `tools.yml`, and `data.yml`.
 4. Customize through `/pt gui` or YAML, then run `/pt reload`.
@@ -84,7 +85,9 @@ Levels can override root requirements with `requirement_mode`, `requirement`, or
 
 ## World menus, categories, and abilities
 
-`menus.yml` reserves tools independently for each world. A reservation controls whether the player can activate that tool from `/pt`; the tool must also allow that world in `tools.yml`. Menu title, size, filler, tool membership, and slots are editable in-game. Explicit `/pt give` grants remain active administrator-issued instances until a player manages them through a matching world-menu reservation.
+An enabled tool appears in `/pt` by default whenever its `allowed_worlds` list contains the player's current world. `menus.yml` customizes the inventory title, size, filler, and exact pinned slots; allowed tools without a pin are placed automatically. Set `world-menu.auto-show-allowed-tools: false` to restore strict explicit membership, where only pinned tools appear. Explicit `/pt give` grants remain active administrator-issued instances until the player manages them through `/pt`.
+
+The default player-facing card and the separate ON/OFF panel are configured under `world-menu` in `config.yml`, or in-game through `/pt gui` → **Player Menu Appearance**. When the slot directly below a card is free, the panel is placed there; otherwise the card itself remains the toggle control.
 
 Every tool still has a `category` that resolves against `categories.yml`. In 3.5, categories organize definitions and retain explicit legacy showcase routes; they no longer control the default `/pt` player flow.
 
@@ -121,6 +124,7 @@ Both `{placeholder}` and `<placeholder>` forms are accepted.
 - Requirement rows: `requirement_action`, `requirement_target`, `requirement_goal`, `requirement_current`, `requirement_required`, `requirement_remaining`, `requirement_percentage`
 - Binding: `bound_world`, `owner_name`, `owner_uuid`
 - Profile: `material`, `enchantments`
+- Player menu state: `world`, `status`, `state`, `state_symbol`, `toggle_action`, `toggle_hint`
 
 The structured default layout lives under `default_lore_format` in `config.yml`. The special `{requirement_lines}` row expands to one line per SPECIFIC target and one summarized line for GENERAL requirements.
 
