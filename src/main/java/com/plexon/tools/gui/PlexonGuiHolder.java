@@ -61,9 +61,14 @@ public final class PlexonGuiHolder implements InventoryHolder {
     public String categoryId() { return categoryId; }
 
     public enum View {
+        WORLD_TOOL_MENU,
         SHOWCASE,
         CATEGORY_SELECT,
         ADMIN_DASHBOARD,
+        WORLD_MENUS,
+        WORLD_MENU_EDITOR,
+        WORLD_MENU_TOOLS,
+        WORLD_MENU_STYLE,
         ADMIN_LIST,
         ADMIN_EDITOR,
         WORLDS,

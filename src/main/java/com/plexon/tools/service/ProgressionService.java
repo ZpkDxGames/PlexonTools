@@ -51,9 +51,7 @@ public final class ProgressionService {
             }
             return false;
         }
-        if (settings.enforceOwner()
-                && !state.ownerId().equals(player.getUniqueId())
-                && !player.hasPermission("plexontools.bypass.owner")) {
+        if (!state.ownerId().equals(player.getUniqueId())) {
             if (notify) {
                 String ownerName = instanceRegistry.find(state.instanceId())
                         .map(InstanceRegistry.InstanceRecord::ownerName)

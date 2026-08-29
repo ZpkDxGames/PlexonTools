@@ -4,14 +4,17 @@ import com.plexon.tools.command.PlexonToolsCommand;
 import com.plexon.tools.config.PluginSettings;
 import com.plexon.tools.config.CategoryRepository;
 import com.plexon.tools.config.ToolConfigRepository;
+import com.plexon.tools.config.WorldMenuRepository;
 import com.plexon.tools.gui.GuiManager;
 import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.listener.ToolProgressListener;
+import com.plexon.tools.listener.ToolProtectionListener;
 import com.plexon.tools.message.MessageService;
 import com.plexon.tools.service.ChatPromptService;
 import com.plexon.tools.service.AbilityService;
 import com.plexon.tools.service.ProgressionService;
 import com.plexon.tools.service.ToolGrantService;
+import com.plexon.tools.service.ToolActivationService;
 import com.plexon.tools.storage.InstanceRegistry;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -26,9 +29,11 @@ public final class PlexonTools extends JavaPlugin {
     private MessageService messages;
     private CategoryRepository categories;
     private ToolConfigRepository tools;
+    private WorldMenuRepository worldMenus;
     private InstanceRegistry instanceRegistry;
     private ChatPromptService prompts;
     private AbilityService abilities;
+    private ToolActivationService activations;
     private BukkitTask registrySaveTask;
 
     @Override
@@ -38,6 +43,7 @@ public final class PlexonTools extends JavaPlugin {
             saveBundledResource("tools.yml");
             saveBundledResource("messages.yml");
             saveBundledResource("categories.yml");
+            saveBundledResource("menus.yml");
 
             settings.load(getConfig());
             messages = new MessageService(this);
@@ -46,6 +52,8 @@ public final class PlexonTools extends JavaPlugin {
             categories.reload();
             tools = new ToolConfigRepository(this, settings, categories);
             tools.reload();
+            worldMenus = new WorldMenuRepository(this);
+            worldMenus.reload();
             instanceRegistry = new InstanceRegistry(this);
             instanceRegistry.load();
 
@@ -54,13 +62,17 @@ public final class PlexonTools extends JavaPlugin {
                     itemService, instanceRegistry, settings, messages);
             abilities = new AbilityService(this, tools, itemService, progression);
             ToolGrantService grants = new ToolGrantService(itemService, instanceRegistry, messages);
+            activations = new ToolActivationService(
+                    tools, worldMenus, settings, itemService, instanceRegistry, messages);
             prompts = new ChatPromptService(this, messages);
-            GuiManager gui = new GuiManager(this, categories, tools, itemService,
-                    grants, prompts, settings, messages);
+            GuiManager gui = new GuiManager(this, categories, tools, worldMenus, itemService,
+                    activations, grants, prompts, settings, messages);
 
             getServer().getPluginManager().registerEvents(
                     new ToolProgressListener(tools, itemService, progression, abilities, settings), this);
             getServer().getPluginManager().registerEvents(abilities, this);
+            getServer().getPluginManager().registerEvents(
+                    new ToolProtectionListener(this, itemService, activations), this);
             getServer().getPluginManager().registerEvents(prompts, this);
             getServer().getPluginManager().registerEvents(gui, this);
 
@@ -73,10 +85,13 @@ public final class PlexonTools extends JavaPlugin {
 
             scheduleRegistrySave();
             abilities.start();
+            getServer().getScheduler().runTask(this,
+                    () -> getServer().getOnlinePlayers().forEach(activations::reconcile));
             getLogger().info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             getLogger().info("PlexonTools " + getPluginMeta().getVersion() + " enabled");
             getLogger().info("Loaded tools: " + tools.size());
             getLogger().info("Loaded categories: " + categories.size());
+            getLogger().info("Loaded world menus: " + worldMenus.size());
             getLogger().info("Tracked instances: " + instanceRegistry.size());
             getLogger().info("Creator: Tonim (ZpkDxGames)");
             getLogger().info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -112,6 +127,8 @@ public final class PlexonTools extends JavaPlugin {
         messages.reload();
         categories.reload();
         tools.reload();
+        worldMenus.reload();
+        getServer().getOnlinePlayers().forEach(activations::reconcile);
         scheduleRegistrySave();
     }
 

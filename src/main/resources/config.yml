@@ -2,6 +2,8 @@
 settings:
   # A tool is bound to the receiver's current world when it is granted.
   enforce-bound-world: true
+  # Retained for 3.0 configuration compatibility. Player binding is always
+  # enforced by PlexonTools 3.5 and cannot be disabled.
   enforce-owner: true
   cancel-unauthorized-block-breaks: true
   cancel-unauthorized-interactions: true
@@ -16,6 +18,49 @@ progress-bar:
   filled-format: "<gradient:#41E296:#A8FF78>"
   empty-format: "<dark_gray>"
 
+# Default appearance and availability rules for the player-facing /pt menu.
+# Names and lore support MiniMessage plus all normal item placeholders. The
+# menu also adds: {status}, {state}, {state_symbol}, {toggle_action},
+# {toggle_hint}, and {world}. Both {name} and <name> forms are accepted.
+world-menu:
+  # When true, every enabled tool whose allowed_worlds contains the player's
+  # current world appears automatically. menus.yml can still pin its exact slot.
+  # Set false to require every tool to also be explicitly listed in menus.yml.
+  auto-show-allowed-tools: true
+
+  tool-card:
+    # TOOL uses the material of the player's saved tool level. Any Bukkit item
+    # material can be used instead (for example CHEST or NETHER_STAR).
+    material: TOOL
+    display-name: "{tool}"
+    glint-when-active: true
+    lore:
+      - "<dark_gray>{tool_id}</dark_gray>"
+      - ""
+      - "<gray>Level:</gray> <yellow>{level}/{max_level}</yellow>"
+      - "<gray>Progress:</gray> <aqua>{current}</aqua><dark_gray>/</dark_gray><green>{required}</green>"
+      - "<gray>Tracks:</gray> <white>{tracking}</white>"
+      - ""
+      - "<gray>Status:</gray> {status}"
+      - "{toggle_hint}"
+
+  # When space exists, this button is rendered directly below its tool card.
+  # If a custom layout blocks that position, the tool card itself remains clickable.
+  toggle-panel:
+    enabled: true
+    active:
+      material: LIME_STAINED_GLASS_PANE
+      display-name: "<green><bold>✔ ENABLED</bold></green>"
+      lore:
+        - "<gray>{tool} is active in</gray> <white>{world}</white><gray>.</gray>"
+        - "<yellow>Click to deactivate and store it.</yellow>"
+    inactive:
+      material: RED_STAINED_GLASS_PANE
+      display-name: "<red><bold>✘ DISABLED</bold></red>"
+      lore:
+        - "<gray>{tool} is stored for</gray> <white>{world}</white><gray>.</gray>"
+        - "<green>Click to activate it.</green>"
+
 # Used when a level does not declare its own lore list in tools.yml.
 # Both {placeholder} and <placeholder> aliases are accepted. Every line is
 # automatically prefixed with <!italic> by the component service.
@@ -24,7 +69,9 @@ default_lore_format:
   divider_top: "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>"
   stats:
     level: "<gray>Level: <gradient:#FF9A8B:#FF6A88><bold>Lvl {level}</bold></gradient>"
-    tracking_goal: "<gray>Objective: <white>{goal_type_description}</white>"
+    objective_header: "<gray>Objectives:</gray>"
+    requirement_line: "<dark_gray> •</dark_gray> <white>{requirement_goal}</white> <dark_gray>—</dark_gray> <aqua>{requirement_current}</aqua><dark_gray>/</dark_gray><green>{requirement_required}</green>"
+    maximum_requirement_line: "<dark_gray> •</dark_gray> <green>Maximum level reached</green>"
     progress_text: "<gray>Progress: <gradient:#00DBDE:#FC00FF>{current}</gradient><dark_gray>/</dark_gray><green>{required}</green> <gray>({percentage}%)</gray>"
     progress_bar: "{progress_bar}"
   divider_bottom: "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>"

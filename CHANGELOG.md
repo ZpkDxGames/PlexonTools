@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.5.1 — 2026-08-29
+
+- Fixed allowed tools not appearing in custom worlds such as `Survival_World` unless admins also created a separate `menus.yml` reservation.
+- Added `world-menu.auto-show-allowed-tools`; enabled by default while strict explicit membership remains optional.
+- Added configurable tool-card material, display name, lore, active glint, and placeholder rendering in `config.yml`.
+- Added separately configurable active/inactive toggle panels directly beneath tool cards when layout space is available.
+- Added an in-game **Player Menu Appearance** editor for tool cards, ON/OFF panels, materials, names, lore, glint, and availability behavior.
+- Reframed `menus.yml` tool entries as exact layout pins and made automatic placement panel-aware.
+- Preserved loaded-world capitalization in the administrative world list.
+
+## 3.5.0 — 2026-08-29
+
+- Replaced the default `/pt` category selector with persistent, per-world tool activation menus.
+- Added `menus.yml` plus in-game editing for world menu titles, rows, fillers, reserved tools, and slots.
+- Added persistent active/inactive state to the v4 instance registry and safe restoration across join, respawn, reload, and world transitions.
+- Added permanent player binding, manual-drop cancellation, death retention, external-inventory protection, foreign-owner pickup prevention, and duplicate reconciliation.
+- Made every Plexon tool unbreakable and removed the former per-level toggle from the effective runtime profile.
+- Forced clean tooltip flags for enchantments, stored enchantments, attributes, unbreakable state, and additional vanilla details.
+- Added `{requirement_lines}` expansion with independent SPECIFIC target rows and new per-requirement placeholders.
+- Preserved legacy objective templates by expanding a SPECIFIC `{goal_type_description}` line once per target.
+- Changed full-inventory behavior so protected tools are never dropped; activation remains pending until a slot is available.
+- Added automatic 3.0 registry/configuration migration, refreshed documentation, and 3.5 release metadata.
+
 ## 3.0.0 — 2026-08-29
 
 - Added Mining, Combat, Farming, Utility, and custom category navigation with `/pt <category> [player]` and `/pt all [player]` routing.

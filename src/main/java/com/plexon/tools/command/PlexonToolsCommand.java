@@ -94,11 +94,18 @@ public final class PlexonToolsCommand implements TabExecutor {
             return true;
         }
         String boundWorld = args.length == 4 ? args[3] : target.getWorld().getName();
-        if (!grants.grant(target, definition, boundWorld, sender != target)) {
+        ToolGrantService.GrantResult grantResult = grants.grant(
+                target, definition, boundWorld, sender != target);
+        if (grantResult == ToolGrantService.GrantResult.INVALID_WORLD) {
             messages.send(sender, "invalid-world", Map.of(
                     "tool", definition.displayName(),
                     "world", messages.plain(boundWorld)
             ));
+            return true;
+        }
+        if (grantResult == ToolGrantService.GrantResult.INVENTORY_FULL) {
+            messages.send(sender, "target-inventory-full", Map.of(
+                    "player", messages.plain(target.getName())));
             return true;
         }
         messages.send(sender, "tool-given", Map.of(
@@ -192,9 +199,9 @@ public final class PlexonToolsCommand implements TabExecutor {
     private void sendUsage(CommandSender sender, String label) {
         sender.sendMessage(messages.parse("<gradient:#4158D0:#C850C0><bold>PlexonTools</bold></gradient> <gray>commands</gray>"));
         sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
-                + "</white> <dark_gray>—</dark_gray> <gray>Open categories or the showcase</gray>"));
+                + "</white> <dark_gray>—</dark_gray> <gray>Open this world's tool activation menu</gray>"));
         sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
-                + " <category></white> <dark_gray>—</dark_gray> <gray>Browse one category</gray>"));
+                + " <category></white> <dark_gray>—</dark_gray> <gray>Open a legacy category showcase</gray>"));
         sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
                 + " all</white> <dark_gray>—</dark_gray> <gray>Browse every tool</gray>"));
         if (sender.hasPermission("plexontools.admin")) {

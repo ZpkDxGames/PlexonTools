@@ -50,6 +50,7 @@ public final class InstanceRegistry {
 
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.load(file);
+        boolean migrationRequired = yaml.getInt("schema_version", 0) < 4;
         ConfigurationSection instances = yaml.getConfigurationSection("instances");
         if (instances != null) {
             for (String rawUuid : instances.getKeys(false)) {
@@ -69,6 +70,8 @@ public final class InstanceRegistry {
                             Math.max(1, yaml.getInt(root + ".level", 1)),
                             Math.max(0L, yaml.getLong(root + ".progress", 0L)),
                             targetProgress,
+                            yaml.getBoolean(root + ".active", true),
+                            yaml.getBoolean(root + ".menu_managed", false),
                             Math.max(0L, yaml.getLong(root + ".lifetime", 0L)),
                             yaml.getLong(root + ".created_at", Instant.now().toEpochMilli()),
                             yaml.getLong(root + ".updated_at", Instant.now().toEpochMilli())
@@ -81,16 +84,26 @@ public final class InstanceRegistry {
                 }
             }
         }
-        revision.set(0L);
+        // Mark legacy snapshots dirty once so active/menu-managed defaults are
+        // materialized by the next asynchronous checkpoint.
+        revision.set(migrationRequired ? 1L : 0L);
         persistedRevision.set(0L);
     }
 
     public void register(ToolState state, String ownerName) {
+        register(state, ownerName, true);
+    }
+
+    public void register(ToolState state, String ownerName, boolean active) {
+        register(state, ownerName, active, false);
+    }
+
+    public void register(ToolState state, String ownerName, boolean active, boolean menuManaged) {
         long now = Instant.now().toEpochMilli();
         records.putIfAbsent(state.instanceId(), new InstanceRecord(
                 state.instanceId(), state.toolId(), state.categoryId(), state.ownerId(), ownerName,
                 state.boundWorld(), state.level(), state.progress(), state.targetProgress(),
-                0L, now, now));
+                active, menuManaged, 0L, now, now));
         revision.incrementAndGet();
     }
 
@@ -99,17 +112,78 @@ public final class InstanceRegistry {
         records.compute(state.instanceId(), (instanceId, existing) -> {
             long createdAt = existing == null ? now : existing.createdAt();
             long lifetime = existing == null ? 0L : existing.lifetime();
+            boolean active = existing == null || existing.active();
+            boolean menuManaged = existing != null && existing.menuManaged();
             lifetime = saturatingAdd(lifetime, Math.max(0L, progressAdded));
             return new InstanceRecord(
                     state.instanceId(), state.toolId(), state.categoryId(), state.ownerId(), ownerName,
                     state.boundWorld(), state.level(), state.progress(), state.targetProgress(),
-                    lifetime, createdAt, now);
+                    active, menuManaged, lifetime, createdAt, now);
         });
         revision.incrementAndGet();
     }
 
     public Optional<InstanceRecord> find(UUID instanceId) {
         return Optional.ofNullable(records.get(instanceId));
+    }
+
+    public List<InstanceRecord> findOwned(UUID ownerId, String toolId, String boundWorld) {
+        return records.values().stream()
+                .filter(record -> record.ownerId().equals(ownerId))
+                .filter(record -> record.toolId().equalsIgnoreCase(toolId))
+                .filter(record -> record.boundWorld().equalsIgnoreCase(boundWorld))
+                .sorted(java.util.Comparator.comparingLong(InstanceRecord::updatedAt).reversed())
+                .toList();
+    }
+
+    public List<InstanceRecord> findActive(UUID ownerId, String boundWorld) {
+        return records.values().stream()
+                .filter(InstanceRecord::active)
+                .filter(record -> record.ownerId().equals(ownerId))
+                .filter(record -> record.boundWorld().equalsIgnoreCase(boundWorld))
+                .sorted(java.util.Comparator
+                        .comparing(InstanceRecord::toolId, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(java.util.Comparator.comparingLong(
+                                InstanceRecord::updatedAt).reversed()))
+                .toList();
+    }
+
+    public void setActive(UUID instanceId, boolean active) {
+        long now = Instant.now().toEpochMilli();
+        AtomicBoolean changed = new AtomicBoolean();
+        records.computeIfPresent(instanceId, (ignored, record) -> {
+            if (record.active() == active) {
+                return record;
+            }
+            changed.set(true);
+            return new InstanceRecord(
+                    record.instanceId(), record.toolId(), record.categoryId(), record.ownerId(),
+                    record.ownerName(), record.boundWorld(), record.level(), record.progress(),
+                    record.targetProgress(), active, record.menuManaged(), record.lifetime(),
+                    record.createdAt(), now);
+        });
+        if (changed.get()) {
+            revision.incrementAndGet();
+        }
+    }
+
+    public void setMenuManaged(UUID instanceId, boolean menuManaged) {
+        long now = Instant.now().toEpochMilli();
+        AtomicBoolean changed = new AtomicBoolean();
+        records.computeIfPresent(instanceId, (ignored, record) -> {
+            if (record.menuManaged() == menuManaged) {
+                return record;
+            }
+            changed.set(true);
+            return new InstanceRecord(
+                    record.instanceId(), record.toolId(), record.categoryId(), record.ownerId(),
+                    record.ownerName(), record.boundWorld(), record.level(), record.progress(),
+                    record.targetProgress(), record.active(), menuManaged, record.lifetime(),
+                    record.createdAt(), now);
+        });
+        if (changed.get()) {
+            revision.incrementAndGet();
+        }
     }
 
     public int size() {
@@ -162,7 +236,7 @@ public final class InstanceRegistry {
 
     private void writeSnapshot(List<InstanceRecord> snapshot) throws IOException {
         YamlConfiguration yaml = new YamlConfiguration();
-        yaml.set("schema_version", 3);
+        yaml.set("schema_version", 4);
         for (InstanceRecord record : snapshot) {
             String root = "instances." + record.instanceId();
             yaml.set(root + ".tool", record.toolId());
@@ -174,6 +248,8 @@ public final class InstanceRegistry {
             yaml.set(root + ".progress", record.progress());
             yaml.set(root + ".target_progress",
                     record.targetProgress().isEmpty() ? null : record.targetProgress());
+            yaml.set(root + ".active", record.active());
+            yaml.set(root + ".menu_managed", record.menuManaged());
             yaml.set(root + ".lifetime", record.lifetime());
             yaml.set(root + ".created_at", record.createdAt());
             yaml.set(root + ".updated_at", record.updatedAt());
@@ -225,6 +301,8 @@ public final class InstanceRegistry {
             int level,
             long progress,
             Map<String, Long> targetProgress,
+            boolean active,
+            boolean menuManaged,
             long lifetime,
             long createdAt,
             long updatedAt
@@ -232,6 +310,11 @@ public final class InstanceRegistry {
         public InstanceRecord {
             categoryId = categoryId == null ? "" : categoryId;
             targetProgress = Map.copyOf(targetProgress);
+        }
+
+        public ToolState state() {
+            return new ToolState(toolId, instanceId, level, progress, boundWorld, ownerId,
+                    categoryId, targetProgress);
         }
     }
 }

@@ -1,4 +1,4 @@
-# PlexonTools 3.0 capabilities
+# PlexonTools 3.5 capabilities
 
 ## Platform
 
@@ -12,7 +12,9 @@ All text enters Adventure through one parser that prefixes `<!italic>`. This app
 
 ## Unique progressive items
 
-Each grant creates a new instance UUID and binds the item to an owner and one allowed world. The item tracks its level, current aggregate counter, optional target breakdown, category, and last applied profile fingerprint. Definitions can change an item's name, material, enchantments, lore, unbreakable state, glint, hidden flags, custom model data, and abilities at every level.
+Each first activation or direct grant creates a unique instance UUID and permanently binds it to one owner and world. The registry retains its active state, level, aggregate counter, optional target breakdown, category, and timestamps even while the physical item is deactivated. Definitions can still change an item's name, material, enchantments, lore, glint, custom model data, and abilities at every level.
+
+All custom tools are permanently unbreakable and clean-tooltip protected. They cannot be manually dropped, transferred into external inventories, lost on death, picked up by another player, or used by a non-owner. Leaving a bound world temporarily removes active tools and returning restores them.
 
 Compatible overflow passes into the next requirement. GENERAL overflow passes as a total, while SPECIFIC overflow is retained by target and only passes when the next level accepts that target.
 
@@ -80,6 +82,27 @@ levels:
 
 An empty SPECIFIC map intentionally cannot complete. GUI mode changes preserve the combined total when moving to GENERAL and start an empty target picker when moving to SPECIFIC.
 
+## World activation menus
+
+```yaml
+worlds:
+  world:
+    title: "<gradient:#41E296:#A8FF78><bold>Survival Tools</bold></gradient>"
+    rows: 4
+    filler:
+      material: BLACK_STAINED_GLASS_PANE
+      name: " "
+    tools:
+      magma_breaker:
+        slot: 10
+```
+
+World menus accept three to six rows. Pinned tool slots must be unique inner content slots. A tool is available only when its definition is enabled and the same world appears in its `allowed_worlds` list.
+
+By default, enabled definitions appear automatically when the current world is in `allowed_worlds`; `menus.yml` entries only pin exact card positions. `world-menu.auto-show-allowed-tools: false` enables strict membership. Automatic placement reserves the slot beneath each card for its ON/OFF panel when possible, and a blocked card remains directly clickable.
+
+`config.yml` provides default MiniMessage templates for the tool-card display name/lore and both panel states. Their placeholders include the normal item-profile values plus `status`, `state`, `state_symbol`, `toggle_action`, and `toggle_hint`. The same values are editable through `/pt gui` → **Player Menu Appearance**.
+
 ## Category configuration
 
 ```yaml
@@ -96,28 +119,30 @@ IDs use lowercase letters, numbers, underscores, or hyphens. Names and descripti
 
 ## Item profiles and lore
 
-Names and materials inherit from the most recent earlier override. Enchantments, lore, item flags, and abilities are complete states for their level. `material_upgrade` remains an alias for `material`.
+Names and materials inherit from the most recent earlier override. Enchantments, lore, glint, model data, and abilities are complete states for their level. `material_upgrade` remains an alias for `material`. Legacy unbreakable/hidden flag values remain readable but 3.5 always applies unbreakable and clean-tooltip protection.
 
-The built-in lore exposes identity, category, progress, quota detail, owner, world, material, and enchantment placeholders. At maximum level, `required` and `next_level` render as `MAX`.
+The built-in lore exposes identity, category, progress, quota detail, owner, world, material, and enchantment placeholders. `{requirement_lines}` produces one row per SPECIFIC quota, using `requirement_goal`, `requirement_target`, `requirement_current`, `requirement_required`, `requirement_remaining`, and `requirement_percentage`. At maximum level, `required` and `next_level` render as `MAX`.
 
 ## Commands and permissions
 
 | Command | Permission |
 |---|---|
-| `/pt`, `/pt <category>`, `/pt all` | `plexontools.use` |
+| `/pt` world activation menu | `plexontools.use` |
+| Legacy `/pt <category>` and `/pt all` showcase routes | `plexontools.use` |
 | Target-player category/all routes | `plexontools.admin` |
 | `/pt give <player> <tool_id> [world]` | `plexontools.give` |
 | `/pt gui` | `plexontools.gui` |
 | `/pt reload` | `plexontools.reload` |
 
-`plexontools.bypass.owner` and `plexontools.bypass.world` bypass their narrow enforcement checks. `plexontools.admin` includes all child permissions.
+Owner binding cannot be bypassed in 3.5. `plexontools.bypass.world` retains its narrow use-check bypass; activation and inventory materialization remain world-scoped. `plexontools.admin` includes all administrative child permissions.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `config.yml` | Enforcement, effects, progress bars, GUI titles, and default lore |
+| `config.yml` | Enforcement, effects, progress bars, player-menu templates, and default item lore |
+| `menus.yml` | Per-world `/pt` layouts and exact tool-slot pins |
 | `categories.yml` | Category names, icons, slots, and descriptions |
 | `tools.yml` | Tool definitions, requirements, profiles, and abilities |
 | `messages.yml` | MiniMessage feedback |
-| `data.yml` | Generated asynchronous instance audit snapshot |
+| `data.yml` | Generated asynchronous activation and instance recovery snapshot |
