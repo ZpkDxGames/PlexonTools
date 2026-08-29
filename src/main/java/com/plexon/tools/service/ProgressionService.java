@@ -15,6 +15,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
@@ -82,8 +83,22 @@ public final class ProgressionService {
             String target,
             long amount
     ) {
+        return addProgress(player, item, EquipmentSlot.HAND, definition, target, amount);
+    }
+
+    public ToolState addProgress(
+            Player player,
+            ItemStack item,
+            EquipmentSlot hand,
+            ToolDefinition definition,
+            String target,
+            long amount
+    ) {
         ToolState current = itemService.read(item)
                 .orElseThrow(() -> new IllegalArgumentException("Item is not a valid Plexon tool."));
+        if (!current.categoryId().equalsIgnoreCase(definition.category())) {
+            current = current.withCategory(definition.category());
+        }
 
         NavigableMap<Integer, LevelRequirement> requirements = new TreeMap<>();
         definition.levels().forEach((number, level) -> requirements.put(number, level.requirement()));
@@ -94,7 +109,11 @@ public final class ProgressionService {
         ItemStack updatedItem = result.levelsGained() > 0
                 ? itemService.apply(item, definition, updated)
                 : itemService.refreshProgress(item, definition, updated);
-        player.getInventory().setItemInMainHand(updatedItem);
+        if (hand == EquipmentSlot.OFF_HAND) {
+            player.getInventory().setItemInOffHand(updatedItem);
+        } else {
+            player.getInventory().setItemInMainHand(updatedItem);
+        }
         instanceRegistry.update(updated, amount, player.getName());
 
         if (result.levelsGained() > 0) {

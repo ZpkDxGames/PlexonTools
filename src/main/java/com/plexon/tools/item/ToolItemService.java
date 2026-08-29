@@ -1,5 +1,6 @@
 package com.plexon.tools.item;
 
+import com.plexon.tools.config.CategoryRepository;
 import com.plexon.tools.config.PluginSettings;
 import com.plexon.tools.message.MessageService;
 import com.plexon.tools.model.LevelRequirement;
@@ -36,24 +37,33 @@ import java.util.stream.Collectors;
 public final class ToolItemService {
     private final MessageService messages;
     private final PluginSettings settings;
+    private final CategoryRepository categories;
     private final NamespacedKey idKey;
     private final NamespacedKey uuidKey;
     private final NamespacedKey levelKey;
     private final NamespacedKey statCountKey;
     private final NamespacedKey boundWorldKey;
     private final NamespacedKey ownerKey;
+    private final NamespacedKey categoryKey;
     private final NamespacedKey statBreakdownKey;
     private final NamespacedKey profileHashKey;
 
-    public ToolItemService(JavaPlugin plugin, MessageService messages, PluginSettings settings) {
+    public ToolItemService(
+            JavaPlugin plugin,
+            MessageService messages,
+            PluginSettings settings,
+            CategoryRepository categories
+    ) {
         this.messages = messages;
         this.settings = settings;
+        this.categories = categories;
         idKey = new NamespacedKey(plugin, "id");
         uuidKey = new NamespacedKey(plugin, "uuid");
         levelKey = new NamespacedKey(plugin, "level");
         statCountKey = new NamespacedKey(plugin, "stat_count");
         boundWorldKey = new NamespacedKey(plugin, "bound_world");
         ownerKey = new NamespacedKey(plugin, "owner");
+        categoryKey = new NamespacedKey(plugin, "category");
         statBreakdownKey = new NamespacedKey(plugin, "stat_breakdown");
         profileHashKey = new NamespacedKey(plugin, "profile_hash");
     }
@@ -61,7 +71,8 @@ public final class ToolItemService {
     public CreatedTool create(Player owner, ToolDefinition definition, String boundWorld) {
         UUID instanceId = UUID.randomUUID();
         ToolState state = new ToolState(definition.id(), instanceId,
-                definition.firstLevel().number(), 0L, boundWorld, owner.getUniqueId());
+                definition.firstLevel().number(), 0L, boundWorld, owner.getUniqueId(),
+                definition.category(), Map.of());
         ItemStack item = apply(ItemStack.of(definition.baseMaterial()), definition, state);
         return new CreatedTool(item, state);
     }
@@ -77,6 +88,7 @@ public final class ToolItemService {
         Long progress = pdc.get(statCountKey, PersistentDataType.LONG);
         String boundWorld = pdc.get(boundWorldKey, PersistentDataType.STRING);
         String rawOwner = pdc.get(ownerKey, PersistentDataType.STRING);
+        String category = pdc.get(categoryKey, PersistentDataType.STRING);
         String rawBreakdown = pdc.get(statBreakdownKey, PersistentDataType.STRING);
         if (id == null || rawUuid == null || level == null || progress == null
                 || boundWorld == null || rawOwner == null) {
@@ -85,7 +97,7 @@ public final class ToolItemService {
         try {
             return Optional.of(new ToolState(id, UUID.fromString(rawUuid), Math.max(1, level),
                     Math.max(0L, progress), boundWorld, UUID.fromString(rawOwner),
-                    decodeBreakdown(rawBreakdown)));
+                    category == null ? "" : category, decodeBreakdown(rawBreakdown)));
         } catch (IllegalArgumentException exception) {
             return Optional.empty();
         }
@@ -107,7 +119,7 @@ public final class ToolItemService {
                 : item;
 
         ItemMeta meta = updatedItem.getItemMeta();
-        writeState(meta.getPersistentDataContainer(), state);
+        writeState(meta.getPersistentDataContainer(), state, definition.category());
         meta.getPersistentDataContainer().set(profileHashKey, PersistentDataType.INTEGER,
                 profileFingerprint(level));
         Map<String, String> placeholders = placeholders(definition, state);
@@ -145,7 +157,7 @@ public final class ToolItemService {
         if (storedProfileHash == null || storedProfileHash != profileFingerprint(level)) {
             return apply(item, definition, state);
         }
-        writeState(pdc, state);
+        writeState(pdc, state, definition.category());
         Map<String, String> placeholders = placeholders(definition, state);
         meta.displayName(messages.parse(level.displayName(), placeholders));
         meta.lore(level.lore().stream()
@@ -155,13 +167,14 @@ public final class ToolItemService {
         return item;
     }
 
-    private void writeState(PersistentDataContainer pdc, ToolState state) {
+    private void writeState(PersistentDataContainer pdc, ToolState state, String category) {
         pdc.set(idKey, PersistentDataType.STRING, state.toolId());
         pdc.set(uuidKey, PersistentDataType.STRING, state.instanceId().toString());
         pdc.set(levelKey, PersistentDataType.INTEGER, state.level());
         pdc.set(statCountKey, PersistentDataType.LONG, state.progress());
         pdc.set(boundWorldKey, PersistentDataType.STRING, state.boundWorld());
         pdc.set(ownerKey, PersistentDataType.STRING, state.ownerId().toString());
+        pdc.set(categoryKey, PersistentDataType.STRING, category);
         if (state.targetProgress().isEmpty()) {
             pdc.remove(statBreakdownKey);
         } else {
@@ -178,7 +191,7 @@ public final class ToolItemService {
         return Objects.hash(level.displayName(), level.material(), enchantments, level.lore(),
                 level.requirement(),
                 level.unbreakable(), level.glint(), level.hideEnchantments(),
-                level.hideAttributes(), level.customModelData());
+                level.hideAttributes(), level.customModelData(), level.abilities());
     }
 
     public Optional<ToolState> findBestOwned(Player player, String toolId) {
@@ -233,6 +246,10 @@ public final class ToolItemService {
         values.put("owner_name", messages.plain(ownerName));
         values.put("owner_uuid", state.ownerId().toString());
         values.put("tracking", messages.plain(definition.trackingType().displayName()));
+        values.put("category", messages.plain(definition.category()));
+        values.put("category_name", categories.find(definition.category())
+                .map(com.plexon.tools.model.ToolCategory::displayName)
+                .orElse(messages.plain(humanizeTarget(definition.category()))));
         values.put("requirement_mode", requirement.mode().name());
         values.put("goal_type_description", messages.plain(goal));
         values.put("target_progress", messages.plain(targetProgressDescription(requirement, state)));
@@ -258,12 +275,12 @@ public final class ToolItemService {
     }
 
     private static String goalDescription(ToolDefinition definition, LevelRequirement requirement) {
-        String action = definition.trackingType() == com.plexon.tools.model.TrackingType.BLOCKS_BROKEN
-                ? "Break" : "Kill";
-        String noun = definition.trackingType() == com.plexon.tools.model.TrackingType.BLOCKS_BROKEN
-                ? "blocks" : "mobs";
+        String action = definition.trackingType().action();
+        String noun = definition.trackingType().noun();
         if (requirement.mode() == RequirementMode.GENERAL && requirement.targets().isEmpty()) {
-            return action + " any " + requirement.amount() + " " + noun;
+            return definition.trackingType() == com.plexon.tools.model.TrackingType.DAMAGE_DEALT
+                    ? "Deal " + requirement.amount() + " total damage"
+                    : action + " any " + requirement.amount() + " " + noun;
         }
         if (requirement.mode() == RequirementMode.GENERAL) {
             return action + " any " + requirement.amount() + " of "
@@ -272,7 +289,10 @@ public final class ToolItemService {
                             .collect(Collectors.joining(", "));
         }
         return action + " " + requirement.targets().entrySet().stream()
-                .map(entry -> entry.getValue() + "x " + humanizeTarget(entry.getKey()))
+                .map(entry -> entry.getValue()
+                        + (definition.trackingType() == com.plexon.tools.model.TrackingType.DAMAGE_DEALT
+                                ? " damage to " : "x ")
+                        + humanizeTarget(entry.getKey()))
                 .collect(Collectors.joining(" + "));
     }
 

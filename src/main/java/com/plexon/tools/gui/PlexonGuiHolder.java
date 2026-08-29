@@ -5,6 +5,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
+import java.util.UUID;
 
 public final class PlexonGuiHolder implements InventoryHolder {
     private final View view;
@@ -12,6 +13,8 @@ public final class PlexonGuiHolder implements InventoryHolder {
     private final int page;
     private final int level;
     private final String context;
+    private final UUID subjectId;
+    private final String categoryId;
     private Inventory inventory;
 
     public PlexonGuiHolder(View view, String toolId, int page, int level) {
@@ -19,11 +22,25 @@ public final class PlexonGuiHolder implements InventoryHolder {
     }
 
     public PlexonGuiHolder(View view, String toolId, int page, int level, String context) {
+        this(view, toolId, page, level, context, null, null);
+    }
+
+    public PlexonGuiHolder(
+            View view,
+            String toolId,
+            int page,
+            int level,
+            String context,
+            UUID subjectId,
+            String categoryId
+    ) {
         this.view = view;
         this.toolId = toolId;
         this.page = page;
         this.level = level;
         this.context = context;
+        this.subjectId = subjectId;
+        this.categoryId = categoryId;
     }
 
     public void attach(Inventory inventory) {
@@ -40,9 +57,13 @@ public final class PlexonGuiHolder implements InventoryHolder {
     public int page() { return page; }
     public int level() { return level; }
     public String context() { return context; }
+    public UUID subjectId() { return subjectId; }
+    public String categoryId() { return categoryId; }
 
     public enum View {
         SHOWCASE,
+        CATEGORY_SELECT,
+        ADMIN_DASHBOARD,
         ADMIN_LIST,
         ADMIN_EDITOR,
         WORLDS,
@@ -52,6 +73,11 @@ public final class PlexonGuiHolder implements InventoryHolder {
         TARGET_SELECTOR,
         TARGET_AMOUNT,
         ENCHANTMENTS,
-        LORE
+        LORE,
+        CATEGORIES,
+        CATEGORY_EDITOR,
+        CATEGORY_ASSIGN,
+        GLOBAL_SETTINGS,
+        ABILITIES
     }
 }

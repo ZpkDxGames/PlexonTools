@@ -1,25 +1,21 @@
-# PlexonTools 2.0.0
+# PlexonTools 3.0.0
 
-PlexonTools 2.0 is the first full release. It combines the complete per-level profile editor from the beta series with a production requirement engine designed for both broad activity totals and exact target quotas.
+PlexonTools 3.0 is a complete Paper 1.21.4 revamp. It expands the 2.0 requirement engine into a category-driven tool ecosystem with six progression sources, five per-level abilities, a new administrator dashboard, and asynchronous registry persistence.
 
 ## Highlights
 
-- Choose GENERAL mode for one shared block-break or mob-kill total.
-- Choose SPECIFIC mode for independent quotas such as 500 Stone plus 200 Deepslate.
-- Configure modes per level and edit targets through a searchable visual browser.
-- Adjust totals with `±1`, `±10`, `±100`, and `±1000`, or enter an exact value in chat.
-- Persist per-target progress directly on each item while retaining the required `id`, `uuid`, `level`, `stat_count`, and `bound_world` keys.
-- Change display names, materials, enchantments, lore, glint, flags, unbreakable state, and custom model data at any level.
-- Duplicate, reorder, or delete profiles with automatic contiguous renumbering.
-- Use the standardized Plexon lore layout and new aliases including `{goal_type_description}`, `{percentage}`, `{progress_bar}`, `{bound_world}`, and `{owner_name}`.
-- Keep progression hot paths memory-only; the instance registry still flushes periodically rather than per event.
+- Browse Mining, Combat, Farming, Utility, or custom categories through `/pt`, `/pt <category>`, and `/pt all`.
+- Track `BLOCKS_BROKEN`, `MOBS_KILLED`, `ITEMS_FARMED`, `FISH_CAUGHT`, `DAMAGE_DEALT`, or `BLOCKS_PLACED`.
+- Configure GENERAL totals or SPECIFIC material/entity quotas independently on every level.
+- Unlock Auto Smelt, 3×3 Area Mine, EXP Booster, holder/target potion effects, and Magnet by level.
+- Create categories, assign tools, edit global enforcement/effects, and manage abilities without leaving the game.
+- Keep event-path state in item PDC and memory while `data.yml` checkpoints on an asynchronous scheduler.
+- Normalize all Adventure MiniMessage output with `<!italic>` to remove Paper's default custom-item italics.
 
 ## Compatibility
 
-Existing beta configurations and items are accepted without a forced rewrite. Legacy list targets keep their shared filtered-total behavior, while native 2.0 target maps use independent quotas. The `material_upgrade` alias remains supported.
+PlexonTools 2.0 tools and issued items remain readable. Missing category PDC is populated from the definition on the next item refresh. Existing list-style target filters keep their shared-total behavior; map-style targets remain independent quotas. The old `default-lore-format.lines` key is still accepted when the new structured `default_lore_format` section is absent.
 
-Back up the plugin directory before upgrading, replace the JAR, and restart Paper. Paper 1.21.4 and Java 21 are required. No runtime dependencies are needed.
+Back up the plugin directory before upgrading. Add `categories.yml`, assign each tool a category if desired, replace the JAR, and restart Paper. See [the migration guide](docs/MIGRATION_3.md) for the exact sequence.
 
-## Known tracking behavior
-
-Block progression is material-based. Matching player-placed blocks count because 2.0 does not store block-origin history.
+Paper 1.21.4 and Java 21 are required. There are no runtime dependencies.

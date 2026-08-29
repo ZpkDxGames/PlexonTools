@@ -1,5 +1,6 @@
 package com.plexon.tools.command;
 
+import com.plexon.tools.config.CategoryRepository;
 import com.plexon.tools.config.ToolConfigRepository;
 import com.plexon.tools.gui.GuiManager;
 import com.plexon.tools.message.MessageService;
@@ -19,6 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class PlexonToolsCommand implements TabExecutor {
+    private final CategoryRepository categories;
     private final ToolConfigRepository tools;
     private final ToolGrantService grants;
     private final GuiManager gui;
@@ -26,12 +28,14 @@ public final class PlexonToolsCommand implements TabExecutor {
     private final ReloadAction reloadAction;
 
     public PlexonToolsCommand(
+            CategoryRepository categories,
             ToolConfigRepository tools,
             ToolGrantService grants,
             GuiManager gui,
             MessageService messages,
             ReloadAction reloadAction
     ) {
+        this.categories = categories;
         this.tools = tools;
         this.grants = grants;
         this.gui = gui;
@@ -51,18 +55,17 @@ public final class PlexonToolsCommand implements TabExecutor {
                 messages.send(sender, "players-only");
                 return true;
             }
-            gui.openShowcase(player, 0);
+            gui.openPlayerEntry(player, player);
             return true;
         }
 
-        return switch (args[0].toLowerCase(Locale.ROOT)) {
+        String route = args[0].toLowerCase(Locale.ROOT);
+        return switch (route) {
             case "give" -> give(sender, args);
             case "reload" -> reload(sender);
             case "gui" -> openAdmin(sender);
-            default -> {
-                sendUsage(sender, label);
-                yield true;
-            }
+            case "all" -> openShowcase(sender, null, args);
+            default -> openCategory(sender, route, args, label);
         };
     }
 
@@ -71,8 +74,9 @@ public final class PlexonToolsCommand implements TabExecutor {
             messages.send(sender, "no-permission");
             return true;
         }
-        if (args.length != 3) {
-            sender.sendMessage(messages.parse("<yellow>Usage:</yellow> <white>/pt give <player> <tool_id></white>"));
+        if (args.length < 3 || args.length > 4) {
+            sender.sendMessage(messages.parse(
+                    "<yellow>Usage:</yellow> <white>/pt give <player> <tool_id> [world]</white>"));
             return true;
         }
         Player target = Bukkit.getPlayerExact(args[1]);
@@ -89,18 +93,66 @@ public final class PlexonToolsCommand implements TabExecutor {
             messages.send(sender, "tool-disabled");
             return true;
         }
-        if (!grants.grant(target, definition, sender != target)) {
+        String boundWorld = args.length == 4 ? args[3] : target.getWorld().getName();
+        if (!grants.grant(target, definition, boundWorld, sender != target)) {
             messages.send(sender, "invalid-world", Map.of(
                     "tool", definition.displayName(),
-                    "world", messages.plain(target.getWorld().getName())
+                    "world", messages.plain(boundWorld)
             ));
             return true;
         }
         messages.send(sender, "tool-given", Map.of(
                 "tool", definition.displayName(),
                 "player", messages.plain(target.getName()),
-                "world", messages.plain(target.getWorld().getName())
+                "world", messages.plain(boundWorld)
         ));
+        return true;
+    }
+
+    private boolean openCategory(
+            CommandSender sender,
+            String categoryId,
+            String[] args,
+            String label
+    ) {
+        if (categories.find(categoryId).isEmpty()) {
+            messages.send(sender, "category-not-found", Map.of(
+                    "category", messages.plain(categoryId)));
+            sendUsage(sender, label);
+            return true;
+        }
+        return openShowcase(sender, categoryId, args);
+    }
+
+    private boolean openShowcase(CommandSender sender, String categoryId, String[] args) {
+        if (args.length > 2) {
+            sender.sendMessage(messages.parse(
+                    "<yellow>Usage:</yellow> <white>/pt "
+                            + messages.plain(categoryId == null ? "all" : categoryId)
+                            + " [player]</white>"));
+            return true;
+        }
+
+        Player target;
+        if (args.length == 2) {
+            if (!sender.hasPermission("plexontools.admin")) {
+                messages.send(sender, "no-permission");
+                return true;
+            }
+            target = Bukkit.getPlayerExact(args[1]);
+            if (target == null) {
+                messages.send(sender, "player-not-found", Map.of(
+                        "player", messages.plain(args[1])));
+                return true;
+            }
+        } else if (sender instanceof Player player) {
+            target = player;
+        } else {
+            messages.send(sender, "players-only");
+            return true;
+        }
+
+        gui.openShowcase(target, target, categoryId, 0);
         return true;
     }
 
@@ -133,16 +185,24 @@ public final class PlexonToolsCommand implements TabExecutor {
             messages.send(sender, "players-only");
             return true;
         }
-        gui.openAdminList(player, 0);
+        gui.openAdminDashboard(player);
         return true;
     }
 
     private void sendUsage(CommandSender sender, String label) {
         sender.sendMessage(messages.parse("<gradient:#4158D0:#C850C0><bold>PlexonTools</bold></gradient> <gray>commands</gray>"));
-        sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + "</white> <dark_gray>—</dark_gray> <gray>Open the tool showcase</gray>"));
+        sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
+                + "</white> <dark_gray>—</dark_gray> <gray>Open categories or the showcase</gray>"));
+        sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
+                + " <category></white> <dark_gray>—</dark_gray> <gray>Browse one category</gray>"));
+        sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
+                + " all</white> <dark_gray>—</dark_gray> <gray>Browse every tool</gray>"));
         if (sender.hasPermission("plexontools.admin")) {
             sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " gui</white> <dark_gray>—</dark_gray> <gray>Open the tool editor</gray>"));
-            sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " give <player> <tool_id></white>"));
+            sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
+                    + " <category|all> [player]</white>"));
+            sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
+                    + " give <player> <tool_id> [world]</white>"));
             sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " reload</white>"));
         }
     }
@@ -159,13 +219,21 @@ public final class PlexonToolsCommand implements TabExecutor {
         }
         List<String> values = new ArrayList<>();
         if (args.length == 1) {
+            categories.all().forEach(category -> values.add(category.id()));
+            values.add("all");
             if (sender.hasPermission("plexontools.give")) values.add("give");
             if (sender.hasPermission("plexontools.gui")) values.add("gui");
             if (sender.hasPermission("plexontools.reload")) values.add("reload");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             Bukkit.getOnlinePlayers().forEach(player -> values.add(player.getName()));
+        } else if (args.length == 2
+                && sender.hasPermission("plexontools.admin")
+                && (args[0].equalsIgnoreCase("all") || categories.find(args[0]).isPresent())) {
+            Bukkit.getOnlinePlayers().forEach(player -> values.add(player.getName()));
         } else if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
             tools.all().stream().map(ToolDefinition::id).forEach(values::add);
+        } else if (args.length == 4 && args[0].equalsIgnoreCase("give")) {
+            tools.find(args[2]).ifPresent(tool -> values.addAll(tool.allowedWorlds()));
         }
         String partial = args[args.length - 1].toLowerCase(Locale.ROOT);
         return values.stream()

@@ -3,6 +3,9 @@ package com.plexon.tools.config;
 import com.plexon.tools.model.GlintMode;
 import com.plexon.tools.model.LevelRequirement;
 import com.plexon.tools.model.RequirementMode;
+import com.plexon.tools.model.AbilityTarget;
+import com.plexon.tools.model.ToolAbilitySettings;
+import com.plexon.tools.model.ToolAbilityType;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.ToolLevel;
 import com.plexon.tools.model.TrackingType;
@@ -39,16 +42,43 @@ import java.util.stream.StreamSupport;
 
 public final class ToolConfigRepository {
     private static final String ID_PATTERN = "[a-z0-9_-]+";
+    private static final Set<Material> FARM_TARGETS = Set.of(
+            Material.WHEAT,
+            Material.CARROTS,
+            Material.POTATOES,
+            Material.BEETROOTS,
+            Material.NETHER_WART,
+            Material.COCOA,
+            Material.SWEET_BERRY_BUSH,
+            Material.MELON,
+            Material.PUMPKIN,
+            Material.SUGAR_CANE,
+            Material.CACTUS,
+            Material.BAMBOO,
+            Material.KELP
+    );
+    private static final Set<Material> FISH_TARGETS = Set.of(
+            Material.COD,
+            Material.SALMON,
+            Material.TROPICAL_FISH,
+            Material.PUFFERFISH
+    );
 
     private final JavaPlugin plugin;
     private final PluginSettings settings;
+    private final CategoryRepository categories;
     private final File file;
     private volatile Map<String, ToolDefinition> definitions = Map.of();
     private YamlConfiguration yaml = new YamlConfiguration();
 
-    public ToolConfigRepository(JavaPlugin plugin, PluginSettings settings) {
+    public ToolConfigRepository(
+            JavaPlugin plugin,
+            PluginSettings settings,
+            CategoryRepository categories
+    ) {
         this.plugin = plugin;
         this.settings = settings;
+        this.categories = categories;
         this.file = new File(plugin.getDataFolder(), "tools.yml");
     }
 
@@ -83,18 +113,20 @@ public final class ToolConfigRepository {
     }
 
     public List<String> targetOptions(TrackingType trackingType) {
-        if (trackingType == TrackingType.BLOCKS_BROKEN) {
-            return Arrays.stream(Material.values())
+        return switch (trackingType.targetKind()) {
+            case BLOCK -> Arrays.stream(Material.values())
                     .filter(Material::isBlock)
                     .map(Material::name)
                     .sorted()
                     .toList();
-        }
-        return Arrays.stream(EntityType.values())
-                .filter(EntityType::isAlive)
-                .map(EntityType::name)
-                .sorted()
-                .toList();
+            case ENTITY -> Arrays.stream(EntityType.values())
+                    .filter(EntityType::isAlive)
+                    .map(EntityType::name)
+                    .sorted()
+                    .toList();
+            case CROP -> FARM_TARGETS.stream().map(Material::name).sorted().toList();
+            case FISH -> FISH_TARGETS.stream().map(Material::name).sorted().toList();
+        };
     }
 
     public synchronized ToolDefinition createTool(String rawId, Material material, String world)
@@ -113,6 +145,7 @@ public final class ToolConfigRepository {
             config.set(root + ".enabled", true);
             config.set(root + ".display_name", "<gradient:#4158D0:#C850C0><bold>" + humanize(id) + "</bold></gradient>");
             config.set(root + ".base_material", material.name());
+            config.set(root + ".category", categories.defaultCategoryId());
             config.set(root + ".allowed_worlds", List.of(world));
             config.set(root + ".tracking.type", TrackingType.BLOCKS_BROKEN.name());
             config.set(root + ".tracking.mode", RequirementMode.GENERAL.name());
@@ -125,6 +158,7 @@ public final class ToolConfigRepository {
             config.set(root + ".levels.1.item.glint", GlintMode.AUTO.name());
             config.set(root + ".levels.1.item.hide_enchantments", false);
             config.set(root + ".levels.1.item.hide_attributes", false);
+            config.set(root + ".levels.1.abilities", null);
             config.set(root + ".levels.1.lore", settings.defaultLore());
         });
         return definitions.get(id);
@@ -152,6 +186,15 @@ public final class ToolConfigRepository {
         requireTool(id);
         requireItemMaterial(material);
         mutate(config -> config.set(path(id, "base_material"), material.name()));
+    }
+
+    public synchronized void setCategory(String id, String categoryId)
+            throws IOException, InvalidConfigurationException {
+        requireTool(id);
+        String normalized = categoryId == null ? "" : categoryId.trim().toLowerCase(Locale.ROOT);
+        categories.find(normalized)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown category: " + categoryId));
+        mutate(config -> config.set(path(id, "category"), normalized));
     }
 
     public synchronized void toggleWorld(String id, String world)
@@ -344,6 +387,62 @@ public final class ToolConfigRepository {
         mutate(config -> config.set(levelPath(id, level, "item.custom_model_data"), value));
     }
 
+    public synchronized void setLevelAbilityEnabled(
+            String id,
+            int level,
+            ToolAbilityType type,
+            boolean enabled
+    ) throws IOException, InvalidConfigurationException {
+        ToolLevel toolLevel = requireLevel(id, level);
+        Map<ToolAbilityType, ToolAbilitySettings> updated = new LinkedHashMap<>(toolLevel.abilities());
+        if (enabled) {
+            updated.putIfAbsent(type, ToolAbilitySettings.defaults(type));
+        } else {
+            updated.remove(type);
+        }
+        mutate(config -> writeAbilities(config, id, level, updated));
+    }
+
+    public synchronized void setLevelAbilityMultiplier(
+            String id,
+            int level,
+            ToolAbilityType type,
+            double multiplier
+    ) throws IOException, InvalidConfigurationException {
+        ToolLevel toolLevel = requireLevel(id, level);
+        ToolAbilitySettings ability = toolLevel.abilities().get(type);
+        if (ability == null) {
+            throw new IllegalArgumentException("Enable " + type.name() + " before configuring it.");
+        }
+        Map<ToolAbilityType, ToolAbilitySettings> updated = new LinkedHashMap<>(toolLevel.abilities());
+        updated.put(type, ability.withMultiplier(multiplier));
+        mutate(config -> writeAbilities(config, id, level, updated));
+    }
+
+    public synchronized void setLevelPotionAbility(
+            String id,
+            int level,
+            String effect,
+            int potionLevel,
+            int durationTicks,
+            AbilityTarget target
+    ) throws IOException, InvalidConfigurationException {
+        ToolLevel toolLevel = requireLevel(id, level);
+        ToolAbilitySettings ability = toolLevel.abilities().get(ToolAbilityType.MOB_POTION_EFFECT);
+        if (ability == null) {
+            throw new IllegalArgumentException("Enable MOB_POTION_EFFECT before configuring it.");
+        }
+        String normalizedEffect = normalizeNamespacedKey(effect);
+        NamespacedKey effectKey = NamespacedKey.fromString(normalizedEffect);
+        if (effectKey == null || Registry.MOB_EFFECT.get(effectKey) == null) {
+            throw new IllegalArgumentException("Unknown potion effect: " + effect);
+        }
+        Map<ToolAbilityType, ToolAbilitySettings> updated = new LinkedHashMap<>(toolLevel.abilities());
+        updated.put(ToolAbilityType.MOB_POTION_EFFECT,
+                ability.withPotion(normalizedEffect, potionLevel, durationTicks, target));
+        mutate(config -> writeAbilities(config, id, level, updated));
+    }
+
     public synchronized int addLevel(String id) throws IOException, InvalidConfigurationException {
         ToolDefinition tool = requireTool(id);
         ToolLevel previous = tool.levels().lastEntry().getValue();
@@ -437,6 +536,11 @@ public final class ToolConfigRepository {
         boolean enabled = config.getBoolean(root + ".enabled", true);
         String displayName = requireText(config.getString(root + ".display_name"), "display_name", id);
         Material baseMaterial = parseItemMaterial(config.getString(root + ".base_material"), "base_material", id);
+        String category = config.getString(root + ".category", categories.defaultCategoryId())
+                .trim().toLowerCase(Locale.ROOT);
+        if (categories.find(category).isEmpty()) {
+            throw new IllegalArgumentException("unknown category '" + category + "'");
+        }
 
         List<String> worldList = config.getStringList(root + ".allowed_worlds").stream()
                 .map(String::trim)
@@ -483,7 +587,7 @@ public final class ToolConfigRepository {
         NavigableMap<Integer, ToolLevel> levels = parseLevels(config, root, id, displayName,
                 baseMaterial, trackingType, defaultMode, modeExplicit, defaultAmount,
                 legacyTargetList, legacyTargets, rootTargetRequirements);
-        return new ToolDefinition(id, enabled, displayName, baseMaterial, worlds, trackingType,
+        return new ToolDefinition(id, enabled, displayName, baseMaterial, worlds, category, trackingType,
                 defaultMode, levels);
     }
 
@@ -592,9 +696,10 @@ public final class ToolConfigRepository {
                 throw new IllegalArgumentException("level " + level + " custom model data cannot be negative");
             }
 
+            Map<ToolAbilityType, ToolAbilitySettings> abilities = parseAbilities(config, levelRoot, level);
             levels.put(level, new ToolLevel(level, requirement, inheritedDisplayName, displayNameOverride,
                     enchantments, inheritedMaterial, materialOverride, lore, unbreakable, glint,
-                    hideEnchantments, hideAttributes, customModelData));
+                    hideEnchantments, hideAttributes, customModelData, abilities));
         }
         return levels;
     }
@@ -621,6 +726,63 @@ public final class ToolConfigRepository {
             enchantments.put(enchantment, enchantLevel);
         }
         return enchantments;
+    }
+
+    private static Map<ToolAbilityType, ToolAbilitySettings> parseAbilities(
+            YamlConfiguration config,
+            String levelRoot,
+            int level
+    ) {
+        String path = levelRoot + ".abilities";
+        Map<ToolAbilityType, ToolAbilitySettings> abilities = new LinkedHashMap<>();
+        if (config.isList(path)) {
+            for (String rawType : config.getStringList(path)) {
+                ToolAbilityType type = ToolAbilityType.parse(rawType);
+                abilities.put(type, ToolAbilitySettings.defaults(type));
+            }
+            return abilities;
+        }
+
+        ConfigurationSection section = config.getConfigurationSection(path);
+        if (section == null) {
+            return abilities;
+        }
+        for (String rawType : section.getKeys(false)) {
+            ToolAbilityType type;
+            try {
+                type = ToolAbilityType.parse(rawType);
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("unknown ability " + rawType + " at level " + level);
+            }
+            String abilityPath = path + "." + rawType;
+            Object rawValue = config.get(abilityPath);
+            if (rawValue instanceof Boolean enabled && !enabled) {
+                continue;
+            }
+            if (config.isConfigurationSection(abilityPath)
+                    && config.contains(abilityPath + ".enabled")
+                    && !config.getBoolean(abilityPath + ".enabled")) {
+                continue;
+            }
+            double multiplier = config.getDouble(abilityPath + ".multiplier",
+                    type == ToolAbilityType.EXP_BOOSTER ? 1.5D : 1.0D);
+            String effect = normalizeNamespacedKey(
+                    config.getString(abilityPath + ".effect", "minecraft:haste"));
+            int potionLevel = config.getInt(abilityPath + ".level", 2);
+            int durationTicks = config.getInt(abilityPath + ".duration_ticks", 100);
+            AbilityTarget target = AbilityTarget.parse(
+                    config.getString(abilityPath + ".target", AbilityTarget.HOLDER.name()));
+            if (type == ToolAbilityType.MOB_POTION_EFFECT) {
+                NamespacedKey effectKey = NamespacedKey.fromString(effect);
+                if (effectKey == null || Registry.MOB_EFFECT.get(effectKey) == null) {
+                    throw new IllegalArgumentException(
+                            "unknown potion effect " + effect + " at level " + level);
+                }
+            }
+            abilities.put(type, new ToolAbilitySettings(type, multiplier, effect,
+                    potionLevel, durationTicks, target));
+        }
+        return abilities;
     }
 
     private static Map<String, Long> parseTargetRequirements(
@@ -677,7 +839,31 @@ public final class ToolConfigRepository {
             config.set(levelRoot + ".item.hide_enchantments", level.hideEnchantments());
             config.set(levelRoot + ".item.hide_attributes", level.hideAttributes());
             config.set(levelRoot + ".item.custom_model_data", level.customModelData());
+            writeAbilities(config, id, level.number(), level.abilities());
             config.set(levelRoot + ".lore", level.lore());
+        }
+    }
+
+    private static void writeAbilities(
+            YamlConfiguration config,
+            String id,
+            int level,
+            Map<ToolAbilityType, ToolAbilitySettings> abilities
+    ) {
+        String root = levelPath(id, level, "abilities");
+        config.set(root, null);
+        for (ToolAbilitySettings ability : abilities.values()) {
+            String path = root + "." + ability.type().name();
+            config.set(path + ".enabled", true);
+            if (ability.type() == ToolAbilityType.EXP_BOOSTER) {
+                config.set(path + ".multiplier", ability.multiplier());
+            }
+            if (ability.type() == ToolAbilityType.MOB_POTION_EFFECT) {
+                config.set(path + ".effect", ability.potionEffect());
+                config.set(path + ".level", ability.potionLevel());
+                config.set(path + ".duration_ticks", ability.durationTicks());
+                config.set(path + ".target", ability.potionTarget().name());
+            }
         }
     }
 
@@ -729,19 +915,38 @@ public final class ToolConfigRepository {
 
     private void validateTargets(TrackingType type, List<String> targets, String id) {
         for (String target : targets) {
-            if (type == TrackingType.BLOCKS_BROKEN) {
-                Material material = Material.matchMaterial(target);
-                if (material == null || !material.isBlock()) {
-                    throw new IllegalArgumentException("unknown block target '" + target + "' for " + id);
-                }
-            } else {
-                try {
-                    EntityType entityType = EntityType.valueOf(target.toUpperCase(Locale.ROOT));
-                    if (!entityType.isAlive()) {
-                        throw new IllegalArgumentException("not a living entity");
+            switch (type.targetKind()) {
+                case BLOCK -> {
+                    Material material = Material.matchMaterial(target);
+                    if (material == null || !material.isBlock()) {
+                        throw new IllegalArgumentException(
+                                "unknown block target '" + target + "' for " + id);
                     }
-                } catch (IllegalArgumentException exception) {
-                    throw new IllegalArgumentException("unknown entity target '" + target + "' for " + id);
+                }
+                case CROP -> {
+                    Material material = Material.matchMaterial(target);
+                    if (material == null || !FARM_TARGETS.contains(material)) {
+                        throw new IllegalArgumentException(
+                                "unknown farm target '" + target + "' for " + id);
+                    }
+                }
+                case FISH -> {
+                    Material material = Material.matchMaterial(target);
+                    if (material == null || !FISH_TARGETS.contains(material)) {
+                        throw new IllegalArgumentException(
+                                "unknown fish target '" + target + "' for " + id);
+                    }
+                }
+                case ENTITY -> {
+                    try {
+                        EntityType entityType = EntityType.valueOf(target.toUpperCase(Locale.ROOT));
+                        if (!entityType.isAlive()) {
+                            throw new IllegalArgumentException("not a living entity");
+                        }
+                    } catch (IllegalArgumentException exception) {
+                        throw new IllegalArgumentException(
+                                "unknown entity target '" + target + "' for " + id);
+                    }
                 }
             }
         }
@@ -769,6 +974,14 @@ public final class ToolConfigRepository {
                 : NamespacedKey.minecraft(normalized);
         return key == null ? null
                 : RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT).get(key);
+    }
+
+    private static String normalizeNamespacedKey(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isBlank()) {
+            return "minecraft:haste";
+        }
+        return normalized.contains(":") ? normalized : "minecraft:" + normalized;
     }
 
     private static Material parseItemMaterial(String value, String field, String id) {

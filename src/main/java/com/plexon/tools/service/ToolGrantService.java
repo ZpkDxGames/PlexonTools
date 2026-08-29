@@ -21,12 +21,20 @@ public final class ToolGrantService {
     }
 
     public boolean grant(Player target, ToolDefinition definition, boolean notifyTarget) {
-        String world = target.getWorld().getName();
-        if (!definition.isAllowedWorld(world)) {
+        return grant(target, definition, target.getWorld().getName(), notifyTarget);
+    }
+
+    public boolean grant(
+            Player target,
+            ToolDefinition definition,
+            String boundWorld,
+            boolean notifyTarget
+    ) {
+        if (boundWorld == null || boundWorld.isBlank() || !definition.isAllowedWorld(boundWorld)) {
             return false;
         }
 
-        ToolItemService.CreatedTool created = itemService.create(target, definition, world);
+        ToolItemService.CreatedTool created = itemService.create(target, definition, boundWorld);
         registry.register(created.state(), target.getName());
         Map<Integer, ItemStack> leftovers = target.getInventory().addItem(created.item());
         if (!leftovers.isEmpty()) {
@@ -36,7 +44,7 @@ public final class ToolGrantService {
         if (notifyTarget) {
             messages.send(target, "tool-received", Map.of(
                     "tool", definition.displayName(),
-                    "world", messages.plain(world)
+                    "world", messages.plain(boundWorld)
             ));
         }
         return true;

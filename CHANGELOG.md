@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.0.0 — 2026-08-29
+
+- Added Mining, Combat, Farming, Utility, and custom category navigation with `/pt <category> [player]` and `/pt all [player]` routing.
+- Added `ITEMS_FARMED`, `FISH_CAUGHT`, `DAMAGE_DEALT`, and `BLOCKS_PLACED` alongside the existing block and mob trackers.
+- Added per-level Auto Smelt, protected-aware 3×3 Area Mine, EXP Booster, holder/target Potion Effect, and Magnet abilities.
+- Added category creation/customization/assignment, global enforcement/effect controls, and ability editing to the in-game dashboard.
+- Added `category` and `stat_breakdown` PDC synchronization plus category/target snapshots in the v3 audit schema.
+- Replaced synchronous registry autosaves with revisioned, atomic asynchronous checkpoints and a final shutdown flush.
+- Enforced `<!italic>` normalization through the single MiniMessage component service.
+- Added the structured `default_lore_format` schema, category placeholders, nested message schema, and six representative bundled tools.
+- Preserved 2.0 configurations, issued items, list-filter semantics, `material_upgrade`, and legacy lore/message layouts.
+- Added v3 unit coverage, operator documentation, release notes, and a dedicated 2.0 migration guide.
+
 ## 2.0.0 — 2026-08-28
 
 - Added the GENERAL and SPECIFIC per-level requirement engine.

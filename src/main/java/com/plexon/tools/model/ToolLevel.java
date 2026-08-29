@@ -19,7 +19,8 @@ public record ToolLevel(
         GlintMode glint,
         boolean hideEnchantments,
         boolean hideAttributes,
-        Integer customModelData
+        Integer customModelData,
+        Map<ToolAbilityType, ToolAbilitySettings> abilities
 ) {
     public ToolLevel {
         if (number < 1) {
@@ -30,17 +31,24 @@ public record ToolLevel(
         }
         enchantments = Map.copyOf(enchantments);
         lore = List.copyOf(lore);
+        abilities = Map.copyOf(abilities);
     }
 
     public ToolLevel withNumber(int newNumber) {
         return new ToolLevel(newNumber, requirement, displayName, displayNameOverride,
                 enchantments, material, materialOverride, lore, unbreakable, glint,
-                hideEnchantments, hideAttributes, customModelData);
+                hideEnchantments, hideAttributes, customModelData, abilities);
     }
 
     public ToolLevel withRequirement(LevelRequirement newRequirement) {
         return new ToolLevel(number, newRequirement, displayName, displayNameOverride,
                 enchantments, material, materialOverride, lore, unbreakable, glint,
-                hideEnchantments, hideAttributes, customModelData);
+                hideEnchantments, hideAttributes, customModelData, abilities);
+    }
+
+    public ToolLevel withAbilities(Map<ToolAbilityType, ToolAbilitySettings> newAbilities) {
+        return new ToolLevel(number, requirement, displayName, displayNameOverride,
+                enchantments, material, materialOverride, lore, unbreakable, glint,
+                hideEnchantments, hideAttributes, customModelData, newAbilities);
     }
 }

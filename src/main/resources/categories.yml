@@ -1,0 +1,25 @@
+categories:
+  mining:
+    display_name: "<gradient:#FF512F:#DD2476><bold>Mining Tools</bold></gradient>"
+    icon: DIAMOND_PICKAXE
+    slot: 11
+    description:
+      - "<gray>Progressive pickaxes and resource tools.</gray>"
+  combat:
+    display_name: "<gradient:#E55D87:#5FC3E4><bold>Combat Weapons</bold></gradient>"
+    icon: NETHERITE_SWORD
+    slot: 13
+    description:
+      - "<gray>Weapons designed for combat progression.</gray>"
+  farming:
+    display_name: "<gradient:#11998E:#38EF7D><bold>Farming Tools</bold></gradient>"
+    icon: GOLDEN_HOE
+    slot: 15
+    description:
+      - "<gray>Harvesting and high-yield farming equipment.</gray>"
+  utility:
+    display_name: "<gradient:#8EC5FC:#E0C3FC><bold>Utility Tools</bold></gradient>"
+    icon: COMPASS
+    slot: 22
+    description:
+      - "<gray>Fishing, building, and specialized tools.</gray>"

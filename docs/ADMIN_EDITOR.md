@@ -1,85 +1,63 @@
-# Admin editor
+# PlexonTools 3.0 admin editor
 
-Open the editor with `/pt gui`.
+Open `/pt gui` with `plexontools.gui`.
 
-## Tool screen
+## Dashboard
 
-- Enable or disable the definition.
-- Edit the root MiniMessage display name.
-- Set the fallback material from the cursor or held item.
-- Toggle loaded worlds or add an unloaded world by name.
-- Cycle between block-break and mob-kill tracking. Changing the type clears incompatible targets and converts levels to GENERAL totals.
-- Open the level 1 requirement engine directly, or manage every profile from the level list.
-- Preview the resolved starting item or grant a test instance.
+- **Tool Manager** opens every definition and its live preview.
+- **Create New Tool** uses the held material, current world, first category, GENERAL block tracking, and a safe default profile.
+- **Category Manager** creates categories and edits their MiniMessage name, icon, unique slot, and description.
+- **Global Settings** toggles owner enforcement, bound-world enforcement, level-up particles, and validates the level-up sound through Paper's registry.
+- **Live Player Preview** enters the category-driven player GUI.
+
+## Tool editor
+
+The tool screen edits status, name, base material, allowed worlds, category, tracking type, level requirements, and profiles. Cycling tracking type clears incompatible targets and converts each level to a GENERAL requirement with its former combined total.
+
+Use the central preview to inspect the fully resolved item and **Give to yourself** to create a real unique instance. Deletion requires two shift-right-click confirmations within eight seconds.
 
 ## Requirement editor
 
-Every level may use a different mode.
-
-- **GENERAL:** one amount counts all activity of the configured tracking type.
-- **SPECIFIC:** every selected material or living entity has an independent quota, and all quotas must complete.
-
-Click the mode button to switch. Switching to GENERAL preserves the prior combined total. Switching to SPECIFIC starts with an empty target set, so select at least one target before players can advance.
-
-GENERAL amounts and individual SPECIFIC quotas provide the same controls:
+Every level can use a shared GENERAL total or independent SPECIFIC target quotas.
 
 | Control | Operation |
 |---|---|
-| `+1`, `+10`, `+100`, `+1000` | Increase the amount |
-| `-1`, `-10`, `-100`, `-1000` | Decrease, clamped to 1 |
-| Exact amount | Enter any positive whole number in chat |
+| `+1`, `+10`, `+100`, `+1000` | Increase the selected total/quota |
+| `-1`, `-10`, `-100`, `-1000` | Decrease, clamped to one |
+| Exact amount | Enter a positive whole number in chat |
+| Mode | Convert GENERAL/SPECIFIC requirement shape |
 
-## Target selector
+The target selector is paginated and searchable. Material tracking shows valid blocks, crops, or fish; entity tracking shows living types. Left-click adds/edits a quota, right-click removes it, and the amount screen supports both step and exact controls.
 
-The browser lists every valid block material or living entity for the tool's tracking type.
+## Level profiles
 
-- Left-click an unselected target to add it with a default quota of 100 and open its amount editor.
-- Left-click a selected target to edit its amount.
-- Right-click a selected target to remove it.
-- Use search to filter by any substring, such as `ORE`, `DEEPSLATE`, or `SKELETON`.
-- Clear search to restore the complete paginated list.
+Administrators can add, duplicate, reorder, or delete levels while retaining at least one contiguous profile. The add action clones the last profile and doubles its GENERAL total or each SPECIFIC quota with overflow protection.
 
-The target amount screen also provides step controls, exact entry, and a shift-right-click removal action.
+Each profile controls:
 
-## Level list and profiles
+- Inherited or overridden MiniMessage display name.
+- Inherited or overridden item material.
+- Complete enchantment map and visual registry browser.
+- Complete lore with line add/edit/delete/reorder and bulk `;;` input.
+- Unbreakable, glint, hidden enchantments, hidden attributes, and custom model data.
+- The five exact per-level abilities.
 
-Each level icon uses its resolved material and shows its name, requirement mode, cumulative required progress, combined threshold, and enchantments. The add button clones the final profile and doubles its total or every individual quota with saturation protection.
+## Ability editor
 
-Within a level profile:
+Left-click toggles any ability. Right-click configures enabled EXP Booster and Potion Effect entries.
 
-- **Display name:** left-click to set a MiniMessage override; right-click to inherit the prior value.
-- **Material:** left-click with a cursor or held item to create a change at this level; right-click to inherit.
-- **Requirement engine:** configure mode, shared total, target selection, and target quotas.
-- **Enchantments:** open the visual registry browser or bulk text editor.
-- **Lore:** edit individual MiniMessage lines or replace the whole list.
-- **Item properties:** toggle unbreakable, glint mode, hidden enchantments, hidden attributes, and custom model data.
-- **Level structure:** duplicate after, move earlier/later, or shift-right-click delete. Later levels are renumbered.
-- **Navigation:** move directly to the previous or next profile while editing.
+- EXP Booster accepts a multiplier from `1.0` through `100.0`.
+- Potion Effect accepts `effect,level,duration_ticks,target`, for example `haste,2,100,HOLDER`.
+- Potion targets are `HOLDER` or `TARGET` and effects are checked against the registry.
 
-The central item is a resolved preview using zero progress and the first allowed world.
+Auto Smelt, 3×3 Area Mine, and Magnet have no additional parameters.
 
-## Enchantment editor
+## Category manager
 
-The browser includes every enchantment in Paper's registry.
+New IDs may contain lowercase letters, numbers, `_`, or `-`. Category display names and description lines accept MiniMessage; use `;;` between description lines. Assign a tool by opening its Category control and selecting the destination.
 
-| Input | Operation |
-|---|---|
-| Left-click | Add one level |
-| Shift-left-click | Add five levels |
-| Right-click | Remove one level |
-| Shift-right-click | Remove the enchantment |
+Category slots must be unique. The bundled layout uses `11`, `13`, `15`, and `22` for Mining, Combat, Farming, and Utility.
 
-Levels are clamped to 0–255. The bulk editor accepts `efficiency=3, unbreaking=2`; use `none` to clear the profile.
+## Chat prompts
 
-## Lore editor
-
-| Input | Operation |
-|---|---|
-| Left-click line | Edit it in chat |
-| Right-click line | Delete it |
-| Shift-left-click line | Move it up |
-| Shift-right-click line | Move it down |
-
-The add button appends one line. The bulk editor uses `;;` between lines. Empty lore is supported. Both `{placeholder}` and `<placeholder>` syntax are accepted. Clear-all operations require shift-right-click.
-
-Chat prompts accept `cancel` and expire after 60 seconds. Every mutation is parsed and validated against a temporary complete configuration before `tools.yml` is replaced.
+Type `cancel` to return without a change. Prompts expire after 60 seconds. Every tool/category mutation is applied to a cloned configuration and becomes active only after the full candidate validates and saves.

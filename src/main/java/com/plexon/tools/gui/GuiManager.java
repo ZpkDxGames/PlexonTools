@@ -1,21 +1,29 @@
 package com.plexon.tools.gui;
 
 import com.plexon.tools.config.PluginSettings;
+import com.plexon.tools.config.CategoryRepository;
 import com.plexon.tools.config.ToolConfigRepository;
 import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.item.ToolState;
 import com.plexon.tools.message.MessageService;
 import com.plexon.tools.model.LevelRequirement;
 import com.plexon.tools.model.RequirementMode;
+import com.plexon.tools.model.AbilityTarget;
+import com.plexon.tools.model.ToolAbilitySettings;
+import com.plexon.tools.model.ToolAbilityType;
+import com.plexon.tools.model.ToolCategory;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.ToolLevel;
 import com.plexon.tools.model.TrackingType;
 import com.plexon.tools.service.ChatPromptService;
 import com.plexon.tools.service.ToolGrantService;
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -49,6 +57,8 @@ public final class GuiManager implements Listener {
             37, 38, 39, 40, 41, 42, 43
     };
 
+    private final JavaPlugin plugin;
+    private final CategoryRepository categories;
     private final ToolConfigRepository tools;
     private final ToolItemService itemService;
     private final ToolGrantService grants;
@@ -62,6 +72,7 @@ public final class GuiManager implements Listener {
 
     public GuiManager(
             JavaPlugin plugin,
+            CategoryRepository categories,
             ToolConfigRepository tools,
             ToolItemService itemService,
             ToolGrantService grants,
@@ -69,6 +80,8 @@ public final class GuiManager implements Listener {
             PluginSettings settings,
             MessageService messages
     ) {
+        this.plugin = plugin;
+        this.categories = categories;
         this.tools = tools;
         this.itemService = itemService;
         this.grants = grants;
@@ -80,31 +93,120 @@ public final class GuiManager implements Listener {
     }
 
     public void openShowcase(Player player, int requestedPage) {
+        openShowcase(player, player, null, requestedPage);
+    }
+
+    public void openPlayerEntry(Player viewer, Player subject) {
+        if (categories.size() > 1) {
+            openCategorySelection(viewer, subject);
+        } else {
+            openShowcase(viewer, subject, categories.defaultCategoryId(), 0);
+        }
+    }
+
+    public void openShowcase(
+            Player viewer,
+            Player subject,
+            String categoryId,
+            int requestedPage
+    ) {
         int rows = settings.showcaseRows();
         int size = rows * 9;
         int[] slots = contentSlots(rows);
         List<ToolDefinition> visible = tools.all().stream()
                 .filter(ToolDefinition::enabled)
-                .filter(tool -> settings.showLockedTools() || tool.isAllowedWorld(player.getWorld().getName()))
+                .filter(tool -> categoryId == null || tool.category().equalsIgnoreCase(categoryId))
+                .filter(tool -> settings.showLockedTools() || tool.isAllowedWorld(subject.getWorld().getName()))
                 .sorted(Comparator.comparing(ToolDefinition::id))
                 .toList();
         int pages = pageCount(visible.size(), slots.length);
         int page = clampPage(requestedPage, pages);
 
-        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.SHOWCASE, null, page, 0);
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.SHOWCASE,
+                null, page, 0, null, subject.getUniqueId(), categoryId);
+        String title = categoryId == null
+                ? settings.showcaseTitle()
+                : categories.find(categoryId).map(ToolCategory::displayName).orElse(settings.showcaseTitle());
+        String subjectSuffix = viewer.equals(subject)
+                ? ""
+                : " <dark_gray>• " + messages.plain(subject.getName()) + "</dark_gray>";
         Inventory inventory = Bukkit.createInventory(holder, size,
-                messages.parse(settings.showcaseTitle() + " <dark_gray>• " + (page + 1) + "/" + pages + "</dark_gray>"));
+                messages.parse(title + subjectSuffix + " <dark_gray>• "
+                        + (page + 1) + "/" + pages + "</dark_gray>"));
         holder.attach(inventory);
         fill(inventory);
 
         int offset = page * slots.length;
         for (int index = 0; index < slots.length && offset + index < visible.size(); index++) {
             ToolDefinition definition = visible.get(offset + index);
-            inventory.setItem(slots[index], showcaseIcon(player, definition));
+            inventory.setItem(slots[index], showcaseIcon(subject, definition));
         }
         addNavigation(inventory, page, pages, "showcase-page");
+        if (categories.size() > 1) {
+            inventory.setItem(size - 9, button("category-select", "", Material.CHEST,
+                    "<aqua><bold>Categories</bold></aqua>",
+                    "<gray>Return to category selection.</gray>"));
+        }
         inventory.setItem(size - 5, button("close", "", Material.BARRIER,
                 "<red><bold>Close</bold></red>", "<gray>Close this menu.</gray>"));
+        viewer.openInventory(inventory);
+    }
+
+    private void openCategorySelection(Player viewer, Player subject) {
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.CATEGORY_SELECT,
+                null, 0, 0, null, subject.getUniqueId(), null);
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse(settings.categoryTitle()
+                        + (viewer.equals(subject) ? "" : " <dark_gray>• "
+                        + messages.plain(subject.getName()) + "</dark_gray>")));
+        holder.attach(inventory);
+        fill(inventory);
+        for (ToolCategory category : categories.sorted()) {
+            List<String> lore = new ArrayList<>(category.description());
+            long count = tools.all().stream()
+                    .filter(ToolDefinition::enabled)
+                    .filter(tool -> tool.category().equalsIgnoreCase(category.id()))
+                    .count();
+            lore.add("");
+            lore.add("<gray>Tools:</gray> <white>" + count + "</white>");
+            lore.add("<yellow>Click to browse.</yellow>");
+            inventory.setItem(category.slot(), button("showcase-category", category.id(), category.icon(),
+                    category.displayName(), lore.toArray(String[]::new)));
+        }
+        inventory.setItem(49, button("showcase-all", "", Material.NETHER_STAR,
+                "<gradient:#4158D0:#C850C0><bold>All Tools</bold></gradient>",
+                "<gray>Browse every enabled category together.</gray>"));
+        inventory.setItem(53, button("close", "", Material.BARRIER,
+                "<red><bold>Close</bold></red>", "<gray>Close this menu.</gray>"));
+        viewer.openInventory(inventory);
+    }
+
+    public void openAdminDashboard(Player player) {
+        if (!requireAdmin(player)) {
+            return;
+        }
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.ADMIN_DASHBOARD,
+                null, 0, 0);
+        Inventory inventory = Bukkit.createInventory(holder, 27, messages.parse(settings.adminTitle()));
+        holder.attach(inventory);
+        fill(inventory);
+        inventory.setItem(10, button("admin-list", "", Material.DIAMOND_PICKAXE,
+                "<aqua><bold>Tool Manager</bold></aqua>",
+                "<gray>Create and edit every tool profile.</gray>",
+                "<white>" + tools.size() + " configured tool(s)</white>"));
+        inventory.setItem(12, button("create", "", Material.LIME_DYE,
+                "<green><bold>Create New Tool</bold></green>",
+                "<gray>Uses the held item's material.</gray>"));
+        inventory.setItem(14, button("categories", "", Material.CHEST,
+                "<light_purple><bold>Category Manager</bold></light_purple>",
+                "<gray>Create and customize GUI categories.</gray>",
+                "<white>" + categories.size() + " configured category(s)</white>"));
+        inventory.setItem(16, button("global-settings", "", Material.COMPARATOR,
+                "<yellow><bold>Global Settings</bold></yellow>",
+                "<gray>Owner, world, effects, and enforcement.</gray>"));
+        inventory.setItem(22, button("showcase-entry", "", Material.COMPASS,
+                "<gradient:#4158D0:#C850C0><bold>Live Player Preview</bold></gradient>",
+                "<gray>Open the category-driven player GUI.</gray>"));
         player.openInventory(inventory);
     }
 
@@ -130,13 +232,135 @@ public final class GuiManager implements Listener {
             inventory.setItem(GRID_SLOTS[index], adminToolIcon(definition));
         }
         addNavigation(inventory, page, pages, "admin-page");
-        inventory.setItem(45, button("showcase", "", Material.COMPASS,
+        inventory.setItem(45, button("admin-dashboard", "", Material.ARROW,
+                "<yellow><bold>Dashboard</bold></yellow>", "<gray>Return to the admin dashboard.</gray>"));
+        inventory.setItem(46, button("showcase-entry", "", Material.COMPASS,
                 "<aqua><bold>Player showcase</bold></aqua>", "<gray>Preview the player-facing menu.</gray>"));
         inventory.setItem(49, button("create", "", Material.LIME_DYE,
                 "<green><bold>Create a tool</bold></green>",
                 "<gray>Uses your held item's material,</gray>", "<gray>or an iron pickaxe if your hand is empty.</gray>"));
         inventory.setItem(53, button("close", "", Material.BARRIER,
                 "<red><bold>Close</bold></red>", "<gray>Close this menu.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openCategoryManager(Player player, int requestedPage) {
+        if (!requireAdmin(player)) {
+            return;
+        }
+        List<ToolCategory> values = categories.sorted();
+        int pages = pageCount(values.size(), GRID_SLOTS.length);
+        int page = clampPage(requestedPage, pages);
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.CATEGORIES,
+                null, page, 0);
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<light_purple><bold>Category Manager</bold></light_purple>"
+                        + " <dark_gray>• " + (page + 1) + "/" + pages + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+        int offset = page * GRID_SLOTS.length;
+        for (int index = 0; index < GRID_SLOTS.length && offset + index < values.size(); index++) {
+            ToolCategory category = values.get(offset + index);
+            long assigned = tools.all().stream()
+                    .filter(tool -> tool.category().equalsIgnoreCase(category.id()))
+                    .count();
+            inventory.setItem(GRID_SLOTS[index], button("category-editor", category.id(), category.icon(),
+                    category.displayName(),
+                    "<dark_gray>" + messages.plain(category.id()) + "</dark_gray>", "",
+                    "<gray>Showcase slot:</gray> <white>" + category.slot() + "</white>",
+                    "<gray>Assigned tools:</gray> <white>" + assigned + "</white>", "",
+                    "<yellow>Click to customize.</yellow>"));
+        }
+        addNavigation(inventory, page, pages, "categories-page");
+        inventory.setItem(45, button("admin-dashboard", "", Material.ARROW,
+                "<yellow><bold>Dashboard</bold></yellow>", "<gray>Return to the admin dashboard.</gray>"));
+        inventory.setItem(49, button("create-category", "", Material.LIME_DYE,
+                "<green><bold>Create Category</bold></green>",
+                "<gray>Enter a new category ID in chat.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openCategoryEditor(Player player, String categoryId) {
+        ToolCategory category = categories.find(categoryId).orElse(null);
+        if (category == null || !requireAdmin(player)) {
+            openCategoryManager(player, 0);
+            return;
+        }
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.CATEGORY_EDITOR,
+                null, 0, 0, category.id());
+        Inventory inventory = Bukkit.createInventory(holder, 27,
+                messages.parse("<light_purple><bold>Edit Category</bold></light_purple> <dark_gray>•</dark_gray> "
+                        + category.displayName()));
+        holder.attach(inventory);
+        fill(inventory);
+        inventory.setItem(10, button("category-name", category.id(), Material.NAME_TAG,
+                "<yellow><bold>Display Name</bold></yellow>", category.displayName(), "",
+                "<gray>Click to edit with MiniMessage.</gray>"));
+        inventory.setItem(12, button("category-icon", category.id(), category.icon(),
+                "<gold><bold>Category Icon</bold></gold>",
+                "<white>" + category.icon().name() + "</white>", "",
+                "<gray>Click using your cursor or held item.</gray>"));
+        inventory.setItem(14, button("category-slot", category.id(), Material.HOPPER,
+                "<aqua><bold>Showcase Slot</bold></aqua>",
+                "<white>" + category.slot() + "</white>", "",
+                "<gray>Click to enter a slot from 0 to 53.</gray>"));
+        inventory.setItem(16, button("category-description", category.id(), Material.WRITABLE_BOOK,
+                "<green><bold>Description</bold></green>",
+                "<white>" + category.description().size() + " line(s)</white>", "",
+                "<gray>Separate MiniMessage lines with <white>;;</white>.</gray>"));
+        inventory.setItem(22, button("categories", "", Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to all categories.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openCategoryAssignment(Player player, String toolId) {
+        ToolDefinition tool = tools.find(toolId).orElse(null);
+        if (tool == null || !requireAdmin(player)) {
+            openAdminList(player, 0);
+            return;
+        }
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.CATEGORY_ASSIGN,
+                tool.id(), 0, 0);
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<light_purple><bold>Assign Category</bold></light_purple> <dark_gray>•</dark_gray> "
+                        + tool.displayName()));
+        holder.attach(inventory);
+        fill(inventory);
+        List<ToolCategory> values = categories.sorted();
+        for (int index = 0; index < GRID_SLOTS.length && index < values.size(); index++) {
+            ToolCategory category = values.get(index);
+            boolean selected = tool.category().equalsIgnoreCase(category.id());
+            inventory.setItem(GRID_SLOTS[index], button("assign-category", category.id(), category.icon(),
+                    (selected ? "<green>✓ </green>" : "") + category.displayName(),
+                    selected ? "<green>Currently assigned.</green>" : "<gray>Click to assign.</gray>"));
+        }
+        inventory.setItem(45, button("editor", tool.id(), Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to the tool editor.</gray>"));
+        player.openInventory(inventory);
+    }
+
+    private void openGlobalSettings(Player player) {
+        if (!requireAdmin(player)) {
+            return;
+        }
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.GLOBAL_SETTINGS,
+                null, 0, 0);
+        Inventory inventory = Bukkit.createInventory(holder, 27,
+                messages.parse("<yellow><bold>Global Settings</bold></yellow>"));
+        holder.attach(inventory);
+        fill(inventory);
+        inventory.setItem(10, toggleButton("global-toggle", "settings.enforce-bound-world",
+                Material.ENDER_EYE, "Enforce Bound World", settings.enforceBoundWorld()));
+        inventory.setItem(12, toggleButton("global-toggle", "settings.enforce-owner",
+                Material.PLAYER_HEAD, "Enforce Owner", settings.enforceOwner()));
+        inventory.setItem(14, toggleButton("global-toggle", "effects.level-up-particles",
+                Material.FIREWORK_STAR, "Level-up Particles", settings.levelUpParticles()));
+        inventory.setItem(16, button("global-sound", "", Material.NOTE_BLOCK,
+                "<aqua><bold>Level-up Sound</bold></aqua>",
+                "<white>" + messages.plain(settings.levelUpSound()) + "</white>", "",
+                "<gray>Click to enter a Bukkit sound key.</gray>"));
+        inventory.setItem(22, button("admin-dashboard", "", Material.ARROW,
+                "<yellow><bold>Dashboard</bold></yellow>", "<gray>Return to the admin dashboard.</gray>"));
         player.openInventory(inventory);
     }
 
@@ -182,6 +406,13 @@ public final class GuiManager implements Listener {
         inventory.setItem(16, button("levels", tool.id(), Material.EXPERIENCE_BOTTLE,
                 "<green><bold>Progression levels</bold></green>",
                 "<white>" + tool.levels().size() + " configured level(s)</white>", "", "<gray>Click to edit rewards and thresholds.</gray>"));
+        ToolCategory category = categories.find(tool.category()).orElse(null);
+        inventory.setItem(22, button("category-assign", tool.id(),
+                category == null ? Material.CHEST : category.icon(),
+                "<light_purple><bold>Category</bold></light_purple>",
+                category == null ? "<red>Unknown: " + messages.plain(tool.category()) + "</red>"
+                        : category.displayName(), "",
+                "<gray>Click to assign or reassign this tool.</gray>"));
         inventory.setItem(31, previewIcon(tool));
         inventory.setItem(45, button("admin-list", "", Material.ARROW,
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to all tools.</gray>"));
@@ -317,6 +548,11 @@ public final class GuiManager implements Listener {
                 "<aqua><bold>Custom model data</bold></aqua>",
                 "<white>" + (level.customModelData() == null ? "Not set" : level.customModelData()) + "</white>", "",
                 "<gray>Left-click to set an integer.</gray>", "<gray>Right-click to clear.</gray>"));
+        inventory.setItem(22, button("level-abilities", tool.id(), Material.BLAZE_POWDER,
+                "<gradient:#FF9A8B:#FF6A88><bold>Tool Abilities</bold></gradient>",
+                "<white>" + level.abilities().size() + " enabled ability/abilities</white>", "",
+                "<gray>Configure Auto Smelt, 3×3 mining,</gray>",
+                "<gray>EXP boost, potion effects, and Magnet.</gray>"));
         inventory.setItem(23, button("duplicate-level", tool.id(), Material.SLIME_BALL,
                 "<green><bold>Duplicate after this level</bold></green>",
                 "<gray>Copies this entire profile and shifts</gray>", "<gray>later levels forward.</gray>"));
@@ -347,6 +583,56 @@ public final class GuiManager implements Listener {
                     "<gray>Shift-right-click to delete level " + level.number() + "</gray>",
                     "<dark_red>and renumber every later level.</dark_red>"));
         }
+        player.openInventory(inventory);
+    }
+
+    private void openAbilities(Player player, String toolId, int levelNumber) {
+        ToolDefinition tool = tools.find(toolId).orElse(null);
+        ToolLevel level = tool == null ? null : tool.level(levelNumber).orElse(null);
+        if (tool == null || level == null || !requireAdmin(player)) {
+            openAdminList(player, 0);
+            return;
+        }
+        PlexonGuiHolder holder = new PlexonGuiHolder(PlexonGuiHolder.View.ABILITIES,
+                tool.id(), 0, level.number());
+        Inventory inventory = Bukkit.createInventory(holder, 54,
+                messages.parse("<gradient:#FF9A8B:#FF6A88><bold>Abilities</bold></gradient>"
+                        + " <dark_gray>• Level " + level.number() + "</dark_gray>"));
+        holder.attach(inventory);
+        fill(inventory);
+        int[] slots = {11, 13, 15, 29, 33};
+        ToolAbilityType[] types = ToolAbilityType.values();
+        for (int index = 0; index < types.length; index++) {
+            ToolAbilityType type = types[index];
+            ToolAbilitySettings ability = level.abilities().get(type);
+            List<String> lore = new ArrayList<>();
+            lore.add(type.description());
+            lore.add("");
+            lore.add(ability == null ? "<red>Disabled</red>" : "<green>Enabled</green>");
+            if (ability != null && type == ToolAbilityType.EXP_BOOSTER) {
+                lore.add("<gray>Multiplier:</gray> <white>" + ability.multiplier() + "×</white>");
+            }
+            if (ability != null && type == ToolAbilityType.MOB_POTION_EFFECT) {
+                lore.add("<gray>Effect:</gray> <white>" + messages.plain(ability.potionEffect())
+                        + " " + ability.potionLevel() + "</white>");
+                lore.add("<gray>Duration:</gray> <white>" + ability.durationTicks() + " ticks</white>");
+                lore.add("<gray>Target:</gray> <white>" + ability.potionTarget().name() + "</white>");
+            }
+            lore.add("");
+            lore.add("<yellow>Left-click to toggle.</yellow>");
+            if (ability != null && (type == ToolAbilityType.EXP_BOOSTER
+                    || type == ToolAbilityType.MOB_POTION_EFFECT)) {
+                lore.add("<aqua>Right-click to configure.</aqua>");
+            }
+            inventory.setItem(slots[index], button("ability-edit", type.name(),
+                    abilityMaterial(type),
+                    (ability == null ? "<red>" : "<green>") + "<bold>"
+                            + type.displayName() + "</bold>"
+                            + (ability == null ? "</red>" : "</green>"),
+                    lore.toArray(String[]::new)));
+        }
+        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), Material.ARROW,
+                "<yellow><bold>Back</bold></yellow>", "<gray>Return to the level profile.</gray>"));
         player.openInventory(inventory);
     }
 
@@ -633,16 +919,55 @@ public final class GuiManager implements Listener {
         if (action == null) {
             return;
         }
-        if (holder.view() != PlexonGuiHolder.View.SHOWCASE && !requireAdmin(player)) {
+        if (holder.view() != PlexonGuiHolder.View.SHOWCASE
+                && holder.view() != PlexonGuiHolder.View.CATEGORY_SELECT
+                && !requireAdmin(player)) {
             return;
         }
 
         switch (action) {
             case "close" -> player.closeInventory();
-            case "showcase" -> openShowcase(player, 0);
-            case "showcase-page" -> openShowcase(player, parseInt(value, 0));
+            case "showcase", "showcase-entry" -> openPlayerEntry(player, player);
+            case "showcase-page" -> {
+                Player subject = showcaseSubject(holder, player);
+                if (subject != null) {
+                    openShowcase(player, subject, holder.categoryId(), parseInt(value, 0));
+                }
+            }
+            case "showcase-category" -> {
+                Player subject = showcaseSubject(holder, player);
+                if (subject != null) {
+                    openShowcase(player, subject, value, 0);
+                }
+            }
+            case "showcase-all" -> {
+                Player subject = showcaseSubject(holder, player);
+                if (subject != null) {
+                    openShowcase(player, subject, null, 0);
+                }
+            }
+            case "category-select" -> {
+                Player subject = showcaseSubject(holder, player);
+                if (subject != null) {
+                    openCategorySelection(player, subject);
+                }
+            }
+            case "admin-dashboard" -> openAdminDashboard(player);
             case "admin-list" -> openAdminList(player, 0);
             case "admin-page" -> openAdminList(player, parseInt(value, 0));
+            case "categories" -> openCategoryManager(player, 0);
+            case "categories-page" -> openCategoryManager(player, parseInt(value, 0));
+            case "category-editor" -> openCategoryEditor(player, value);
+            case "create-category" -> createCategory(player);
+            case "category-name" -> promptCategoryName(player, value);
+            case "category-icon" -> setCategoryIcon(player, value, event);
+            case "category-slot" -> promptCategorySlot(player, value);
+            case "category-description" -> promptCategoryDescription(player, value);
+            case "category-assign" -> openCategoryAssignment(player, value);
+            case "assign-category" -> assignCategory(player, holder.toolId(), value);
+            case "global-settings" -> openGlobalSettings(player);
+            case "global-toggle" -> toggleGlobalSetting(player, value);
+            case "global-sound" -> promptGlobalSound(player);
             case "editor" -> openEditor(player, value);
             case "create" -> createTool(player);
             case "toggle" -> change(player, value, "enabled status",
@@ -702,6 +1027,9 @@ public final class GuiManager implements Listener {
             case "level-hide-enchants" -> toggleHideEnchantments(player, holder.toolId(), holder.level());
             case "level-hide-attributes" -> toggleHideAttributes(player, holder.toolId(), holder.level());
             case "level-model-data" -> editCustomModelData(player, holder.toolId(), holder.level(), event);
+            case "level-abilities" -> openAbilities(player, holder.toolId(), holder.level());
+            case "ability-edit" -> editAbility(
+                    player, holder.toolId(), holder.level(), ToolAbilityType.parse(value), event);
             case "duplicate-level" -> duplicateLevel(player, holder.toolId(), holder.level());
             case "move-level-up" -> moveLevel(player, holder.toolId(), holder.level(), -1);
             case "move-level-down" -> moveLevel(player, holder.toolId(), holder.level(), 1);
@@ -737,6 +1065,264 @@ public final class GuiManager implements Listener {
         UUID playerId = event.getPlayer().getUniqueId();
         pendingDeletes.remove(playerId);
         targetSearches.remove(playerId);
+    }
+
+    private Player showcaseSubject(PlexonGuiHolder holder, Player fallback) {
+        if (holder.subjectId() == null || holder.subjectId().equals(fallback.getUniqueId())) {
+            return fallback;
+        }
+        Player subject = Bukkit.getPlayer(holder.subjectId());
+        if (subject == null) {
+            showError(fallback, new IllegalArgumentException("The target player is no longer online."));
+            fallback.closeInventory();
+        }
+        return subject;
+    }
+
+    private void createCategory(Player player) {
+        prompts.begin(player,
+                messages.parse("<light_purple><bold>New category ID</bold></light_purple>"
+                        + " <gray>Use lowercase letters, numbers, <white>_</white>, or <white>-</white>.</gray>"),
+                input -> {
+                    try {
+                        ToolCategory created = categories.create(input);
+                        messages.send(player, "editor-saved", Map.of(
+                                "field", "new category",
+                                "tool", created.displayName()));
+                        openCategoryEditor(player, created.id());
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                        openCategoryManager(player, 0);
+                    }
+                },
+                () -> openCategoryManager(player, 0));
+    }
+
+    private void promptCategoryName(Player player, String categoryId) {
+        prompts.begin(player,
+                messages.parse("<yellow><bold>Category display name</bold></yellow>"
+                        + " <gray>Enter a MiniMessage-formatted name.</gray>"),
+                input -> {
+                    try {
+                        messages.parse(input);
+                        categories.setDisplayName(categoryId, input);
+                        messages.send(player, "editor-saved", Map.of(
+                                "field", "category display name",
+                                "tool", categories.find(categoryId)
+                                        .map(ToolCategory::displayName)
+                                        .orElse(messages.plain(categoryId))));
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                    }
+                    openCategoryEditor(player, categoryId);
+                },
+                () -> openCategoryEditor(player, categoryId));
+    }
+
+    private void setCategoryIcon(
+            Player player,
+            String categoryId,
+            InventoryClickEvent event
+    ) {
+        Material material = selectedMaterial(player, event);
+        if (material == null) {
+            showError(player, new IllegalArgumentException(
+                    "Place an item on your cursor or hold one in your main hand."));
+            openCategoryEditor(player, categoryId);
+            return;
+        }
+        try {
+            categories.setIcon(categoryId, material);
+            messages.send(player, "editor-saved", Map.of(
+                    "field", "category icon",
+                    "tool", categories.find(categoryId)
+                            .map(ToolCategory::displayName)
+                            .orElse(messages.plain(categoryId))));
+        } catch (Exception exception) {
+            showError(player, exception);
+        }
+        openCategoryEditor(player, categoryId);
+    }
+
+    private void promptCategorySlot(Player player, String categoryId) {
+        prompts.begin(player,
+                messages.parse("<aqua><bold>Category slot</bold></aqua>"
+                        + " <gray>Enter a unique inventory slot from <white>0</white> to <white>53</white>.</gray>"),
+                input -> {
+                    try {
+                        categories.setSlot(categoryId, Integer.parseInt(input.trim()));
+                        messages.send(player, "editor-saved", Map.of(
+                                "field", "category slot",
+                                "tool", categories.find(categoryId)
+                                        .map(ToolCategory::displayName)
+                                        .orElse(messages.plain(categoryId))));
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                    }
+                    openCategoryEditor(player, categoryId);
+                },
+                () -> openCategoryEditor(player, categoryId));
+    }
+
+    private void promptCategoryDescription(Player player, String categoryId) {
+        prompts.begin(player,
+                messages.parse("<green><bold>Category description</bold></green>"
+                        + " <gray>Enter MiniMessage lines separated with <white>;;</white>, or <white>none</white>.</gray>"),
+                input -> {
+                    try {
+                        List<String> lines = input.equalsIgnoreCase("none")
+                                ? List.of()
+                                : java.util.Arrays.stream(input.split(";;", -1))
+                                        .map(String::trim)
+                                        .filter(line -> !line.isEmpty())
+                                        .toList();
+                        lines.forEach(messages::parse);
+                        categories.setDescription(categoryId, lines);
+                        messages.send(player, "editor-saved", Map.of(
+                                "field", "category description",
+                                "tool", categories.find(categoryId)
+                                        .map(ToolCategory::displayName)
+                                        .orElse(messages.plain(categoryId))));
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                    }
+                    openCategoryEditor(player, categoryId);
+                },
+                () -> openCategoryEditor(player, categoryId));
+    }
+
+    private void assignCategory(Player player, String toolId, String categoryId) {
+        change(player, toolId, "category",
+                () -> tools.setCategory(toolId, categoryId),
+                () -> openEditor(player, toolId));
+    }
+
+    private void toggleGlobalSetting(Player player, String path) {
+        if (!List.of(
+                "settings.enforce-bound-world",
+                "settings.enforce-owner",
+                "effects.level-up-particles"
+        ).contains(path)) {
+            showError(player, new IllegalArgumentException("Unknown global setting."));
+            openGlobalSettings(player);
+            return;
+        }
+        try {
+            plugin.getConfig().set(path, !plugin.getConfig().getBoolean(path));
+            plugin.saveConfig();
+            settings.load(plugin.getConfig());
+            messages.send(player, "editor-saved", Map.of(
+                    "field", messages.plain(path),
+                    "tool", "<yellow>global settings</yellow>"));
+        } catch (RuntimeException exception) {
+            showError(player, exception);
+        }
+        openGlobalSettings(player);
+    }
+
+    private void promptGlobalSound(Player player) {
+        prompts.begin(player,
+                messages.parse("<aqua><bold>Level-up sound</bold></aqua>"
+                        + " <gray>Enter a Bukkit sound such as <white>ENTITY_PLAYER_LEVELUP</white>"
+                        + " or a namespaced sound key.</gray>"),
+                input -> {
+                    try {
+                        String configured = input.trim();
+                        if (configured.isEmpty()) {
+                            throw new IllegalArgumentException("Sound cannot be blank.");
+                        }
+                        String normalized = configured.toLowerCase(Locale.ROOT);
+                        String namespaced = normalized.contains(":")
+                                ? normalized
+                                : "minecraft:" + normalized.replace('_', '.');
+                        NamespacedKey key = NamespacedKey.fromString(namespaced);
+                        Sound sound = key == null ? null
+                                : RegistryAccess.registryAccess()
+                                        .getRegistry(RegistryKey.SOUND_EVENT).get(key);
+                        if (sound == null) {
+                            throw new IllegalArgumentException("Unknown sound: " + configured);
+                        }
+                        plugin.getConfig().set("effects.level-up-sound", configured);
+                        plugin.saveConfig();
+                        settings.load(plugin.getConfig());
+                        messages.send(player, "editor-saved", Map.of(
+                                "field", "level-up sound",
+                                "tool", "<yellow>global settings</yellow>"));
+                    } catch (Exception exception) {
+                        showError(player, exception);
+                    }
+                    openGlobalSettings(player);
+                },
+                () -> openGlobalSettings(player));
+    }
+
+    private void editAbility(
+            Player player,
+            String toolId,
+            int level,
+            ToolAbilityType type,
+            InventoryClickEvent event
+    ) {
+        ToolDefinition tool = tools.find(toolId).orElse(null);
+        ToolLevel profile = tool == null ? null : tool.level(level).orElse(null);
+        if (profile == null) {
+            openAdminList(player, 0);
+            return;
+        }
+        ToolAbilitySettings current = profile.abilities().get(type);
+        if (!event.isRightClick()) {
+            change(player, toolId, type.displayName(),
+                    () -> tools.setLevelAbilityEnabled(toolId, level, type, current == null),
+                    () -> openAbilities(player, toolId, level));
+            return;
+        }
+        if (current == null) {
+            change(player, toolId, type.displayName(),
+                    () -> tools.setLevelAbilityEnabled(toolId, level, type, true),
+                    () -> openAbilities(player, toolId, level));
+            return;
+        }
+        if (type == ToolAbilityType.EXP_BOOSTER) {
+            prompts.begin(player,
+                    messages.parse("<gold><bold>EXP multiplier</bold></gold>"
+                            + " <gray>Enter a value from <white>1.0</white> to <white>100.0</white>.</gray>"),
+                    input -> {
+                        try {
+                            tools.setLevelAbilityMultiplier(toolId, level, type,
+                                    Double.parseDouble(input.trim()));
+                            saved(player, toolId, "EXP multiplier");
+                        } catch (Exception exception) {
+                            showError(player, exception);
+                        }
+                        openAbilities(player, toolId, level);
+                    },
+                    () -> openAbilities(player, toolId, level));
+            return;
+        }
+        if (type == ToolAbilityType.MOB_POTION_EFFECT) {
+            prompts.begin(player,
+                    messages.parse("<light_purple><bold>Potion ability</bold></light_purple>"
+                            + " <gray>Enter <white>effect,level,duration_ticks,target</white>."
+                            + " Example: <white>haste,2,100,HOLDER</white>.</gray>"),
+                    input -> {
+                        try {
+                            String[] values = input.split(",", -1);
+                            if (values.length != 4) {
+                                throw new IllegalArgumentException(
+                                        "Use effect,level,duration_ticks,target.");
+                            }
+                            tools.setLevelPotionAbility(toolId, level, values[0].trim(),
+                                    Integer.parseInt(values[1].trim()),
+                                    Integer.parseInt(values[2].trim()),
+                                    AbilityTarget.parse(values[3]));
+                            saved(player, toolId, "potion ability");
+                        } catch (Exception exception) {
+                            showError(player, exception);
+                        }
+                        openAbilities(player, toolId, level);
+                    },
+                    () -> openAbilities(player, toolId, level));
+        }
     }
 
     private void createTool(Player player) {
@@ -778,9 +1364,12 @@ public final class GuiManager implements Listener {
 
     private void promptTargets(Player player, String toolId) {
         ToolDefinition tool = tools.find(toolId).orElseThrow();
-        String example = tool.trackingType() == TrackingType.BLOCKS_BROKEN
-                ? "stone, deepslate, cobblestone"
-                : "zombie, wither_skeleton";
+        String example = switch (tool.trackingType().targetKind()) {
+            case BLOCK -> "stone, deepslate, cobblestone";
+            case ENTITY -> "zombie, wither_skeleton, player";
+            case CROP -> "wheat, carrots, nether_wart";
+            case FISH -> "cod, salmon, pufferfish";
+        };
         prompts.begin(player,
                 messages.parse("<blue><bold>Tracking targets</bold></blue> <gray>Enter comma-separated values (e.g. <white>"
                         + example + "</white>) or <white>none</white> for every target.</gray>"),
@@ -1526,13 +2115,23 @@ public final class GuiManager implements Listener {
     }
 
     private static Material targetIcon(TrackingType trackingType, String target) {
-        if (trackingType == TrackingType.BLOCKS_BROKEN) {
+        if (trackingType.usesMaterialTargets()) {
             Material material = Material.matchMaterial(target);
             return material != null && material.isItem() && !material.isAir()
                     ? material : Material.PAPER;
         }
         Material spawnEgg = Material.matchMaterial(target + "_SPAWN_EGG");
         return spawnEgg != null && spawnEgg.isItem() ? spawnEgg : Material.NAME_TAG;
+    }
+
+    private static Material abilityMaterial(ToolAbilityType type) {
+        return switch (type) {
+            case AUTO_SMELT -> Material.BLAST_FURNACE;
+            case AREA_MINE_3X3 -> Material.DIAMOND_PICKAXE;
+            case EXP_BOOSTER -> Material.EXPERIENCE_BOTTLE;
+            case MOB_POTION_EFFECT -> Material.POTION;
+            case MAGNET -> Material.HOPPER;
+        };
     }
 
     private static String humanizeKey(String key) {

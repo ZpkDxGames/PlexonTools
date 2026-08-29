@@ -16,12 +16,16 @@ public record ToolDefinition(
         String displayName,
         Material baseMaterial,
         Set<String> allowedWorlds,
+        String category,
         TrackingType trackingType,
         RequirementMode defaultRequirementMode,
         NavigableMap<Integer, ToolLevel> levels
 ) {
     public ToolDefinition {
         allowedWorlds = Set.copyOf(allowedWorlds);
+        if (category == null || category.isBlank()) {
+            throw new IllegalArgumentException("Tool category is required.");
+        }
         if (defaultRequirementMode == null) {
             throw new IllegalArgumentException("Default requirement mode is required.");
         }
@@ -50,13 +54,17 @@ public record ToolDefinition(
     }
 
     public boolean tracks(Material material, int level) {
-        return trackingType == TrackingType.BLOCKS_BROKEN
+        return trackingType.usesMaterialTargets()
                 && level(level).map(profile -> profile.requirement().accepts(material.name())).orElse(false);
     }
 
     public boolean tracks(EntityType entityType, int level) {
-        return trackingType == TrackingType.MOBS_KILLED
+        return trackingType.usesEntityTargets()
                 && level(level).map(profile -> profile.requirement().accepts(entityType.name())).orElse(false);
+    }
+
+    public boolean tracks(String target, int level) {
+        return level(level).map(profile -> profile.requirement().accepts(target)).orElse(false);
     }
 
     public Set<String> targetNames() {
