@@ -5,4 +5,9 @@ out/
 *.iml
 *.class
 *.jar
+*.db
+*.db-wal
+*.db-shm
+data.yml
+data.yml.pre-sqlite-*.bak
 run/

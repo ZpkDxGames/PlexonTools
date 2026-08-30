@@ -1,39 +1,1300 @@
+# Tool definitions and complete per-level profiles
+#
+# Tool IDs are the keys under tools and may contain lowercase letters, numbers,
+# underscores, or hyphens. display_name and every lore entry support MiniMessage.
+#
+# Root fields:
+#   enabled: include the definition in gameplay/menus
+#   category: ID from categories.yml
+#   display_name: fallback name before level overrides are resolved
+#   base_material: any Bukkit item Material
+#   allowed_worlds: exact Bukkit world names (case-insensitive at runtime)
+#   lore: optional per-tool default; otherwise config.yml tool-lore.template is used
+#
+# tracking.type options:
+#   BLOCKS_BROKEN, MOBS_KILLED, ITEMS_FARMED, FISH_CAUGHT,
+#   DAMAGE_DEALT, BLOCKS_PLACED
+# tracking.mode options:
+#   GENERAL  = one shared amount (`amount` / per-level `requirement`)
+#   SPECIFIC = every target quota must complete (`targets` / `requirements`)
+# Target names depend on the tracker: block/item Material names for block,
+# farming, fishing, and placement trackers; living EntityType names for mob and
+# damage trackers. Names are normalized to uppercase with underscores.
+#
+# Level fields are complete profile states unless marked as inherited:
+#   requirement_mode, requirement, requirements
+#   display_name (inherits), material or material_upgrade (inherits)
+#   enchantments, abilities, item, lore
+# A per-level lore list overrides the tool/global template; use [] for no lore.
+# Progress resets on every level boundary and never carries into the next level.
+#
+# Ability keys:
+#   AUTO_SMELT, AREA_MINE_3X3, EXP_BOOSTER, MOB_POTION_EFFECT, MAGNET
+# AUTO_SMELT / AREA_MINE_3X3 / MAGNET accept `enabled: true|false`.
+# EXP_BOOSTER accepts `multiplier` from 1.0 through 100.0.
+# MOB_POTION_EFFECT accepts:
+#   effect: Bukkit namespaced effect, such as minecraft:haste
+#   level: 1–256
+#   duration_ticks: 1–72000
+#   target: HOLDER | TARGET
+# The legacy list form (`abilities: [AUTO_SMELT, MAGNET]`) is also accepted.
+# Item keys:
+#   glint: AUTO | ON | OFF
+#   custom_model_data: non-negative integer or omit
+# Enchantment keys use Bukkit names (for example EFFICIENCY: 3). Enchantments,
+# abilities, glint, model data, and lore are complete states for that level;
+# display name and material inherit the most recent preceding override.
+# Legacy unbreakable/hide flags remain readable, but 3.5+ protection is permanent.
+#
+# Bundled example: Legendary Pickaxe, complete levels 1–100.
+# Level 100 is terminal, so its requirements are intentionally empty.
+# Material milestones: 1 Wooden, 10 Stone, 25 Iron, 50 Diamond, 75 Netherite.
 tools:
-  magma_breaker:
+  legendary_pickaxe:
     enabled: true
     category: mining
-    display_name: "<gradient:#FF4500:#FFA500><bold>Magma Breaker</bold></gradient>"
-    base_material: IRON_PICKAXE
-    allowed_worlds: [world, world_nether]
+    display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+    base_material: WOODEN_PICKAXE
+    allowed_worlds:
+      - Survival_World
     tracking:
       type: BLOCKS_BROKEN
       mode: SPECIFIC
       targets:
-        STONE: 500
-        DEEPSLATE: 250
-        NETHERRACK: 1000
+        STONE: 250
     levels:
+      # Stage I — Weathered Wood (Levels 1–9)
       1:
         requirement_mode: SPECIFIC
+        requirements:
+          STONE: 250
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      2:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 325
+          COAL_ORE: 16
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 2</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      3:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 400
+          COPPER_ORE: 20
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 3</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      4:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 475
+          COAL_ORE: 24
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 4</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      5:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 550
+          COPPER_ORE: 28
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 5</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      6:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 650
+          IRON_ORE: 16
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 6</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      7:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 750
+          COAL_ORE: 32
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 7</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      8:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 875
+          IRON_ORE: 24
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 8</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      9:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 1000
+          COPPER_ORE: 48
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 9</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      # Stage II — Stonebound (Levels 10–24)
+      # Unlock: Stone material and +10% mining XP.
+      10:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 1000
+          COAL_ORE: 40
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 10</gray>"
+        material_upgrade: STONE_PICKAXE
         enchantments:
           EFFICIENCY: 3
           UNBREAKING: 2
         abilities:
-          - AUTO_SMELT
+          EXP_BOOSTER:
+            multiplier: 1.10
         item:
           glint: AUTO
-      2:
+
+      11:
         requirement_mode: SPECIFIC
         requirements:
-          STONE: 1000
-          DEEPSLATE: 500
-          NETHERRACK: 2000
-        display_name: "<gradient:#FF8C00:#FFD700><bold>Emberforged Breaker</bold></gradient>"
-        material_upgrade: NETHERITE_PICKAXE
+          STONE: 1100
+          COPPER_ORE: 48
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 11</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      12:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 1200
+          IRON_ORE: 32
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 12</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      13:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 1300
+          COAL_ORE: 56
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 13</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      14:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 1400
+          COPPER_ORE: 64
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 14</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      15:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 1250
+          DEEPSLATE_COAL_ORE: 24
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 15</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      16:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 1400
+          DEEPSLATE_COPPER_ORE: 32
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 16</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      17:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 1550
+          DEEPSLATE_IRON_ORE: 28
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 17</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      18:
+        requirement_mode: SPECIFIC
+        requirements:
+          STONE: 1800
+          IRON_ORE: 48
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 18</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      19:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 1750
+          LAPIS_ORE: 20
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 19</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      20:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 1900
+          DEEPSLATE_COAL_ORE: 40
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 20</gray>"
         enchantments:
           EFFICIENCY: 5
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      21:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 2050
+          DEEPSLATE_COPPER_ORE: 48
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 21</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      22:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 2200
+          DEEPSLATE_IRON_ORE: 40
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 22</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      23:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 2350
+          DEEPSLATE_LAPIS_ORE: 28
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 23</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      24:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 2500
+          DEEPSLATE_REDSTONE_ORE: 64
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 24</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      # Stage III — Ironforged (Levels 25–49)
+      # Unlock: Iron material and Fortune I.
+      25:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 2500
+          IRON_ORE: 64
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 25</gray>"
+        material_upgrade: IRON_PICKAXE
+        enchantments:
+          EFFICIENCY: 6
           UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      26:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 2650
+          DEEPSLATE_IRON_ORE: 56
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 26</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      27:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 2800
+          LAPIS_ORE: 40
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 27</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      28:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 2950
+          GOLD_ORE: 32
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 28</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      29:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 3100
+          REDSTONE_ORE: 96
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 29</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      30:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 3250
+          DEEPSLATE_LAPIS_ORE: 48
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 30</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      31:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 3400
+          DEEPSLATE_GOLD_ORE: 40
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 31</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      32:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 3550
+          DEEPSLATE_REDSTONE_ORE: 120
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 32</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      33:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 3700
+          DIAMOND_ORE: 12
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 33</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      34:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 3850
+          EMERALD_ORE: 6
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 34</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      35:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 4000
+          DEEPSLATE_IRON_ORE: 80
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 35</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      36:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 4200
+          DEEPSLATE_LAPIS_ORE: 64
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 36</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      37:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 4400
+          DEEPSLATE_GOLD_ORE: 56
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 37</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      38:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 4600
+          DEEPSLATE_REDSTONE_ORE: 160
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 38</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      39:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 4800
+          DEEPSLATE_DIAMOND_ORE: 16
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 39</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      # Milestone: Auto Smelt and Fortune II.
+      40:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 5000
+          DEEPSLATE_EMERALD_ORE: 8
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 40</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 4
           FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      41:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 5250
+          DEEPSLATE_IRON_ORE: 96
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 41</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      42:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 5500
+          DEEPSLATE_LAPIS_ORE: 80
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 42</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      43:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 5750
+          DEEPSLATE_GOLD_ORE: 72
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 43</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      44:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 6000
+          DEEPSLATE_REDSTONE_ORE: 200
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 44</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      45:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 6250
+          DEEPSLATE_DIAMOND_ORE: 20
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 45</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      46:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 6500
+          DIAMOND_ORE: 24
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 46</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      47:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 6750
+          DEEPSLATE_EMERALD_ORE: 10
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 47</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      48:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 7000
+          AMETHYST_CLUSTER: 48
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 48</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      49:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 7500
+          DEEPSLATE_DIAMOND_ORE: 28
+          DEEPSLATE_EMERALD_ORE: 12
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 49</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      # Stage IV — Diamond Core (Levels 50–74)
+      # Unlock: Diamond material.
+      50:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 7500
+          DEEPSLATE_DIAMOND_ORE: 32
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 50</gray>"
+        material_upgrade: DIAMOND_PICKAXE
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      51:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 7800
+          DEEPSLATE_REDSTONE_ORE: 240
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 51</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      52:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 8100
+          DEEPSLATE_GOLD_ORE: 96
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 52</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      53:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 8400
+          DEEPSLATE_DIAMOND_ORE: 36
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 53</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      54:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 8700
+          DEEPSLATE_EMERALD_ORE: 14
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 54</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      55:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 9000
+          AMETHYST_CLUSTER: 64
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 55</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      56:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 9300
+          DEEPSLATE_DIAMOND_ORE: 40
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 56</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      57:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 9600
+          DEEPSLATE_EMERALD_ORE: 16
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 57</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      58:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 9900
+          DEEPSLATE_DIAMOND_ORE: 44
+          DEEPSLATE_REDSTONE_ORE: 280
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 58</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      59:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 10250
+          DEEPSLATE_DIAMOND_ORE: 48
+          DEEPSLATE_EMERALD_ORE: 20
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 59</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      # Deep-Earth Trials (Levels 60–74)
+      60:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 6000
+          DEEPSLATE_IRON_ORE: 128
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 60</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      61:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 10500
+          DEEPSLATE_REDSTONE_ORE: 320
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 61</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      62:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 6500
+          DEEPSLATE_LAPIS_ORE: 96
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 62</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      63:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 11000
+          DEEPSLATE_GOLD_ORE: 112
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 63</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      64:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 7000
+          DEEPSLATE_DIAMOND_ORE: 48
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 64</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      65:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 11500
+          DEEPSLATE_IRON_ORE: 160
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 65</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      66:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 7500
+          DEEPSLATE_REDSTONE_ORE: 384
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 66</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      67:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 12000
+          DEEPSLATE_EMERALD_ORE: 18
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 67</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      68:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 8000
+          DEEPSLATE_DIAMOND_ORE: 52
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 68</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      69:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 12500
+          AMETHYST_CLUSTER: 96
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 69</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      70:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 8500
+          DEEPSLATE_GOLD_ORE: 160
+          DEEPSLATE_DIAMOND_ORE: 56
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 70</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      71:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 13000
+          DEEPSLATE_REDSTONE_ORE: 448
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 71</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      72:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 9000
+          DEEPSLATE_LAPIS_ORE: 128
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 72</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      73:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 13500
+          DEEPSLATE_DIAMOND_ORE: 60
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 73</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      74:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 9500
+          DEEPSLATE_EMERALD_ORE: 20
+          AMETHYST_CLUSTER: 128
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 74</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      # Stage V — Netherite Ascension (Levels 75–89)
+      # Unlock: Netherite material and 3x3 area mining.
+      75:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 14000
+          DEEPSLATE_DIAMOND_ORE: 64
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 75</gray>"
+        material_upgrade: NETHERITE_PICKAXE
+        enchantments:
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
         abilities:
           AUTO_SMELT:
             enabled: true
@@ -44,163 +1305,517 @@ tools:
         item:
           glint: ON
 
-  hunter_blade:
-    enabled: true
-    category: combat
-    display_name: "<gradient:#E55D87:#5FC3E4><bold>Hunter Blade</bold></gradient>"
-    base_material: IRON_SWORD
-    allowed_worlds: [world]
-    tracking:
-      type: MOBS_KILLED
-      mode: GENERAL
-      amount: 100
-    levels:
-      1:
-        requirement_mode: GENERAL
-        requirement: 100
-        enchantments:
-          SHARPNESS: 2
-          UNBREAKING: 2
-        abilities:
-          MAGNET:
-            enabled: true
-      2:
-        requirement_mode: GENERAL
-        requirement: 250
-        material: DIAMOND_SWORD
-        enchantments:
-          SHARPNESS: 4
-          LOOTING: 2
-          UNBREAKING: 3
-        abilities:
-          MAGNET:
-            enabled: true
-          MOB_POTION_EFFECT:
-            effect: minecraft:speed
-            level: 2
-            duration_ticks: 100
-            target: HOLDER
-
-  harvest_scythe:
-    enabled: true
-    category: farming
-    display_name: "<gradient:#11998E:#38EF7D><bold>Harvest Scythe</bold></gradient>"
-    base_material: GOLDEN_HOE
-    allowed_worlds: [world]
-    tracking:
-      type: ITEMS_FARMED
-      mode: SPECIFIC
-      targets:
-        WHEAT: 250
-        CARROTS: 250
-        POTATOES: 250
-    levels:
-      1:
-        requirement_mode: SPECIFIC
-        enchantments:
-          UNBREAKING: 3
-        abilities:
-          MAGNET:
-            enabled: true
-      2:
-        requirement_mode: GENERAL
-        requirement: 1500
-        material: NETHERITE_HOE
-        enchantments:
-          EFFICIENCY: 5
-          UNBREAKING: 4
-        abilities:
-          MAGNET:
-            enabled: true
-          MOB_POTION_EFFECT:
-            effect: minecraft:haste
-            level: 2
-            duration_ticks: 100
-            target: HOLDER
-
-  deepwater_rod:
-    enabled: true
-    category: utility
-    display_name: "<gradient:#00C6FF:#0072FF><bold>Deepwater Rod</bold></gradient>"
-    base_material: FISHING_ROD
-    allowed_worlds: [world]
-    tracking:
-      type: FISH_CAUGHT
-      mode: GENERAL
-      amount: 75
-    levels:
-      1:
-        requirement_mode: GENERAL
-        requirement: 75
-        enchantments:
-          LURE: 2
-          LUCK_OF_THE_SEA: 2
-        abilities:
-          EXP_BOOSTER:
-            multiplier: 1.5
-      2:
+      76:
         requirement_mode: SPECIFIC
         requirements:
-          COD: 100
-          SALMON: 75
-          PUFFERFISH: 15
+          TUFF: 10000
+          DEEPSLATE_IRON_ORE: 192
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 76</gray>"
         enchantments:
-          LURE: 3
-          LUCK_OF_THE_SEA: 3
-          UNBREAKING: 3
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
         abilities:
-          EXP_BOOSTER:
-            multiplier: 2.0
-          MAGNET:
+          AUTO_SMELT:
             enabled: true
-
-  titan_axe:
-    enabled: true
-    category: combat
-    display_name: "<gradient:#F7971E:#FFD200><bold>Titan Axe</bold></gradient>"
-    base_material: DIAMOND_AXE
-    allowed_worlds: [world]
-    tracking:
-      type: DAMAGE_DEALT
-      mode: GENERAL
-      amount: 1000
-    levels:
-      1:
-        requirement_mode: GENERAL
-        requirement: 1000
-        enchantments:
-          SHARPNESS: 3
-          UNBREAKING: 2
-        abilities:
-          MOB_POTION_EFFECT:
-            effect: minecraft:slowness
-            level: 1
-            duration_ticks: 60
-            target: TARGET
-
-  architect_bricks:
-    enabled: true
-    category: utility
-    display_name: "<gradient:#FDC830:#F37335><bold>Architect Bricks</bold></gradient>"
-    base_material: BRICKS
-    allowed_worlds: [world]
-    tracking:
-      type: BLOCKS_PLACED
-      mode: SPECIFIC
-      targets:
-        BRICKS: 500
-    levels:
-      1:
-        requirement_mode: SPECIFIC
-        enchantments: {}
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.75
         item:
           glint: ON
-      2:
+
+      77:
         requirement_mode: SPECIFIC
         requirements:
-          STONE_BRICKS: 1000
-        display_name: "<gradient:#FFE259:#FFA751><bold>Master Architect Bricks</bold></gradient>"
-        material: STONE_BRICKS
-        enchantments: {}
+          DEEPSLATE: 14500
+          DEEPSLATE_REDSTONE_ORE: 512
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 77</gray>"
+        enchantments:
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.75
+        item:
+          glint: ON
+
+      78:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 10500
+          DEEPSLATE_GOLD_ORE: 192
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 78</gray>"
+        enchantments:
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.75
+        item:
+          glint: ON
+
+      79:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 15000
+          DEEPSLATE_DIAMOND_ORE: 68
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 79</gray>"
+        enchantments:
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.75
+        item:
+          glint: ON
+
+      80:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 11000
+          DEEPSLATE_EMERALD_ORE: 22
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 80</gray>"
+        enchantments:
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: ON
+
+      81:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 15500
+          DEEPSLATE_LAPIS_ORE: 160
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 81</gray>"
+        enchantments:
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: ON
+
+      82:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 11500
+          AMETHYST_CLUSTER: 160
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 82</gray>"
+        enchantments:
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: ON
+
+      83:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 16000
+          DEEPSLATE_DIAMOND_ORE: 72
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 83</gray>"
+        enchantments:
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: ON
+
+      84:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 12000
+          OBSIDIAN: 32
+          DEEPSLATE_EMERALD_ORE: 24
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 84</gray>"
+        enchantments:
+          EFFICIENCY: 11
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: ON
+
+      # Relic Trials (Levels 85–89)
+      85:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 16500
+          DEEPSLATE_REDSTONE_ORE: 576
+          DEEPSLATE_DIAMOND_ORE: 76
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 85</gray>"
+        enchantments:
+          EFFICIENCY: 12
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: ON
+
+      86:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 12500
+          DEEPSLATE_GOLD_ORE: 224
+          AMETHYST_CLUSTER: 192
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 86</gray>"
+        enchantments:
+          EFFICIENCY: 12
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: ON
+
+      87:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 17000
+          DEEPSLATE_DIAMOND_ORE: 80
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 87</gray>"
+        enchantments:
+          EFFICIENCY: 12
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: ON
+
+      88:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 13000
+          DEEPSLATE_EMERALD_ORE: 26
+          OBSIDIAN: 40
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 88</gray>"
+        enchantments:
+          EFFICIENCY: 12
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: ON
+
+      89:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 17500
+          DEEPSLATE_DIAMOND_ORE: 84
+          AMETHYST_CLUSTER: 224
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 89</gray>"
+        enchantments:
+          EFFICIENCY: 12
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: ON
+
+      # Stage VI — Legendary Mastery (Levels 90–99)
+      90:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 14000
+          DEEPSLATE_DIAMOND_ORE: 88
+          DEEPSLATE_EMERALD_ORE: 28
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 90</gray>"
+        enchantments:
+          EFFICIENCY: 13
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.00
+        item:
+          glint: ON
+
+      91:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 18000
+          DEEPSLATE_REDSTONE_ORE: 640
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 91</gray>"
+        enchantments:
+          EFFICIENCY: 13
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.00
+        item:
+          glint: ON
+
+      92:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 15000
+          DEEPSLATE_GOLD_ORE: 256
+          OBSIDIAN: 48
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 92</gray>"
+        enchantments:
+          EFFICIENCY: 13
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.00
+        item:
+          glint: ON
+
+      93:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 19000
+          DEEPSLATE_DIAMOND_ORE: 96
+          DEEPSLATE_EMERALD_ORE: 30
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 93</gray>"
+        enchantments:
+          EFFICIENCY: 13
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.00
+        item:
+          glint: ON
+
+      94:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 16000
+          AMETHYST_CLUSTER: 256
+          DEEPSLATE_LAPIS_ORE: 192
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 94</gray>"
+        enchantments:
+          EFFICIENCY: 13
+          UNBREAKING: 7
+          FORTUNE: 5
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.00
+        item:
+          glint: ON
+
+      95:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 20000
+          DEEPSLATE_DIAMOND_ORE: 104
+          OBSIDIAN: 56
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 95</gray>"
+        enchantments:
+          EFFICIENCY: 14
+          UNBREAKING: 8
+          FORTUNE: 6
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.25
+        item:
+          glint: ON
+
+      96:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 17500
+          DEEPSLATE_EMERALD_ORE: 32
+          DEEPSLATE_GOLD_ORE: 288
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 96</gray>"
+        enchantments:
+          EFFICIENCY: 14
+          UNBREAKING: 8
+          FORTUNE: 6
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.25
+        item:
+          glint: ON
+
+      97:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 22000
+          DEEPSLATE_DIAMOND_ORE: 112
+          DEEPSLATE_REDSTONE_ORE: 768
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 97</gray>"
+        enchantments:
+          EFFICIENCY: 14
+          UNBREAKING: 8
+          FORTUNE: 6
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.25
+        item:
+          glint: ON
+
+      98:
+        requirement_mode: SPECIFIC
+        requirements:
+          TUFF: 20000
+          DEEPSLATE_DIAMOND_ORE: 120
+          OBSIDIAN: 64
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 98</gray>"
+        enchantments:
+          EFFICIENCY: 14
+          UNBREAKING: 8
+          FORTUNE: 6
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.25
+        item:
+          glint: ON
+
+      99:
+        requirement_mode: SPECIFIC
+        requirements:
+          DEEPSLATE: 25000
+          TUFF: 25000
+          DEEPSLATE_DIAMOND_ORE: 128
+        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 99</gray>"
+        enchantments:
+          EFFICIENCY: 14
+          UNBREAKING: 8
+          FORTUNE: 6
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.25
+        item:
+          glint: ON
+
+      # Final form — no further upgrade requirements.
+      100:
+        requirement_mode: SPECIFIC
+        requirements: {}
+        display_name: "<!italic><gradient:#FFF176:#FFB300:#FF6F00><bold>✦ LEGENDARY PICKAXE ✦</bold></gradient> <gold>[MAX]</gold>"
+        enchantments:
+          EFFICIENCY: 15
+          UNBREAKING: 10
+          FORTUNE: 6
+        abilities:
+          AUTO_SMELT:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+          EXP_BOOSTER:
+            multiplier: 2.50
         item:
           glint: ON

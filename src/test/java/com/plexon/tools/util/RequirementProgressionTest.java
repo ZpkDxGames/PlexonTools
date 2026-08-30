@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class RequirementProgressionTest {
     @Test
-    void generalModeCarriesOverflowAcrossLevels() {
+    void generalModeDiscardsOverflowAtLevelBoundary() {
         TreeMap<Integer, LevelRequirement> requirements = new TreeMap<>();
         requirements.put(1, LevelRequirement.general(100L));
         requirements.put(2, LevelRequirement.general(200L));
@@ -19,10 +19,10 @@ class RequirementProgressionTest {
         RequirementProgression.Result result = RequirementProgression.advance(
                 1, 90L, Map.of(), "STONE", 230L, requirements);
 
-        assertEquals(3, result.level());
-        assertEquals(20L, result.progress());
+        assertEquals(2, result.level());
+        assertEquals(0L, result.progress());
         assertEquals(Map.of(), result.targetProgress());
-        assertEquals(2, result.levelsGained());
+        assertEquals(1, result.levelsGained());
     }
 
     @Test
@@ -59,7 +59,7 @@ class RequirementProgressionTest {
     }
 
     @Test
-    void perTargetOverflowCarriesIntoNextSpecificLevel() {
+    void perTargetOverflowIsDiscardedAtLevelBoundary() {
         TreeMap<Integer, LevelRequirement> requirements = new TreeMap<>();
         requirements.put(1, LevelRequirement.specific(Map.of("STONE", 2L, "DIRT", 1L)));
         requirements.put(2, LevelRequirement.specific(Map.of("STONE", 1L, "DIRT", 3L)));
@@ -68,13 +68,13 @@ class RequirementProgressionTest {
                 1, 3L, Map.of("STONE", 3L), "DIRT", 2L, requirements);
 
         assertEquals(2, result.level());
-        assertEquals(2L, result.progress());
-        assertEquals(Map.of("STONE", 1L, "DIRT", 1L), result.targetProgress());
+        assertEquals(0L, result.progress());
+        assertEquals(Map.of(), result.targetProgress());
         assertEquals(1, result.levelsGained());
     }
 
     @Test
-    void generalOverflowCanSatisfyFollowingSpecificQuota() {
+    void generalOverflowCannotSatisfyFollowingSpecificQuota() {
         TreeMap<Integer, LevelRequirement> requirements = new TreeMap<>();
         requirements.put(1, LevelRequirement.general(2L));
         requirements.put(2, LevelRequirement.specific(Map.of("STONE", 1L)));
@@ -83,8 +83,36 @@ class RequirementProgressionTest {
         RequirementProgression.Result result = RequirementProgression.advance(
                 1, 1L, Map.of(), "STONE", 3L, requirements);
 
-        assertEquals(3, result.level());
-        assertEquals(1L, result.progress());
-        assertEquals(2, result.levelsGained());
+        assertEquals(2, result.level());
+        assertEquals(0L, result.progress());
+        assertEquals(Map.of(), result.targetProgress());
+        assertEquals(1, result.levelsGained());
+    }
+
+    @Test
+    void repeatedStoneQuotaMustBeCompletedOncePerLevel() {
+        TreeMap<Integer, LevelRequirement> requirements = new TreeMap<>();
+        requirements.put(1, LevelRequirement.specific(Map.of("STONE", 500L)));
+        requirements.put(2, LevelRequirement.specific(Map.of("STONE", 500L)));
+        requirements.put(3, LevelRequirement.specific(Map.of("STONE", 500L)));
+
+        RequirementProgression.Result firstLevel = RequirementProgression.advance(
+                1, 0L, Map.of(), "STONE", 500L, requirements);
+        assertEquals(2, firstLevel.level());
+        assertEquals(0L, firstLevel.progress());
+        assertEquals(Map.of(), firstLevel.targetProgress());
+
+        RequirementProgression.Result almostSecondLevel = RequirementProgression.advance(
+                firstLevel.level(), firstLevel.progress(), firstLevel.targetProgress(),
+                "STONE", 499L, requirements);
+        assertEquals(2, almostSecondLevel.level());
+        assertEquals(Map.of("STONE", 499L), almostSecondLevel.targetProgress());
+
+        RequirementProgression.Result secondLevel = RequirementProgression.advance(
+                almostSecondLevel.level(), almostSecondLevel.progress(),
+                almostSecondLevel.targetProgress(), "STONE", 1L, requirements);
+        assertEquals(3, secondLevel.level());
+        assertEquals(0L, secondLevel.progress());
+        assertEquals(Map.of(), secondLevel.targetProgress());
     }
 }

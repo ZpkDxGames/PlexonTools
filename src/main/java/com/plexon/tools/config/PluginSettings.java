@@ -3,6 +3,7 @@ package com.plexon.tools.config;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class PluginSettings {
@@ -12,7 +13,13 @@ public final class PluginSettings {
     private boolean cancelInteractions;
     private boolean cancelAttacks;
     private long warningCooldownMillis;
-    private long registryAutosaveTicks;
+    private String databaseFile;
+    private long databaseFlushIntervalTicks;
+    private int databaseWriteBatchSize;
+    private int databaseMaxPendingWrites;
+    private int databaseBusyTimeoutMillis;
+    private int databaseWalAutoCheckpointPages;
+    private boolean databaseIntegrityCheck;
     private int progressBarWidth;
     private String progressFilledSymbol;
     private String progressEmptySymbol;
@@ -25,8 +32,10 @@ public final class PluginSettings {
     private String adminTitle;
     private String levelUpSound;
     private boolean levelUpParticles;
+    private boolean progressActionBar;
     private List<String> defaultLore;
-    private String requirementLine;
+    private String generalRequirementLine;
+    private String specificRequirementLine;
     private String maximumRequirementLine;
     private boolean worldMenuAutoShowAllowedTools;
     private boolean worldMenuTogglePanelEnabled;
@@ -43,26 +52,38 @@ public final class PluginSettings {
         cancelAttacks = config.getBoolean("settings.cancel-unauthorized-attacks", true);
         warningCooldownMillis = Math.max(250L,
                 config.getLong("settings.unauthorized-warning-cooldown-ms", 1500L));
-        registryAutosaveTicks = Math.max(200L,
-                config.getLong("settings.registry-autosave-ticks", 6000L));
+
+        databaseFile = databaseFile(config.getString("storage.database-file", "plexontools.db"));
+        databaseFlushIntervalTicks = Math.max(1L, Math.min(72000L,
+                config.getLong("storage.flush-interval-ticks", 20L)));
+        databaseWriteBatchSize = Math.max(1, Math.min(4096,
+                config.getInt("storage.write-batch-size", 256)));
+        databaseMaxPendingWrites = Math.max(databaseWriteBatchSize, Math.min(100000,
+                config.getInt("storage.max-pending-writes", 8192)));
+        databaseBusyTimeoutMillis = Math.max(250, Math.min(60000,
+                config.getInt("storage.busy-timeout-ms", 5000)));
+        databaseWalAutoCheckpointPages = Math.max(1, Math.min(100000,
+                config.getInt("storage.wal-autocheckpoint-pages", 1000)));
+        databaseIntegrityCheck = config.getBoolean("storage.integrity-check-on-startup", true);
 
         progressBarWidth = Math.max(5, Math.min(50, config.getInt("progress-bar.width", 20)));
-        progressFilledSymbol = config.getString("progress-bar.filled-symbol", "|");
-        progressEmptySymbol = config.getString("progress-bar.empty-symbol", "|");
+        progressFilledSymbol = config.getString("progress-bar.filled-symbol", "■");
+        progressEmptySymbol = config.getString("progress-bar.empty-symbol", "■");
         progressFilledFormat = config.getString("progress-bar.filled-format",
-                "<gradient:#41E296:#A8FF78>");
-        progressEmptyFormat = config.getString("progress-bar.empty-format", "<dark_gray>");
+                "<!italic><gradient:#FFF59D:#FFB300:#FF6F00>");
+        progressEmptyFormat = config.getString("progress-bar.empty-format", "<!italic><#303030>");
 
         showcaseTitle = config.getString("showcase.title",
-                "<gradient:#4158D0:#C850C0><bold>PlexonTools</bold></gradient>");
+                "<gradient:#FFF176:#FF8F00><bold>Tool Armory</bold></gradient>");
         categoryTitle = config.getString("showcase.category-title",
-                "<gradient:#4158D0:#C850C0><bold>Tool Categories</bold></gradient>");
+                "<gradient:#FFF176:#FF8F00><bold>Tool Categories</bold></gradient>");
         showLockedTools = config.getBoolean("showcase.show-world-locked-tools", true);
         showcaseRows = Math.max(3, Math.min(6, config.getInt("showcase.rows", 6)));
         adminTitle = config.getString("admin-gui.title",
-                "<gradient:#4158D0:#C850C0><bold>PlexonTools Editor</bold></gradient>");
+                "<gradient:#FFF176:#FF8F00><bold>Tool Manager</bold></gradient>");
         levelUpSound = config.getString("effects.level-up-sound", "ENTITY_PLAYER_LEVELUP");
         levelUpParticles = config.getBoolean("effects.level-up-particles", true);
+        progressActionBar = config.getBoolean("effects.progress-action-bar", true);
         worldMenuAutoShowAllowedTools = config.getBoolean(
                 "world-menu.auto-show-allowed-tools", true);
         worldMenuTogglePanelEnabled = config.getBoolean(
@@ -71,55 +92,34 @@ public final class PluginSettings {
                 "world-menu.tool-card.glint-when-active", true);
         worldMenuToolCard = menuItem(config, "world-menu.tool-card", "TOOL", true,
                 "{tool}", List.of(
-                        "<dark_gray>{tool_id}</dark_gray>",
+                        "<dark_gray>Bound mining relic</dark_gray>",
                         "",
-                        "<gray>Level:</gray> <yellow>{level}/{max_level}</yellow>",
-                        "<gray>Progress:</gray> <aqua>{current}</aqua><dark_gray>/</dark_gray><green>{required}</green>",
-                        "<gray>Tracks:</gray> <white>{tracking}</white>",
+                        "<#FFB300>⛏</#FFB300>  <gray>Level</gray>  <white><bold>{level}</bold></white><dark_gray> / {max_level}</dark_gray>",
+                        "<#FF8F00>◆</#FF8F00>  <gray>Objective</gray>  <white>{tracking}</white>",
+                        "<#FFD54F>⚡</#FFD54F>  <gray>Progress</gray>  <white>{current}</white><dark_gray> / </dark_gray><#8BC34A>{required}</#8BC34A>",
                         "",
-                        "<gray>Status:</gray> {status}",
+                        "<gray>Status</gray>  {status}",
                         "{toggle_hint}"
                 ));
         worldMenuActivePanel = menuItem(config, "world-menu.toggle-panel.active",
                 "LIME_STAINED_GLASS_PANE", false,
-                "<green><bold>✔ ENABLED</bold></green>", List.of(
-                        "<gray>{tool} is active in</gray> <white>{world}</white><gray>.</gray>",
-                        "<yellow>Click to deactivate and store it.</yellow>"
+                "<gradient:#43A047:#9CCC65><bold>✔ TOOL ACTIVE</bold></gradient>", List.of(
+                        "<gray>Equipped for</gray>  <white>{world}</white>",
+                        "",
+                        "<#FFD54F>Click to store it safely.</#FFD54F>"
                 ));
         worldMenuInactivePanel = menuItem(config, "world-menu.toggle-panel.inactive",
                 "RED_STAINED_GLASS_PANE", false,
-                "<red><bold>✘ DISABLED</bold></red>", List.of(
-                        "<gray>{tool} is stored for</gray> <white>{world}</white><gray>.</gray>",
-                        "<green>Click to activate it.</green>"
+                "<gradient:#E53935:#FF7043><bold>✘ TOOL STORED</bold></gradient>", List.of(
+                        "<gray>Stored for</gray>  <white>{world}</white>",
+                        "",
+                        "<#9CCC65>Click to equip it.</#9CCC65>"
                 ));
-        requirementLine = config.getString("default_lore_format.stats.requirement_line",
-                "<dark_gray> •</dark_gray> <white>{requirement_goal}</white> "
-                        + "<dark_gray>—</dark_gray> <aqua>{requirement_current}</aqua>"
-                        + "<dark_gray>/</dark_gray><green>{requirement_required}</green>");
-        maximumRequirementLine = config.getString(
-                "default_lore_format.stats.maximum_requirement_line",
-                "<dark_gray> •</dark_gray> <green>Maximum level reached</green>");
-        defaultLore = modernDefaultLore(config);
-        if (defaultLore.isEmpty()) {
-            defaultLore = config.getStringList("default-lore-format.lines");
-        }
-        if (defaultLore.isEmpty()) {
-            defaultLore = List.of(
-                    "<gradient:#4158D0:#C850C0><bold>⚡ PLEXON TOOL ⚡</bold></gradient>",
-                    "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>",
-                    "<gray>Level: <gradient:#FF9A8B:#FF6A88><bold>Lvl {level}</bold></gradient>",
-                    "<gray>Objectives:</gray>",
-                    "{requirement_lines}",
-                    "<gray>Progress: <gradient:#00DBDE:#FC00FF>{current}</gradient><dark_gray>/</dark_gray><green>{required}</green> <gray>({percentage}%)</gray>",
-                    "{progress_bar}",
-                    "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>",
-                    "<dark_gray>Category: <gradient:#A8EDEA:#FED6E3>{category_name}</gradient>",
-                    "<dark_gray>Authorized World: <gradient:#FEE140:#FA709A>{bound_world}</gradient>",
-                    "<dark_gray>Owner: <white>{owner_name}</white>"
-            );
-        } else {
-            defaultLore = List.copyOf(defaultLore);
-        }
+        LoreSettings lore = loreSettings(config);
+        defaultLore = lore.template();
+        generalRequirementLine = lore.generalRequirementLine();
+        specificRequirementLine = lore.specificRequirementLine();
+        maximumRequirementLine = lore.maximumRequirementLine();
     }
 
     public boolean enforceBoundWorld() { return enforceBoundWorld; }
@@ -128,7 +128,13 @@ public final class PluginSettings {
     public boolean cancelInteractions() { return cancelInteractions; }
     public boolean cancelAttacks() { return cancelAttacks; }
     public long warningCooldownMillis() { return warningCooldownMillis; }
-    public long registryAutosaveTicks() { return registryAutosaveTicks; }
+    public String databaseFile() { return databaseFile; }
+    public long databaseFlushIntervalTicks() { return databaseFlushIntervalTicks; }
+    public int databaseWriteBatchSize() { return databaseWriteBatchSize; }
+    public int databaseMaxPendingWrites() { return databaseMaxPendingWrites; }
+    public int databaseBusyTimeoutMillis() { return databaseBusyTimeoutMillis; }
+    public int databaseWalAutoCheckpointPages() { return databaseWalAutoCheckpointPages; }
+    public boolean databaseIntegrityCheck() { return databaseIntegrityCheck; }
     public int progressBarWidth() { return progressBarWidth; }
     public String progressFilledSymbol() { return progressFilledSymbol; }
     public String progressEmptySymbol() { return progressEmptySymbol; }
@@ -141,8 +147,10 @@ public final class PluginSettings {
     public String adminTitle() { return adminTitle; }
     public String levelUpSound() { return levelUpSound; }
     public boolean levelUpParticles() { return levelUpParticles; }
+    public boolean progressActionBar() { return progressActionBar; }
     public List<String> defaultLore() { return defaultLore; }
-    public String requirementLine() { return requirementLine; }
+    public String generalRequirementLine() { return generalRequirementLine; }
+    public String specificRequirementLine() { return specificRequirementLine; }
     public String maximumRequirementLine() { return maximumRequirementLine; }
     public boolean worldMenuAutoShowAllowedTools() { return worldMenuAutoShowAllowedTools; }
     public boolean worldMenuTogglePanelEnabled() { return worldMenuTogglePanelEnabled; }
@@ -160,7 +168,7 @@ public final class PluginSettings {
                 config.getString("default_lore_format.divider_top", ""),
                 config.getString("default_lore_format.stats.level", ""),
                 config.getString("default_lore_format.stats.objective_header",
-                        "<gray>Objectives:</gray>"),
+                        "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>UPGRADE OBJECTIVES</bold></gradient>"),
                 "{requirement_lines}",
                 config.getString("default_lore_format.stats.progress_text", ""),
                 config.getString("default_lore_format.stats.progress_bar", ""),
@@ -169,6 +177,89 @@ public final class PluginSettings {
                 config.getString("default_lore_format.footer.bound_world", ""),
                 config.getString("default_lore_format.footer.owner", "")
         ).stream().filter(line -> !line.isEmpty()).toList();
+    }
+
+    static LoreSettings loreSettings(FileConfiguration config) {
+        String legacyRequirementLine = config.getString(
+                "default_lore_format.stats.requirement_line",
+                "<!italic><dark_gray>│</dark_gray>  <#FFB300>◆</#FFB300>  "
+                        + "<gray>{requirement_goal}</gray>  <dark_gray>•</dark_gray>  "
+                        + "<white>{requirement_current}</white><dark_gray>/</dark_gray>"
+                        + "<#AEEA00>{requirement_required}</#AEEA00>");
+        String generalLine = config.getString(
+                "tool-lore.requirements.general-line", legacyRequirementLine);
+        String specificLine = config.getString(
+                "tool-lore.requirements.specific-line", legacyRequirementLine);
+        String maximumLine = config.getString("tool-lore.requirements.maximum-line",
+                config.getString("default_lore_format.stats.maximum_requirement_line",
+                        "<!italic><dark_gray>│</dark_gray>  <#AEEA00>✦</#AEEA00>  "
+                                + "<gradient:#8BC34A:#DCEDC8><bold>"
+                                + "FULLY MASTERED</bold></gradient>"));
+
+        boolean enabled = config.getBoolean("tool-lore.enabled", true);
+        boolean templateConfigured = config.contains("tool-lore.template");
+        if (templateConfigured && !config.isList("tool-lore.template")) {
+            throw new IllegalArgumentException("tool-lore.template must be a YAML list.");
+        }
+        List<String> template;
+        if (!enabled) {
+            template = List.of();
+        } else if (templateConfigured) {
+            template = stringList(config, "tool-lore.template");
+        } else {
+            template = modernDefaultLore(config);
+        }
+        if (enabled && template.isEmpty()) {
+            template = config.getStringList("default-lore-format.lines");
+        }
+        if (enabled && template.isEmpty()) {
+            template = List.of(
+                    "<!italic><gradient:#FFF59D:#FFB300><bold>✦  LEGENDARY MINING RELIC  ✦</bold></gradient>",
+                    "<!italic><dark_gray>┌</dark_gray><gradient:#FFF59D:#FF8F00>──────────────────────</gradient><dark_gray>┐</dark_gray>",
+                    "<!italic><dark_gray>│</dark_gray>  <#FFB300>⛏</#FFB300>  <gray>LEVEL</gray>  <white><bold>{level}</bold></white><dark_gray>/</dark_gray><gray>{max_level}</gray>",
+                    "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>UPGRADE OBJECTIVES</bold></gradient>",
+                    "{requirement_lines}",
+                    "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>LEVEL MASTERY</bold></gradient>  <dark_gray>•</dark_gray>  <white>{percentage}%</white>",
+                    "<!italic><dark_gray>│</dark_gray>  {progress_bar}",
+                    "<!italic><dark_gray>└</dark_gray><gradient:#FF8F00:#FFF59D>──────────────────────</gradient><dark_gray>┘</dark_gray>",
+                    "<!italic><#FFD54F>👤</#FFD54F>  <dark_gray>SOULBOUND</dark_gray>  <#FFB300>•</#FFB300>  <white>{owner_name}</white>"
+            );
+        }
+        return new LoreSettings(List.copyOf(template), generalLine, specificLine, maximumLine);
+    }
+
+    private static List<String> stringList(FileConfiguration config, String path) {
+        List<?> raw = config.getList(path);
+        if (raw == null) {
+            throw new IllegalArgumentException(path + " must be a YAML list.");
+        }
+        List<String> values = new ArrayList<>(raw.size());
+        for (Object value : raw) {
+            if (!(value instanceof String text)) {
+                throw new IllegalArgumentException(path + " may contain only text lines.");
+            }
+            values.add(text);
+        }
+        return List.copyOf(values);
+    }
+
+    record LoreSettings(
+            List<String> template,
+            String generalRequirementLine,
+            String specificRequirementLine,
+            String maximumRequirementLine
+    ) {
+    }
+
+    private static String databaseFile(String configured) {
+        String name = configured == null ? "" : configured.trim();
+        if (name.isBlank() || name.contains("/") || name.contains("\\")
+                || name.equals(".") || name.equals("..")
+                || !name.toLowerCase(java.util.Locale.ROOT).endsWith(".db")) {
+            throw new IllegalArgumentException(
+                    "storage.database-file must be a simple .db filename inside the plugin folder.");
+        }
+        return name;
     }
 
     private static MenuItemTemplate menuItem(

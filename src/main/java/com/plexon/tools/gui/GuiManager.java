@@ -30,7 +30,9 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -667,6 +669,9 @@ public final class GuiManager implements Listener {
                 "<aqua><bold>Level-up Sound</bold></aqua>",
                 "<white>" + messages.plain(settings.levelUpSound()) + "</white>", "",
                 "<gray>Click to enter a Bukkit sound key.</gray>"));
+        inventory.setItem(18, toggleButton("global-toggle", "effects.progress-action-bar",
+                Material.EXPERIENCE_BOTTLE, "Progress Action Bar",
+                settings.progressActionBar()));
         inventory.setItem(22, button("admin-dashboard", "", Material.ARROW,
                 "<yellow><bold>Dashboard</bold></yellow>", "<gray>Return to the admin dashboard.</gray>"));
         player.openInventory(inventory);
@@ -789,12 +794,11 @@ public final class GuiManager implements Listener {
         int offset = page * GRID_SLOTS.length;
         for (int index = 0; index < GRID_SLOTS.length && offset + index < levels.size(); index++) {
             ToolLevel level = levels.get(offset + index);
-            long cumulative = cumulativeRequirement(tool, level.number());
             inventory.setItem(GRID_SLOTS[index], button("edit-level", Integer.toString(level.number()), level.material(),
                     "<gradient:#41E296:#A8FF78><bold>Level " + level.number() + "</bold></gradient>",
                     level.displayName(),
                     "<dark_gray>" + (level.displayNameOverride() ? "Custom name" : "Inherited name") + "</dark_gray>", "",
-                    "<gray>Progress before level:</gray> <white>" + cumulative + "</white>",
+                    "<gray>Progress starts at:</gray> <white>0</white> <dark_gray>(resets per level)</dark_gray>",
                     "<gray>Requirement:</gray> <white>" + requirementSummary(level.requirement()) + "</white>",
                     "<gray>Enchantments:</gray> <white>" + formatEnchantments(level.enchantments()) + "</white>",
                     "<gray>Material:</gray> <white>" + level.material().name() + "</white>",
@@ -836,7 +840,7 @@ public final class GuiManager implements Listener {
                 "<yellow><bold>Requirement engine</bold></yellow>",
                 "<gray>Mode:</gray> <white>" + level.requirement().mode().displayName() + "</white>",
                 "<gray>Requirement:</gray> <white>" + requirementSummary(level.requirement()) + "</white>",
-                "<gray>Cumulative before this level:</gray> <white>" + cumulativeRequirement(tool, level.number()) + "</white>", "",
+                "<gray>Level boundary:</gray> <green>progress resets to zero</green>", "",
                 "<gray>Configure mode, exact amounts, step</gray>",
                 "<gray>controls, target search, and quotas.</gray>"));
         inventory.setItem(13, button("level-enchantments", tool.id(), Material.ENCHANTED_BOOK,
@@ -1218,12 +1222,13 @@ public final class GuiManager implements Listener {
         player.openInventory(inventory);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onClick(InventoryClickEvent event) {
         if (!(event.getView().getTopInventory().getHolder() instanceof PlexonGuiHolder holder)) {
             return;
         }
         event.setCancelled(true);
+        event.setResult(Event.Result.DENY);
         if (!(event.getWhoClicked() instanceof Player player)
                 || event.getRawSlot() < 0
                 || event.getRawSlot() >= event.getView().getTopInventory().getSize()) {
@@ -1249,7 +1254,8 @@ public final class GuiManager implements Listener {
             case "showcase-page" -> {
                 Player subject = showcaseSubject(holder, player);
                 if (subject != null) {
-                    openShowcase(player, subject, holder.categoryId(), parseInt(value, 0));
+                    openNextTick(player, () -> openShowcase(
+                            player, subject, holder.categoryId(), parseInt(value, 0)));
                 }
             }
             case "showcase-category" -> {
@@ -1272,9 +1278,11 @@ public final class GuiManager implements Listener {
             }
             case "admin-dashboard" -> openAdminDashboard(player);
             case "admin-list" -> openAdminList(player, 0);
-            case "admin-page" -> openAdminList(player, parseInt(value, 0));
+            case "admin-page" -> openNextTick(player,
+                    () -> openAdminList(player, parseInt(value, 0)));
             case "world-menus" -> openWorldMenuManager(player, 0);
-            case "world-menus-page" -> openWorldMenuManager(player, parseInt(value, 0));
+            case "world-menus-page" -> openNextTick(player,
+                    () -> openWorldMenuManager(player, parseInt(value, 0)));
             case "world-menu-editor" -> openWorldMenuEditor(player, value);
             case "create-world-menu" -> promptCreateWorldMenu(player);
             case "world-menu-title" -> promptWorldMenuTitle(player, value);
@@ -1282,8 +1290,8 @@ public final class GuiManager implements Listener {
             case "world-menu-filler" -> setWorldMenuFiller(player, value, event);
             case "world-menu-filler-name" -> promptWorldMenuFillerName(player, value);
             case "world-menu-tools" -> openWorldMenuTools(player, value, 0);
-            case "world-menu-tools-page" -> openWorldMenuTools(
-                    player, holder.context(), parseInt(value, 0));
+            case "world-menu-tools-page" -> openNextTick(player,
+                    () -> openWorldMenuTools(player, holder.context(), parseInt(value, 0)));
             case "world-menu-tool" -> editWorldMenuTool(player, holder.context(), value, event);
             case "world-menu-preview" -> openWorldToolMenu(player, player, value);
             case "world-menu-style" -> openWorldMenuStyle(player);
@@ -1292,7 +1300,8 @@ public final class GuiManager implements Listener {
             case "menu-style-name" -> promptWorldMenuStyleName(player, value);
             case "menu-style-lore" -> promptWorldMenuStyleLore(player, value);
             case "categories" -> openCategoryManager(player, 0);
-            case "categories-page" -> openCategoryManager(player, parseInt(value, 0));
+            case "categories-page" -> openNextTick(player,
+                    () -> openCategoryManager(player, parseInt(value, 0)));
             case "category-editor" -> openCategoryEditor(player, value);
             case "create-category" -> createCategory(player);
             case "category-name" -> promptCategoryName(player, value);
@@ -1318,7 +1327,8 @@ public final class GuiManager implements Listener {
             case "tracking-targets" -> promptTargets(player, value);
             case "requirements" -> openRequirement(player, value, 1);
             case "levels" -> openLevels(player, value, 0);
-            case "levels-page" -> openLevels(player, holder.toolId(), parseInt(value, 0));
+            case "levels-page" -> openNextTick(player,
+                    () -> openLevels(player, holder.toolId(), parseInt(value, 0)));
             case "give-self" -> giveSelf(player, value);
             case "delete" -> deleteTool(player, value, event);
             case "toggle-world" -> change(player, holder.toolId(), "allowed worlds",
@@ -1338,8 +1348,8 @@ public final class GuiManager implements Listener {
                     player, holder.toolId(), holder.level(), false, null);
             case "requirement-targets" -> openTargetSelector(
                     player, holder.toolId(), holder.level(), 0);
-            case "target-page" -> openTargetSelector(
-                    player, holder.toolId(), holder.level(), parseInt(value, 0));
+            case "target-page" -> openNextTick(player, () -> openTargetSelector(
+                    player, holder.toolId(), holder.level(), parseInt(value, 0)));
             case "target-search" -> promptTargetSearch(
                     player, holder.toolId(), holder.level());
             case "target-clear-search" -> {
@@ -1370,11 +1380,13 @@ public final class GuiManager implements Listener {
             case "move-level-up" -> moveLevel(player, holder.toolId(), holder.level(), -1);
             case "move-level-down" -> moveLevel(player, holder.toolId(), holder.level(), 1);
             case "remove-level" -> removeLevel(player, holder.toolId(), holder.level(), event);
-            case "enchantments-page" -> openEnchantments(player, holder.toolId(), holder.level(), parseInt(value, 0));
+            case "enchantments-page" -> openNextTick(player, () -> openEnchantments(
+                    player, holder.toolId(), holder.level(), parseInt(value, 0)));
             case "adjust-enchantment" -> adjustEnchantment(player, holder.toolId(), holder.level(), value, event);
             case "enchantments-bulk" -> promptEnchantments(player, holder.toolId(), holder.level());
             case "clear-enchantments" -> clearEnchantments(player, holder.toolId(), holder.level(), event);
-            case "lore-page" -> openLore(player, holder.toolId(), holder.level(), parseInt(value, 0));
+            case "lore-page" -> openNextTick(player, () -> openLore(
+                    player, holder.toolId(), holder.level(), parseInt(value, 0)));
             case "lore-line" -> editLoreLine(player, holder.toolId(), holder.level(), parseInt(value, 0), event);
             case "add-lore-line" -> promptLoreLine(player, holder.toolId(), holder.level(), -1);
             case "lore-bulk" -> promptLore(player, holder.toolId(), holder.level());
@@ -1385,7 +1397,7 @@ public final class GuiManager implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onDrag(InventoryDragEvent event) {
         if (!(event.getView().getTopInventory().getHolder() instanceof PlexonGuiHolder)) {
             return;
@@ -1393,6 +1405,7 @@ public final class GuiManager implements Listener {
         int topSize = event.getView().getTopInventory().getSize();
         if (event.getRawSlots().stream().anyMatch(slot -> slot < topSize)) {
             event.setCancelled(true);
+            event.setResult(Event.Result.DENY);
         }
     }
 
@@ -1832,7 +1845,8 @@ public final class GuiManager implements Listener {
     private void toggleGlobalSetting(Player player, String path) {
         if (!List.of(
                 "settings.enforce-bound-world",
-                "effects.level-up-particles"
+                "effects.level-up-particles",
+                "effects.progress-action-bar"
         ).contains(path)) {
             showError(player, new IllegalArgumentException("Unknown global setting."));
             openGlobalSettings(player);
@@ -2835,13 +2849,25 @@ public final class GuiManager implements Listener {
 
     private void addNavigation(Inventory inventory, int page, int pages, String action) {
         if (page > 0) {
-            inventory.setItem(inventory.getSize() - 8, button(action, Integer.toString(page - 1), Material.ARROW,
-                    "<yellow><bold>Previous page</bold></yellow>", "<gray>Page " + page + " of " + pages + "</gray>"));
+            inventory.setItem(inventory.getSize() - 8, button(action, Integer.toString(page - 1),
+                    Material.SPECTRAL_ARROW,
+                    "<gradient:#FFF176:#FF8F00><bold>PlexonTools</bold></gradient> <dark_gray>•</dark_gray> <yellow>Previous page</yellow>",
+                    "<gray>Page " + page + " of " + pages + "</gray>"));
         }
         if (page + 1 < pages) {
-            inventory.setItem(inventory.getSize() - 2, button(action, Integer.toString(page + 1), Material.ARROW,
-                    "<yellow><bold>Next page</bold></yellow>", "<gray>Page " + (page + 2) + " of " + pages + "</gray>"));
+            inventory.setItem(inventory.getSize() - 2, button(action, Integer.toString(page + 1),
+                    Material.SPECTRAL_ARROW,
+                    "<gradient:#FFF176:#FF8F00><bold>PlexonTools</bold></gradient> <dark_gray>•</dark_gray> <yellow>Next page</yellow>",
+                    "<gray>Page " + (page + 2) + " of " + pages + "</gray>"));
         }
+    }
+
+    private void openNextTick(Player player, Runnable action) {
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (player.isOnline()) {
+                action.run();
+            }
+        });
     }
 
     private static int[] contentSlots(int rows) {
@@ -2894,15 +2920,6 @@ public final class GuiManager implements Listener {
         }
         String result = values.stream().limit(maximum).collect(Collectors.joining(", "));
         return values.size() > maximum ? result + " +" + (values.size() - maximum) : result;
-    }
-
-    private static long cumulativeRequirement(ToolDefinition tool, int level) {
-        long total = 0L;
-        for (ToolLevel profile : tool.levels().headMap(level, false).values()) {
-            long amount = profile.requirement().requiredTotal();
-            total = Long.MAX_VALUE - total < amount ? Long.MAX_VALUE : total + amount;
-        }
-        return total;
     }
 
     private static String requirementSummary(LevelRequirement requirement) {

@@ -133,7 +133,7 @@ public final class ToolActivationService {
     public void reconcile(Player player) {
         PlayerInventory inventory = player.getInventory();
 
-        // First adopt valid pre-3.5 items that are not yet represented in data.yml.
+        // First adopt valid pre-3.5 items that are not yet represented in the registry database.
         for (int slot = 0; slot < inventory.getSize(); slot++) {
             ItemStack item = inventory.getItem(slot);
             ToolState state = itemService.read(item).orElse(null);

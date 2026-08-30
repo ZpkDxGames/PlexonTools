@@ -1,6 +1,13 @@
+# PlexonTools language and feedback
+#
+# Every value supports MiniMessage. Placeholders are escaped unless they are
+# intentionally supplied as a formatted tool/category name.
 messages:
-  prefix: "<gradient:#4158D0:#C850C0><bold>PlexonTools</bold></gradient> <dark_gray>»</dark_gray> "
+  # Prepended only to normal chat messages. Action bars and level-up broadcasts
+  # intentionally render without this prefix.
+  prefix: "<gradient:#FFF176:#FF8F00><bold>PlexonTools</bold></gradient> <dark_gray>»</dark_gray> "
 
+  # Command validation
   no-permission: "<red>You do not have permission to do that.</red>"
   players-only: "<red>This command can only be used by a player.</red>"
   player-not-found: "<red>Player <white>{player}</white> is not online.</red>"
@@ -8,20 +15,34 @@ messages:
   tool-not-found: "<red>Unknown tool <white>{tool}</white>.</red>"
   tool-disabled: "<red>That tool is currently disabled.</red>"
   invalid-world: "<red><white>{tool}</white> cannot be bound to <white>{world}</white>.</red>"
+
+  # Granting and activation
   tool-given: "<green>Granted <white>{tool}</white> to <white>{player}</white>, bound to <white>{world}</white>.</green>"
   tool-received: "<green>You received <white>{tool}</white>, bound to <white>{world}</white>.</green>"
-  reload-complete: "<green>Reloaded <white>{count}</white> tools in <white>{time}ms</white>.</green>"
-  reload-failed: "<red>Reload failed. The last valid runtime configuration remains active; check the console.</red>"
-  world-locked: "<red>⚠ This custom tool cannot be leveled up in world <white>{world}</white>!</red>"
-  owner-locked: "<red>This tool belongs to <white>{owner}</white>.</red>"
-  invalid-tool-item: "<red>This Plexon tool is invalid or no longer configured.</red>"
-  level-up: "<gradient:#FFD54A:#FF8A00><bold>Tool upgraded!</bold></gradient> <white>{tool}</white> <gray>reached level</gray> <yellow>{level}</yellow><gray>.</gray>"
   inventory-full: "<yellow>Your inventory is full. The bound tool was not dropped.</yellow>"
   activation-inventory-full: "<yellow>Your inventory is full. Free one slot to activate the bound tool.</yellow>"
   target-inventory-full: "<yellow><white>{player}</white>'s inventory is full; no tool was issued or dropped.</yellow>"
   activation-unavailable: "<red>That tool cannot be activated in this world.</red>"
-  tool-activated: "<green>Activated <white>{tool}</white> for <white>{world}</white>.</green>"
-  tool-deactivated: "<yellow>Deactivated and safely stored <white>{tool}</white> for <white>{world}</white>.</yellow>"
+  tool-activated: "<#9CCC65>✔ Equipped <white>{tool}</white> for <white>{world}</white>.</#9CCC65>"
+  tool-deactivated: "<#FFD54F>◆ Safely stored <white>{tool}</white> for <white>{world}</white>.</#FFD54F>"
+
+  # Protection and progression
+  world-locked: "<red>⚠ This custom tool cannot be leveled up in world <white>{world}</white>!</red>"
+  owner-locked: "<red>This tool belongs to <white>{owner}</white>.</red>"
+  invalid-tool-item: "<red>This Plexon tool is invalid or no longer configured.</red>"
+  # level-up placeholders: {tool}, {level}
+  level-up: "<#FFD54F>✦</#FFD54F> <gradient:#FFF176:#FF8F00><bold>LEGENDARY UPGRADE</bold></gradient> <dark_gray>•</dark_gray> <white>{tool}</white> <gray>reached</gray> <#FFD54F><bold>Level {level}</bold></#FFD54F><gray>!</gray>"
+  # Supports every progress placeholder documented under tool-lore in config.yml.
+  progress-update: "<#FFD54F><bold>Lv. {level}</bold></#FFD54F> <dark_gray>•</dark_gray> {progress_bar} <white>{current}</white><dark_gray>/</dark_gray><#AEEA00>{required}</#AEEA00> <gray>({percentage}%)</gray>"
+
+  # Configuration and SQLite administration
+  reload-complete: "<green>Reloaded <white>{count}</white> tools in <white>{time}ms</white>.</green>"
+  reload-failed: "<red>Reload failed. The last valid runtime configuration remains active; check the console.</red>"
+  backup-started: "<gray>Draining pending writes and creating a consistent SQLite backup…</gray>"
+  backup-complete: "<green>Database backup created:</green> <white>{file}</white>"
+  backup-failed: "<red>The database backup failed. Check the console; the live database remains active.</red>"
+
+  # In-game editor
   prompt-cancelled: "<gray>Editor input cancelled.</gray>"
   prompt-timeout: "<red>The editor input timed out.</red>"
   editor-saved: "<green>Saved <white>{field}</white> for <white>{tool}</white>.</green>"

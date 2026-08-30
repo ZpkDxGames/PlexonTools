@@ -22,13 +22,13 @@ import java.util.logging.Level;
 public final class WorldMenuRepository {
     private static final String ID_PATTERN = "[a-z0-9_-]+";
     private static final String DEFAULT_TITLE =
-            "<gradient:#4158D0:#C850C0><bold>World Tools</bold></gradient> <dark_gray>• {world}</dark_gray>";
+            "<gradient:#FFF176:#FF8F00><bold>Mining Loadout</bold></gradient> <dark_gray>• {world}</dark_gray>";
 
     private final JavaPlugin plugin;
     private final File file;
     private volatile Map<String, WorldToolMenu> menus = Map.of();
     private volatile MenuDefaults defaults = new MenuDefaults(
-            DEFAULT_TITLE, 4, Material.GRAY_STAINED_GLASS_PANE, " ");
+            DEFAULT_TITLE, 3, Material.BLACK_STAINED_GLASS_PANE, " ");
     private YamlConfiguration yaml = new YamlConfiguration();
 
     public WorldMenuRepository(JavaPlugin plugin) {
@@ -165,9 +165,9 @@ public final class WorldMenuRepository {
 
     private MenuDefaults parseDefaults(YamlConfiguration config) {
         String title = config.getString("defaults.title", DEFAULT_TITLE);
-        int rows = config.getInt("defaults.rows", 4);
+        int rows = config.getInt("defaults.rows", 3);
         Material filler = Material.matchMaterial(
-                config.getString("defaults.filler.material", "GRAY_STAINED_GLASS_PANE"));
+                config.getString("defaults.filler.material", "BLACK_STAINED_GLASS_PANE"));
         String fillerName = config.getString("defaults.filler.name", " ");
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("menus.yml defaults.title cannot be blank.");

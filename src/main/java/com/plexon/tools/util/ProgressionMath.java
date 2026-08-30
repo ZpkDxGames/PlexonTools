@@ -16,14 +16,13 @@ public final class ProgressionMath {
         long progress = saturatingAdd(Math.max(0L, currentProgress), Math.max(0L, amount));
         int levelsGained = 0;
 
-        while (requirements.higherKey(level) != null) {
+        if (requirements.higherKey(level) != null) {
             long requirement = Math.max(1L, requirements.getOrDefault(level, Long.MAX_VALUE));
-            if (progress < requirement) {
-                break;
+            if (progress >= requirement) {
+                progress = 0L;
+                level = requirements.higherKey(level);
+                levelsGained = 1;
             }
-            progress -= requirement;
-            level = requirements.higherKey(level);
-            levelsGained++;
         }
 
         return new Result(level, progress, levelsGained);

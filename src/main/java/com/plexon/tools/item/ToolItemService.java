@@ -25,6 +25,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -47,6 +48,11 @@ public final class ToolItemService {
     private final NamespacedKey categoryKey;
     private final NamespacedKey statBreakdownKey;
     private final NamespacedKey profileHashKey;
+    private final Object definitionCacheLock = new Object();
+    private final IdentityHashMap<ToolLevel, Integer> profileFingerprints =
+            new IdentityHashMap<>();
+    private final IdentityHashMap<ToolDefinition, Map<Integer, Long>> cumulativeProgress =
+            new IdentityHashMap<>();
 
     public ToolItemService(
             JavaPlugin plugin,
@@ -162,6 +168,13 @@ public final class ToolItemService {
         return item;
     }
 
+    public void clearDefinitionCaches() {
+        synchronized (definitionCacheLock) {
+            profileFingerprints.clear();
+            cumulativeProgress.clear();
+        }
+    }
+
     private void writeState(PersistentDataContainer pdc, ToolState state, String category) {
         pdc.set(idKey, PersistentDataType.STRING, state.toolId());
         pdc.set(uuidKey, PersistentDataType.STRING, state.instanceId().toString());
@@ -178,7 +191,17 @@ public final class ToolItemService {
         }
     }
 
-    private static int profileFingerprint(ToolLevel level) {
+    private int profileFingerprint(ToolLevel level) {
+        synchronized (definitionCacheLock) {
+            if (profileFingerprints.size() >= 4096) {
+                profileFingerprints.clear();
+            }
+            return profileFingerprints.computeIfAbsent(
+                    level, ToolItemService::calculateProfileFingerprint);
+        }
+    }
+
+    private static int calculateProfileFingerprint(ToolLevel level) {
         String enchantments = level.enchantments().entrySet().stream()
                 .sorted(Comparator.comparing(entry -> entry.getKey().getKey().toString()))
                 .map(entry -> entry.getKey().getKey() + "=" + entry.getValue())
@@ -199,7 +222,7 @@ public final class ToolItemService {
                         .thenComparingLong(ToolState::progress));
     }
 
-    public Map<String, String> placeholders(ToolDefinition definition, ToolState state) {
+    public Map<String, String> progressPlaceholders(ToolDefinition definition, ToolState state) {
         ToolLevel currentLevel = definition.level(state.level()).orElse(definition.firstLevel());
         boolean maximum = definition.nextLevel(state.level()).isEmpty();
         LevelRequirement requirement = currentLevel.requirement();
@@ -214,17 +237,8 @@ public final class ToolItemService {
                 settings.progressFilledSymbol(), settings.progressEmptySymbol(),
                 settings.progressFilledFormat(), settings.progressEmptyFormat());
         String requiredText = maximum ? "MAX" : Long.toString(required);
-        String ownerName = Optional.ofNullable(Bukkit.getPlayer(state.ownerId()))
-                .map(Player::getName)
-                .orElseGet(() -> Optional.ofNullable(Bukkit.getOfflinePlayer(state.ownerId()).getName())
-                        .orElse(state.ownerId().toString()));
-        String goal = maximum ? "Maximum level reached" : goalDescription(definition, requirement);
 
         Map<String, String> values = new HashMap<>();
-        values.put("tool_id", messages.plain(definition.id()));
-        values.put("tool", definition.displayName());
-        values.put("level_name", currentLevel.displayName());
-        values.put("uuid", state.instanceId().toString());
         values.put("level", Integer.toString(state.level()));
         values.put("max_level", Integer.toString(definition.maxLevel()));
         values.put("current", Long.toString(credited));
@@ -236,6 +250,26 @@ public final class ToolItemService {
         values.put("percentage", Integer.toString(percent));
         values.put("total", Long.toString(total));
         values.put("next_level", maximum ? "MAX" : Integer.toString(state.level() + 1));
+        values.put("bar", bar);
+        values.put("progress_bar", bar);
+        return Map.copyOf(values);
+    }
+
+    public Map<String, String> placeholders(ToolDefinition definition, ToolState state) {
+        ToolLevel currentLevel = definition.level(state.level()).orElse(definition.firstLevel());
+        boolean maximum = definition.nextLevel(state.level()).isEmpty();
+        LevelRequirement requirement = currentLevel.requirement();
+        String ownerName = Optional.ofNullable(Bukkit.getPlayer(state.ownerId()))
+                .map(Player::getName)
+                .orElseGet(() -> Optional.ofNullable(Bukkit.getOfflinePlayer(state.ownerId()).getName())
+                        .orElse(state.ownerId().toString()));
+        String goal = maximum ? "Maximum level reached" : goalDescription(definition, requirement);
+
+        Map<String, String> values = new HashMap<>(progressPlaceholders(definition, state));
+        values.put("tool_id", messages.plain(definition.id()));
+        values.put("tool", definition.displayName());
+        values.put("level_name", currentLevel.displayName());
+        values.put("uuid", state.instanceId().toString());
         values.put("world", messages.plain(state.boundWorld()));
         values.put("bound_world", messages.plain(state.boundWorld()));
         values.put("owner", messages.plain(ownerName));
@@ -257,8 +291,6 @@ public final class ToolItemService {
                 .map(entry -> entry.getKey().getKey().getKey().toUpperCase(java.util.Locale.ROOT)
                         + " " + entry.getValue())
                 .collect(Collectors.joining(", "))));
-        values.put("bar", bar);
-        values.put("progress_bar", bar);
         return values;
     }
 
@@ -334,7 +366,11 @@ public final class ToolItemService {
                     goalDescription(definition, requirement), current, required));
         }
         return rows.stream()
-                .map(values -> messages.parse(settings.requirementLine(), values))
+                .map(values -> messages.parse(
+                        requirement.mode() == RequirementMode.SPECIFIC
+                                ? settings.specificRequirementLine()
+                                : settings.generalRequirementLine(),
+                        values))
                 .toList();
     }
 
@@ -372,12 +408,26 @@ public final class ToolItemService {
         );
     }
 
-    private static long cumulativeBefore(ToolDefinition definition, int currentLevel) {
-        long completed = 0L;
-        for (ToolLevel level : definition.levels().headMap(currentLevel, false).values()) {
-            completed = ProgressionMath.saturatingAdd(completed, level.requirement().requiredTotal());
+    private long cumulativeBefore(ToolDefinition definition, int currentLevel) {
+        synchronized (definitionCacheLock) {
+            if (cumulativeProgress.size() >= 1024) {
+                cumulativeProgress.clear();
+            }
+            Map<Integer, Long> values = cumulativeProgress.computeIfAbsent(
+                    definition, ToolItemService::calculateCumulativeProgress);
+            return values.getOrDefault(currentLevel, 0L);
         }
-        return completed;
+    }
+
+    private static Map<Integer, Long> calculateCumulativeProgress(ToolDefinition definition) {
+        Map<Integer, Long> values = new LinkedHashMap<>();
+        long completed = 0L;
+        for (ToolLevel level : definition.levels().values()) {
+            values.put(level.number(), completed);
+            completed = ProgressionMath.saturatingAdd(
+                    completed, level.requirement().requiredTotal());
+        }
+        return Map.copyOf(values);
     }
 
     private static String goalDescription(ToolDefinition definition, LevelRequirement requirement) {

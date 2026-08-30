@@ -1,4 +1,4 @@
-# PlexonTools 3.5 admin editor
+# PlexonTools 3.6.0 admin editor
 
 Open `/pt gui` with `plexontools.gui`.
 
@@ -9,7 +9,7 @@ Open `/pt gui` with `plexontools.gui`.
 - **World Tool Menus** configures the player-facing `/pt` layout for every loaded or manually named world.
 - **Player Menu Appearance** edits the default tool card and ON/OFF panel used in `/pt`.
 - **Category Manager** retains internal tool organization and legacy showcase metadata.
-- **Global Settings** controls bound-world enforcement and level-up effects. Permanent owner binding is displayed but cannot be disabled.
+- **Global Settings** controls bound-world enforcement, the live progress action bar, and level-up effects. Permanent owner binding is displayed but cannot be disabled.
 - **Live World Menu** previews the current world's activation GUI.
 
 ## World menu editor
@@ -38,6 +38,8 @@ Use the central preview to inspect the fully resolved item and **Give to yoursel
 ## Requirement editor
 
 Every level can use a shared GENERAL total or independent SPECIFIC target quotas.
+
+Counters start at zero whenever a player enters a level. No aggregate or per-target overflow is carried from the previous level, even when both levels request the same target.
 
 | Control | Operation |
 |---|---|
@@ -80,3 +82,15 @@ Category slots remain unique for explicit legacy showcase routes. They no longer
 ## Chat prompts
 
 Type `cancel` to return without a change. Prompts expire after 60 seconds. Every tool/category mutation is applied to a cloned configuration and becomes active only after the full candidate validates and saves.
+
+## YAML-only controls
+
+The GUI intentionally keeps persistence tuning and the full physical-item lore template out of click/chat editing. Configure these directly in `config.yml`:
+
+- `storage`: database filename, async flush cadence, transaction size, pending-write bound, busy timeout, WAL checkpoint size, and startup integrity check.
+- `tool-lore.template`: the freely ordered global physical-tool layout.
+- `tool-lore.requirements`: independent GENERAL, SPECIFIC, and maximum-level rows.
+
+Every editable YAML includes an inline schema guide. On startup, PlexonTools also refreshes clean reference copies under `plugins/PlexonTools/examples`; compare or copy from them without replacing a customized live file wholesale. Use `/pt reload` after visual or definition edits. Restart Paper after changing storage startup options.
+
+Use `/pt backup` before major GUI or YAML changes to create a checkpointed copy of the runtime database.

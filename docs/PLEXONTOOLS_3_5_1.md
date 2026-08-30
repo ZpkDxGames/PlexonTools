@@ -1,6 +1,8 @@
-# PlexonTools 3.5.1 — Current Version and Next-Release Roadmap
+# PlexonTools 3.5.1 — Historical Baseline and 3.6 Roadmap
 
-PlexonTools 3.5.1 is the latest completed version of the plugin. It turns custom tools into persistent, player-bound and world-scoped entitlements that players can activate or deactivate through `/pt` without losing their identity, level, or progress.
+> Historical baseline: PlexonTools 3.6.0 supersedes this release. See [`PLEXONTOOLS_3_6_0.md`](PLEXONTOOLS_3_6_0.md) for the implemented database/configuration behavior and [`PLEXONTOOLS_3_5_2.md`](PLEXONTOOLS_3_5_2.md) for the intervening progression patch. The original roadmap below is preserved for release history.
+
+PlexonTools 3.5.1 established persistent, player-bound and world-scoped entitlements that players can activate or deactivate through `/pt` without losing their identity, level, or progress.
 
 This document records the current implementation and the planned direction for the next release. Roadmap items are goals rather than guarantees until profiling, implementation, and compatibility testing are complete.
 
@@ -59,6 +61,10 @@ Administrators can open `/pt gui` and select **Player Menu Appearance** to edit:
 - Active and inactive panel materials, names, and lore.
 
 Lore entered through the editor uses `;;` to separate lines and accepts MiniMessage formatting and supported placeholders.
+
+### Refreshed bundled defaults
+
+Fresh installations use a coordinated gold Legendary theme for player menus, categories, messages, progress bars, and physical tool lore. The bundled `tools.yml` defines one `legendary_pickaxe` with a complete level 1–100 progression for `Survival_World`, and `menus.yml` pins it in the matching `survival_world` layout. Runtime `data.yml` is still generated from live player state and is not distributed with sample records.
 
 ## Current feature set
 
@@ -214,7 +220,7 @@ Snapshots are generated from an in-memory concurrent registry and written asynch
 
 ## Known next-release priorities
 
-The next release is provisionally planned as **PlexonTools 3.6.0**. Its two primary engineering goals are lower server-thread cost during frequent tool activity and database-backed runtime persistence.
+This section records the plan that guided **PlexonTools 3.6.0**. Database-backed runtime persistence and gameplay-thread I/O separation shipped in 3.6.0; the profiling and allocation-reduction items remain useful targets for continued measurement.
 
 ### 1. Performance and TPS optimization
 

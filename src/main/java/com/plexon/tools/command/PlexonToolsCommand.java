@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -26,6 +27,7 @@ public final class PlexonToolsCommand implements TabExecutor {
     private final GuiManager gui;
     private final MessageService messages;
     private final ReloadAction reloadAction;
+    private final BackupAction backupAction;
 
     public PlexonToolsCommand(
             CategoryRepository categories,
@@ -33,7 +35,8 @@ public final class PlexonToolsCommand implements TabExecutor {
             ToolGrantService grants,
             GuiManager gui,
             MessageService messages,
-            ReloadAction reloadAction
+            ReloadAction reloadAction,
+            BackupAction backupAction
     ) {
         this.categories = categories;
         this.tools = tools;
@@ -41,6 +44,7 @@ public final class PlexonToolsCommand implements TabExecutor {
         this.gui = gui;
         this.messages = messages;
         this.reloadAction = reloadAction;
+        this.backupAction = backupAction;
     }
 
     @Override
@@ -63,6 +67,7 @@ public final class PlexonToolsCommand implements TabExecutor {
         return switch (route) {
             case "give" -> give(sender, args);
             case "reload" -> reload(sender);
+            case "backup" -> backup(sender);
             case "gui" -> openAdmin(sender);
             case "all" -> openShowcase(sender, null, args);
             default -> openCategory(sender, route, args, label);
@@ -196,6 +201,28 @@ public final class PlexonToolsCommand implements TabExecutor {
         return true;
     }
 
+    private boolean backup(CommandSender sender) {
+        if (!sender.hasPermission("plexontools.backup")) {
+            messages.send(sender, "no-permission");
+            return true;
+        }
+        messages.send(sender, "backup-started");
+        messages.plugin().getServer().getScheduler().runTaskAsynchronously(messages.plugin(), () -> {
+            try {
+                Path backup = backupAction.backup();
+                messages.plugin().getServer().getScheduler().runTask(messages.plugin(), () ->
+                        messages.send(sender, "backup-complete", Map.of(
+                                "file", messages.plain(backup.toString()))));
+            } catch (Exception exception) {
+                messages.plugin().getLogger().log(
+                        java.util.logging.Level.SEVERE, "Database backup failed", exception);
+                messages.plugin().getServer().getScheduler().runTask(messages.plugin(), () ->
+                        messages.send(sender, "backup-failed"));
+            }
+        });
+        return true;
+    }
+
     private void sendUsage(CommandSender sender, String label) {
         sender.sendMessage(messages.parse("<gradient:#4158D0:#C850C0><bold>PlexonTools</bold></gradient> <gray>commands</gray>"));
         sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
@@ -211,6 +238,7 @@ public final class PlexonToolsCommand implements TabExecutor {
             sender.sendMessage(messages.parse("<white>/" + messages.plain(label)
                     + " give <player> <tool_id> [world]</white>"));
             sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " reload</white>"));
+            sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " backup</white>"));
         }
     }
 
@@ -231,6 +259,7 @@ public final class PlexonToolsCommand implements TabExecutor {
             if (sender.hasPermission("plexontools.give")) values.add("give");
             if (sender.hasPermission("plexontools.gui")) values.add("gui");
             if (sender.hasPermission("plexontools.reload")) values.add("reload");
+            if (sender.hasPermission("plexontools.backup")) values.add("backup");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             Bukkit.getOnlinePlayers().forEach(player -> values.add(player.getName()));
         } else if (args.length == 2
@@ -252,5 +281,10 @@ public final class PlexonToolsCommand implements TabExecutor {
     @FunctionalInterface
     public interface ReloadAction {
         void reload() throws Exception;
+    }
+
+    @FunctionalInterface
+    public interface BackupAction {
+        Path backup() throws Exception;
     }
 }

@@ -1,94 +1,157 @@
-# PlexonTools core settings
+# ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+# ┃                     PlexonTools 3.6 configuration                  ┃
+# ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+#
+# Text supports Adventure MiniMessage:
+# https://docs.advntr.dev/minimessage/format.html
+# Reload visual/gameplay changes with /pt reload. The storage filename, busy
+# timeout, WAL, and integrity options apply at startup and require a restart.
+
+config-version: 1
+
+# Core ownership and protection behavior.
 settings:
-  # A tool is bound to the receiver's current world when it is granted.
+  # Require the item to be used in its grant-time world as well as an allowed world.
   enforce-bound-world: true
-  # Retained for 3.0 configuration compatibility. Player binding is always
-  # enforced by PlexonTools 3.5 and cannot be disabled.
+  # Retained for old configuration compatibility. Owner locking is always enforced.
   enforce-owner: true
+
+  # Cancel unauthorized actions instead of merely refusing progression.
   cancel-unauthorized-block-breaks: true
   cancel-unauthorized-interactions: true
   cancel-unauthorized-attacks: true
-  unauthorized-warning-cooldown-ms: 1500
-  registry-autosave-ticks: 6000
 
+  # Rate-limit owner/world warnings shown in the action bar.
+  unauthorized-warning-cooldown-ms: 1500
+
+# Mutable player and tool-instance state is stored in SQLite. Gameplay events
+# only mutate the in-memory cache; the async worker coalesces repeated updates
+# for the same tool UUID and writes them in bounded transactions.
+storage:
+  # Simple filename inside plugins/PlexonTools. Requires a restart to change.
+  database-file: "plexontools.db"
+
+  # How often the async worker drains pending records. 20 ticks = about 1 second.
+  flush-interval-ticks: 20
+  # Maximum records in one SQLite transaction.
+  write-batch-size: 256
+  # Maximum distinct queued UUIDs before falling back to one safe full snapshot.
+  max-pending-writes: 8192
+
+  # SQLite waits this long for another connection before reporting a locked DB.
+  # Requires a restart to change.
+  busy-timeout-ms: 5000
+  # WAL pages between automatic checkpoints. Final shutdown uses TRUNCATE.
+  # Requires a restart to change.
+  wal-autocheckpoint-pages: 1000
+  # Runs integrity and foreign-key checks before mutable state is loaded.
+  # Requires a restart to change.
+  integrity-check-on-startup: true
+
+# Shared progress bar renderer used by physical tool lore, menu cards, and the
+# progress action bar. Width is clamped between 5 and 50 characters.
 progress-bar:
   width: 20
-  filled-symbol: "|"
-  empty-symbol: "|"
-  filled-format: "<gradient:#41E296:#A8FF78>"
-  empty-format: "<dark_gray>"
+  filled-symbol: "■"
+  empty-symbol: "■"
+  filled-format: "<!italic><gradient:#FFF59D:#FFB300:#FF6F00>"
+  empty-format: "<!italic><#303030>"
 
-# Default appearance and availability rules for the player-facing /pt menu.
-# Names and lore support MiniMessage plus all normal item placeholders. The
-# menu also adds: {status}, {state}, {state_symbol}, {toggle_action},
-# {toggle_hint}, and {world}. Both {name} and <name> forms are accepted.
+# Default player-facing /pt card and separate ON/OFF panel.
+#
+# Card material may be TOOL (the saved level's material) or any Bukkit item.
+# Card/panel placeholders:
+#   {tool} {tool_id} {level} {max_level} {current} {required}
+#   {percentage} {progress_bar} {tracking} {world} {status} {state}
+#   {state_symbol} {toggle_action} {toggle_hint} {owner_name}
 world-menu:
-  # When true, every enabled tool whose allowed_worlds contains the player's
-  # current world appears automatically. menus.yml can still pin its exact slot.
-  # Set false to require every tool to also be explicitly listed in menus.yml.
+  # true: allowed_worlds controls visibility and menus.yml only pins slots.
+  # false: the tool must also be listed under that world in menus.yml.
   auto-show-allowed-tools: true
 
   tool-card:
-    # TOOL uses the material of the player's saved tool level. Any Bukkit item
-    # material can be used instead (for example CHEST or NETHER_STAR).
     material: TOOL
     display-name: "{tool}"
     glint-when-active: true
     lore:
-      - "<dark_gray>{tool_id}</dark_gray>"
+      - "<dark_gray>Bound mining relic</dark_gray>"
       - ""
-      - "<gray>Level:</gray> <yellow>{level}/{max_level}</yellow>"
-      - "<gray>Progress:</gray> <aqua>{current}</aqua><dark_gray>/</dark_gray><green>{required}</green>"
-      - "<gray>Tracks:</gray> <white>{tracking}</white>"
+      - "<#FFB300>⛏</#FFB300>  <gray>Level</gray>  <white><bold>{level}</bold></white><dark_gray> / {max_level}</dark_gray>"
+      - "<#FF8F00>◆</#FF8F00>  <gray>Objective</gray>  <white>{tracking}</white>"
+      - "<#FFD54F>⚡</#FFD54F>  <gray>Progress</gray>  <white>{current}</white><dark_gray> / </dark_gray><#8BC34A>{required}</#8BC34A>"
       - ""
-      - "<gray>Status:</gray> {status}"
+      - "<gray>Status</gray>  {status}"
       - "{toggle_hint}"
 
-  # When space exists, this button is rendered directly below its tool card.
-  # If a custom layout blocks that position, the tool card itself remains clickable.
   toggle-panel:
+    # When disabled, clicking the main card still toggles the tool.
     enabled: true
     active:
       material: LIME_STAINED_GLASS_PANE
-      display-name: "<green><bold>✔ ENABLED</bold></green>"
+      display-name: "<gradient:#43A047:#9CCC65><bold>✔ TOOL ACTIVE</bold></gradient>"
       lore:
-        - "<gray>{tool} is active in</gray> <white>{world}</white><gray>.</gray>"
-        - "<yellow>Click to deactivate and store it.</yellow>"
+        - "<gray>Equipped for</gray>  <white>{world}</white>"
+        - ""
+        - "<#FFD54F>Click to store it safely.</#FFD54F>"
     inactive:
       material: RED_STAINED_GLASS_PANE
-      display-name: "<red><bold>✘ DISABLED</bold></red>"
+      display-name: "<gradient:#E53935:#FF7043><bold>✘ TOOL STORED</bold></gradient>"
       lore:
-        - "<gray>{tool} is stored for</gray> <white>{world}</white><gray>.</gray>"
-        - "<green>Click to activate it.</green>"
+        - "<gray>Stored for</gray>  <white>{world}</white>"
+        - ""
+        - "<#9CCC65>Click to equip it.</#9CCC65>"
 
-# Used when a level does not declare its own lore list in tools.yml.
-# Both {placeholder} and <placeholder> aliases are accepted. Every line is
-# automatically prefixed with <!italic> by the component service.
-default_lore_format:
-  header: "<gradient:#4158D0:#C850C0><bold>⚡ PLEXON TOOL ⚡</bold></gradient>"
-  divider_top: "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>"
-  stats:
-    level: "<gray>Level: <gradient:#FF9A8B:#FF6A88><bold>Lvl {level}</bold></gradient>"
-    objective_header: "<gray>Objectives:</gray>"
-    requirement_line: "<dark_gray> •</dark_gray> <white>{requirement_goal}</white> <dark_gray>—</dark_gray> <aqua>{requirement_current}</aqua><dark_gray>/</dark_gray><green>{requirement_required}</green>"
-    maximum_requirement_line: "<dark_gray> •</dark_gray> <green>Maximum level reached</green>"
-    progress_text: "<gray>Progress: <gradient:#00DBDE:#FC00FF>{current}</gradient><dark_gray>/</dark_gray><green>{required}</green> <gray>({percentage}%)</gray>"
-    progress_bar: "{progress_bar}"
-  divider_bottom: "<gradient:#8EC5FC:#E0C3FC>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>"
-  footer:
-    category: "<dark_gray>Category: <gradient:#A8EDEA:#FED6E3>{category_name}</gradient>"
-    bound_world: "<dark_gray>Authorized World: <gradient:#FEE140:#FA709A>{bound_world}</gradient>"
-    owner: "<dark_gray>Owner: <white>{owner_name}</white>"
+# Default lore for physical PlexonTools items. A per-level lore list in
+# tools.yml overrides this template. Reorder, add, or remove any template row.
+# An empty quoted string creates a blank lore line; enabled: false removes the
+# global lore from levels that do not define an override.
+#
+# Identity placeholders:
+#   {tool} {tool_id} {level_name} {uuid} {material} {enchantments}
+#   {category} {category_name} {owner_name} {owner_uuid} {bound_world}
+# Progress placeholders:
+#   {level} {max_level} {next_level} {current} {required} {remaining}
+#   {percentage} {total} {progress_bar} {tracking} {target_progress}
+# Requirement placeholders (inside requirement rows):
+#   {requirement_action} {requirement_target} {requirement_goal}
+#   {requirement_current} {requirement_required} {requirement_remaining}
+#   {requirement_percentage}
+#
+# {requirement_lines} is special: GENERAL expands to one row, SPECIFIC expands
+# once per target, and a maximum-level profile uses maximum-line.
+tool-lore:
+  enabled: true
+  template:
+    - "<!italic><gradient:#FFF59D:#FFB300><bold>✦  LEGENDARY MINING RELIC  ✦</bold></gradient>"
+    - "<!italic><dark_gray>┌</dark_gray><gradient:#FFF59D:#FF8F00>──────────────────────</gradient><dark_gray>┐</dark_gray>"
+    - "<!italic><dark_gray>│</dark_gray>  <#FFB300>⛏</#FFB300>  <gray>LEVEL</gray>  <white><bold>{level}</bold></white><dark_gray>/</dark_gray><gray>{max_level}</gray>"
+    - "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>UPGRADE OBJECTIVES</bold></gradient>"
+    - "{requirement_lines}"
+    - "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>LEVEL MASTERY</bold></gradient>  <dark_gray>•</dark_gray>  <white>{percentage}%</white>"
+    - "<!italic><dark_gray>│</dark_gray>  {progress_bar}"
+    - "<!italic><dark_gray>└</dark_gray><gradient:#FF8F00:#FFF59D>──────────────────────</gradient><dark_gray>┘</dark_gray>"
+    - "<!italic><#FFD54F>👤</#FFD54F>  <dark_gray>SOULBOUND</dark_gray>  <#FFB300>•</#FFB300>  <white>{owner_name}</white>"
 
+  requirements:
+    general-line: "<!italic><dark_gray>│</dark_gray>  <#FFB300>◆</#FFB300>  <gray>{requirement_goal}</gray>  <dark_gray>•</dark_gray>  <white>{requirement_current}</white><dark_gray>/</dark_gray><#AEEA00>{requirement_required}</#AEEA00>"
+    specific-line: "<!italic><dark_gray>│</dark_gray>  <#FFB300>◆</#FFB300>  <gray>{requirement_target}</gray>  <dark_gray>•</dark_gray>  <white>{requirement_current}</white><dark_gray>/</dark_gray><#AEEA00>{requirement_required}</#AEEA00> <dark_gray>({requirement_percentage}%)</dark_gray>"
+    maximum-line: "<!italic><dark_gray>│</dark_gray>  <#AEEA00>✦</#AEEA00>  <gradient:#8BC34A:#DCEDC8><bold>FULLY MASTERED</bold></gradient>"
+
+# Legacy category showcase routes: /pt <category> and /pt all.
 showcase:
-  title: "<gradient:#4158D0:#C850C0><bold>PlexonTools</bold></gradient>"
-  category-title: "<gradient:#4158D0:#C850C0><bold>Tool Categories</bold></gradient>"
+  title: "<gradient:#FFF176:#FF8F00><bold>Tool Armory</bold></gradient>"
+  category-title: "<gradient:#FFF176:#FF8F00><bold>Tool Categories</bold></gradient>"
   show-world-locked-tools: true
+  # Clamped from 3 through 6.
   rows: 6
 
+# Administrative /pt gui title.
 admin-gui:
-  title: "<gradient:#4158D0:#C850C0><bold>PlexonTools Editor</bold></gradient>"
+  title: "<gradient:#FFF176:#FF8F00><bold>Tool Manager</bold></gradient>"
 
+# Player feedback. Sound accepts a Bukkit/Namespaced sound key.
 effects:
   level-up-sound: "ENTITY_PLAYER_LEVELUP"
   level-up-particles: true
+  # Displays messages.progress-update after each accepted requirement event.
+  progress-action-bar: true

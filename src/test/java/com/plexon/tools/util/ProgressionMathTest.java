@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ProgressionMathTest {
     @Test
-    void carriesOverflowAcrossMultipleLevels() {
+    void discardsOverflowAtTheNextLevel() {
         TreeMap<Integer, Long> requirements = new TreeMap<>();
         requirements.put(1, 100L);
         requirements.put(2, 200L);
@@ -16,9 +16,9 @@ class ProgressionMathTest {
 
         ProgressionMath.Result result = ProgressionMath.advance(1, 90L, 230L, requirements);
 
-        assertEquals(3, result.level());
-        assertEquals(20L, result.progress());
-        assertEquals(2, result.levelsGained());
+        assertEquals(2, result.level());
+        assertEquals(0L, result.progress());
+        assertEquals(1, result.levelsGained());
     }
 
     @Test

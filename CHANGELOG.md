@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.6.0 — 2026-08-29
+
+- Replaced mutable `data.yml` runtime snapshots with generated `plexontools.db` SQLite storage.
+- Added schema metadata, normalized player/instance/target tables, foreign-key constraints, indexed owner/tool/world/state lookups, integrity validation, and WAL with a safe filesystem fallback.
+- Coalesced repeated tool-UUID mutations in memory and persisted bounded prepared-statement batches asynchronously, keeping database and YAML I/O out of normal gameplay events.
+- Cached immutable profile fingerprints and cumulative level prefixes so accepted events do not repeatedly sort enchantments or rescan every earlier level.
+- Added strict, transactional, idempotent schema-v3/v4 `data.yml` migration with complete pre-validation, timestamped source backup, exact post-import verification, and a committed migration marker.
+- Added graceful shutdown draining/WAL checkpointing plus `/pt backup` and `plexontools.backup` for consistent operator-controlled database backups.
+- Replaced the fixed assembled lore layout with a freely reorderable `tool-lore.template` and separate GENERAL, SPECIFIC, and maximum requirement-row formats.
+- Added root-level per-tool lore inheritance while retaining per-level overrides, legacy `default_lore_format`, and `default-lore-format.lines` compatibility.
+- Expanded all editable bundled YAML files with schema explanations, accepted values, behavior notes, placeholder references, and customization examples.
+- Added refreshed non-authoritative configuration references under the runtime `examples/` directory without overwriting live administrator files.
+- Added real SQLite round-trip, index, WAL, abrupt-process recovery, backup, foreign-key corruption, invalid-legacy-data, and idempotent migration regression tests.
+
+## 3.5.2 — 2026-08-29
+
+- Changed level advancement so aggregate and per-target progress reset to zero at every level boundary; excess activity never satisfies the next level.
+- Limited each accepted gameplay event to at most one level-up, including large damage increments.
+- Preserved explicitly empty SPECIFIC requirement maps so terminal profiles do not inherit root targets or continue tracking after maximum level.
+- Added a configurable live progress action bar after every accepted requirement event through `effects.progress-action-bar` and `messages.progress-update`.
+- Updated the level browser and editor to state explicitly that progress starts at zero for each level.
+- Claimed PlexonTools inventory clicks and drags at Bukkit's earliest event priority and marked them denied before other plugins process them.
+- Deferred pagination transitions by one tick and gave navigation buttons PlexonTools-specific labels/materials to prevent cross-plugin GUI routing.
+- Added regression coverage for repeated same-target quotas, discarded overflow, progress-feedback defaults, and GUI listener priority.
+
 ## 3.5.1 — 2026-08-29
 
 - Fixed allowed tools not appearing in custom worlds such as `Survival_World` unless admins also created a separate `menus.yml` reservation.
@@ -9,6 +34,7 @@
 - Added an in-game **Player Menu Appearance** editor for tool cards, ON/OFF panels, materials, names, lore, glint, and availability behavior.
 - Reframed `menus.yml` tool entries as exact layout pins and made automatic placement panel-aware.
 - Preserved loaded-world capitalization in the administrative world list.
+- Refreshed the bundled YAML defaults with a gold Legendary theme and one complete 100-level `legendary_pickaxe` progression for `Survival_World`.
 
 ## 3.5.0 — 2026-08-29
 

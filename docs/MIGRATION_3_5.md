@@ -4,8 +4,8 @@
 
 1. Stop the Paper server.
 2. Back up the complete `plugins/PlexonTools` directory.
-3. Replace the 3.0 JAR with `PlexonTools-3.5.1.jar`.
-4. Start the server. PlexonTools creates `menus.yml` without overwriting existing files.
+3. Replace the 3.0 JAR with `PlexonTools-3.6.0.jar`.
+4. Start the server. PlexonTools creates `menus.yml` without overwriting existing files, then migrates the legacy registry to SQLite as described in [`MIGRATION_3_6.md`](MIGRATION_3_6.md).
 
 ## Configure `/pt`
 
@@ -15,7 +15,7 @@ The default `/pt` route no longer opens categories. It opens the current world's
 - Add the target world to a tool's `allowed_worlds`; it now appears automatically.
 - Customize the title, row count, filler, and optional exact slot pins.
 - Use `/pt gui` → **Player Menu Appearance** for default card lore/display and ON/OFF panels.
-- `menus.yml` ships examples for `world` and `world_nether`; rename or remove them for different world names.
+- Fresh `menus.yml` files ship a `survival_world` layout for the bundled `legendary_pickaxe`; rename or remove it when your world uses a different name.
 
 Existing `config.yml` files receive `world-menu.auto-show-allowed-tools: true` as an in-memory default, so no YAML migration is needed to fix tools assigned to custom worlds. Set it to `false` only if you intentionally want the older two-gate behavior where a tool must also be pinned in `menus.yml`.
 
@@ -25,9 +25,9 @@ Explicit `/pt <category>` and `/pt all` routes remain available for compatibilit
 
 No manual item conversion is required.
 
-- Registry schema v3 entries load as `active: true`, `menu_managed: false` and are written as schema v4 at the next asynchronous checkpoint.
+- Registry schema v3 entries import as `active: true`, `menu_managed: false` into the 3.6 database.
 - Existing PDC preserves UUID, owner, bound world, level, aggregate progress, category, and SPECIFIC target counters.
-- Join/reload reconciliation adopts issued items missing from `data.yml`.
+- Join/reload reconciliation adopts issued items missing from the runtime registry.
 - If duplicate instances exist for the same owner/tool/world, reconciliation keeps the newest active record and deactivates extras.
 - Active tools outside their bound world are removed temporarily and restored when the owner returns.
 - Existing and explicit `/pt give` instances remain administrator-managed until the player activates them through `/pt`. Removing an allowed world revokes menu-managed instances; removing a pin only does so when strict membership is enabled.

@@ -1,37 +1,61 @@
-# PlexonTools 3.5.1
+# PlexonTools 3.6.0
 
-PlexonTools 3.5 changes custom tools from permanently carried items into persistent, world-scoped player entitlements. Players open `/pt` and decide which administrator-available tools are active in their current world; deactivating a tool stores it without losing any progress.
+PlexonTools 3.6.0 moves mutable player and tool-instance state to SQLite, makes the bundled YAML formats substantially easier to customize, and preserves the 3.5.2 per-level progression and GUI-isolation fixes.
 
-Version 3.5.1 makes `allowed_worlds` visible by default without requiring a second hidden `menus.yml` reservation. It also introduces configurable tool-card templates and a dedicated ON/OFF panel rendered directly below each tool when the menu has room, with a matching in-game appearance editor.
+## SQLite runtime persistence
 
-## World activation menus
+- `plexontools.db` is generated automatically in `plugins/PlexonTools` on first startup.
+- Normal gameplay mutates an in-memory registry only. Repeated changes for the same tool UUID are coalesced and written asynchronously in bounded transactions.
+- Immutable profile fingerprints and cumulative-level prefixes are cached instead of being recomputed for every accepted event.
+- The database uses prepared statements, foreign keys, indexed owner/tool/world lookups, a busy timeout, integrity checking, and Write-Ahead Logging where the host filesystem supports it.
+- Shutdown drains pending writes and checkpoints the WAL before closing.
+- `/pt backup` flushes pending records and creates a consistent database copy under `plugins/PlexonTools/backups`.
+- SQLite is bundled inside the plugin JAR; server owners do not install a separate database service or JDBC library.
 
-- Every world can have an independent title, row count, filler material/name, and pinned slot arrangement.
-- Administrators configure the menus in `/pt gui` or `menus.yml`.
-- An enabled tool appears automatically when its `allowed_worlds` list contains the current world; an optional strict mode also requires a `menus.yml` pin.
-- Default tool-card and ON/OFF-panel material, name, lore, and active glint are configurable in `config.yml` and the in-game appearance editor.
-- The ON/OFF panel is placed directly below its card when space is available; otherwise the card stays clickable.
-- Active tools are removed when the owner leaves their bound world and restored when they return.
-- Join, respawn, reload, and full-inventory reconciliation use the persistent registry rather than creating new instances.
+## Automatic `data.yml` migration
 
-## Permanent tool protection
+When no initialized database exists and a schema-v3 or schema-v4 `data.yml` is present, PlexonTools:
 
-- Every custom tool is unbreakable regardless of legacy level configuration.
-- The owner cannot drop it with Q, Ctrl+Q, death, or container interaction.
-- Death retention uses Paper's keep-item collection while removing the item from normal drops to prevent duplication.
-- Non-owners cannot pick up or use a bound tool, including through the old owner-bypass permission.
-- Deactivation and full-inventory handling never spawn an item entity.
+1. Strictly validates every legacy record before opening a new database.
+2. Preserves `data.yml.pre-sqlite-<timestamp>.bak` beside the source.
+3. Imports all records in one transaction.
+4. Verifies identifiers, ownership, world binding, level, progress, target counters, activation state, lifetime, and timestamps.
+5. Commits a migration marker only after verification succeeds.
 
-## Clean lore and tooltips
+The source YAML remains untouched after migration. A completed migration is never repeated, so stale YAML cannot create duplicate instances. If validation or import fails, startup stops with the source still recoverable instead of partially loading state.
 
-- `{requirement_lines}` expands GENERAL requirements into one summary row and SPECIFIC requirements into one row per target.
-- Each row exposes goal, target, current, required, remaining, and percentage placeholders.
-- Legacy `{goal_type_description}` lore lines are repeated per SPECIFIC target automatically.
-- Enchantment text, stored enchantments, attributes, the unbreakable label, and additional item-specific tooltip data are hidden while enchantments and glint remain functional.
-- Cached offline player names are preferred over raw owner UUIDs when available.
+## Administrator-friendly YAML
 
-## Compatibility
+- Every bundled editable YAML now starts with its accepted structure, value constraints, inheritance rules, and examples.
+- `tool-lore.template` in `config.yml` is a freely ordered list. Add, remove, or reorder identity, progress, binding, profile, and decorative rows without changing Java code.
+- `{requirement_lines}` expands at its exact template position.
+- GENERAL, SPECIFIC, and maximum-level requirement rows each have an independent MiniMessage format under `tool-lore.requirements`.
+- A root `lore` list in `tools.yml` overrides the global template for the whole definition; an individual level `lore` overrides both. `lore: []` intentionally removes lore for that scope.
+- On every startup, current reference copies of `config.yml`, `tools.yml`, `menus.yml`, `categories.yml`, and `messages.yml` are refreshed under `plugins/PlexonTools/examples`. Live administrator files are never overwritten.
+- Older `default_lore_format` settings remain readable for compatibility.
 
-The v4 registry reads v3 `data.yml` records as active by default. Existing items retain their UUID, level, aggregate progress, target counters, category, owner, and bound world. Existing `config.yml` files do not need the new lore or world-menu keys: clean defaults and automatic allowed-world visibility are supplied by the plugin.
+## Progress and GUI behavior retained from 3.5.2
 
-Paper 1.21.4 and Java 21 remain required. No NMS, CraftBukkit implementation access, or runtime dependency was added.
+- Requirements are independent at every level boundary. Two consecutive levels that each require 500 Stone blocks require 500 new breaks at each level.
+- The completing event cannot carry excess activity into the next level and can advance at most one level.
+- Accepted activity can display a configurable progress action bar.
+- PlexonTools owns and defers its pagination actions so unrelated inventory plugins cannot replace the intended next page.
+
+## Commands and permissions
+
+| Command | Permission | Purpose |
+|---|---|---|
+| `/pt backup` | `plexontools.backup` | Flush pending state and create a checkpointed SQLite backup |
+
+`plexontools.admin` includes the backup permission. Existing commands and permissions are unchanged.
+
+## Compatibility and upgrade notes
+
+- Paper `1.21.4` and Java `21` remain required.
+- Existing tool items retain their PDC identity and state.
+- Existing live administrator YAML remains valid; new settings receive safe in-memory defaults.
+- Storage filename, WAL checkpoint, busy-timeout, and startup-integrity settings require a server restart. Other configuration changes can be applied with `/pt reload`.
+- `data.yml` is no longer live runtime storage after a successful 3.6 migration.
+- The generated database is not encrypted. Protect the plugin directory and its backups with normal filesystem permissions.
+
+See [`docs/PLEXONTOOLS_3_6_0.md`](docs/PLEXONTOOLS_3_6_0.md) for schema, customization, backup, restore, migration, and rollback details.

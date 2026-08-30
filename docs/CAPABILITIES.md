@@ -1,12 +1,12 @@
-# PlexonTools 3.5 capabilities
+# PlexonTools 3.6.0 capabilities
 
 ## Platform
 
 - Paper API `1.21.4-R0.1-SNAPSHOT`
 - Java `21`
 - Adventure MiniMessage and Paper PDC
-- YAML configuration and audit snapshots
-- No runtime dependencies, NMS, or CraftBukkit imports
+- Administrator-authored YAML plus generated SQLite runtime state
+- Bundled SQLite driver; no external database service, NMS, or CraftBukkit imports
 
 All text enters Adventure through one parser that prefixes `<!italic>`. This applies to item names, lore, chat feedback, action bars, and inventory titles.
 
@@ -16,7 +16,9 @@ Each first activation or direct grant creates a unique instance UUID and permane
 
 All custom tools are permanently unbreakable and clean-tooltip protected. They cannot be manually dropped, transferred into external inventories, lost on death, picked up by another player, or used by a non-owner. Leaving a bound world temporarily removes active tools and returning restores them.
 
-Compatible overflow passes into the next requirement. GENERAL overflow passes as a total, while SPECIFIC overflow is retained by target and only passes when the next level accepts that target.
+Progress is isolated per level. Completing a level resets both the GENERAL total and SPECIFIC target map to zero, and excess activity from the completing event is discarded. One event can advance at most one level, so repeated quotas must be completed independently.
+
+Every accepted requirement event displays the current level, progress bar, credited amount, requirement, and percentage in the action bar by default. Administrators can disable this with `effects.progress-action-bar` or customize `messages.progress-update`.
 
 ## Tracking types
 
@@ -86,15 +88,15 @@ An empty SPECIFIC map intentionally cannot complete. GUI mode changes preserve t
 
 ```yaml
 worlds:
-  world:
-    title: "<gradient:#41E296:#A8FF78><bold>Survival Tools</bold></gradient>"
-    rows: 4
+  survival_world:
+    title: "<gradient:#FFF176:#FF8F00><bold>Mining Loadout</bold></gradient> <dark_gray>• {world}</dark_gray>"
+    rows: 3
     filler:
       material: BLACK_STAINED_GLASS_PANE
       name: " "
     tools:
-      magma_breaker:
-        slot: 10
+      legendary_pickaxe:
+        slot: 13
 ```
 
 World menus accept three to six rows. Pinned tool slots must be unique inner content slots. A tool is available only when its definition is enabled and the same world appears in its `allowed_worlds` list.
@@ -121,7 +123,9 @@ IDs use lowercase letters, numbers, underscores, or hyphens. Names and descripti
 
 Names and materials inherit from the most recent earlier override. Enchantments, lore, glint, model data, and abilities are complete states for their level. `material_upgrade` remains an alias for `material`. Legacy unbreakable/hidden flag values remain readable but 3.5 always applies unbreakable and clean-tooltip protection.
 
-The built-in lore exposes identity, category, progress, quota detail, owner, world, material, and enchantment placeholders. `{requirement_lines}` produces one row per SPECIFIC quota, using `requirement_goal`, `requirement_target`, `requirement_current`, `requirement_required`, `requirement_remaining`, and `requirement_percentage`. At maximum level, `required` and `next_level` render as `MAX`.
+The global `tool-lore.template` is a freely ordered list exposing identity, category, progress, quota detail, owner, world, material, and enchantment placeholders. `{requirement_lines}` produces one independently formatted row per SPECIFIC quota or one GENERAL row, using `requirement_goal`, `requirement_target`, `requirement_current`, `requirement_required`, `requirement_remaining`, and `requirement_percentage`. At maximum level, its separate maximum row is used and `required` and `next_level` render as `MAX`.
+
+A root `lore` list in a tool definition overrides the global template; an individual level list overrides both. An explicit empty list removes lore at that scope. Older `default_lore_format` values remain fallback-compatible.
 
 ## Commands and permissions
 
@@ -133,6 +137,7 @@ The built-in lore exposes identity, category, progress, quota detail, owner, wor
 | `/pt give <player> <tool_id> [world]` | `plexontools.give` |
 | `/pt gui` | `plexontools.gui` |
 | `/pt reload` | `plexontools.reload` |
+| `/pt backup` | `plexontools.backup` |
 
 Owner binding cannot be bypassed in 3.5. `plexontools.bypass.world` retains its narrow use-check bypass; activation and inventory materialization remain world-scoped. `plexontools.admin` includes all administrative child permissions.
 
@@ -140,9 +145,12 @@ Owner binding cannot be bypassed in 3.5. `plexontools.bypass.world` retains its 
 
 | File | Purpose |
 |---|---|
-| `config.yml` | Enforcement, effects, progress bars, player-menu templates, and default item lore |
+| `config.yml` | Enforcement, SQLite tuning, effects, progress bars, player-menu templates, and global item lore |
 | `menus.yml` | Per-world `/pt` layouts and exact tool-slot pins |
 | `categories.yml` | Category names, icons, slots, and descriptions |
 | `tools.yml` | Tool definitions, requirements, profiles, and abilities |
 | `messages.yml` | MiniMessage feedback |
-| `data.yml` | Generated asynchronous activation and instance recovery snapshot |
+| `plexontools.db` | Generated transactional activation and instance recovery database |
+| `examples/*.yml` | Refreshed format references that never overwrite live YAML |
+
+Schema-v3/v4 `data.yml` is accepted only as a one-time 3.6 migration source. Normal gameplay updates remain in memory and are coalesced into asynchronous bounded SQLite transactions.

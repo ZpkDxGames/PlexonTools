@@ -1,4 +1,4 @@
-# PlexonTools 3.5 architecture
+# PlexonTools 3.6.0 architecture
 
 ## Activation lifecycle
 
@@ -17,11 +17,12 @@ The activation registry—not an item entity on the ground—is the recovery sou
 2. The ID resolves against the cached immutable `ToolDefinition` map.
 3. `ProgressionService` validates the configured level, owner, allowed world, and instance-bound world.
 4. The tracking listener converts the accepted event into a normalized material/entity target and long increment.
-5. `RequirementProgression` updates the GENERAL total or SPECIFIC target map and carries compatible overflow through contiguous levels.
-6. `ToolItemService` refreshes dynamic text/PDC or reapplies the complete level profile after a level or fingerprint change.
-7. `InstanceRegistry` updates a concurrent in-memory audit record and marks the snapshot dirty.
+5. `RequirementProgression` updates the GENERAL total or SPECIFIC target map; completing a level advances once and resets both counters without carrying overflow.
+6. `ToolItemService` refreshes dynamic text/PDC or reapplies the complete level profile after a level or fingerprint change. Immutable profile fingerprints and cumulative-level prefixes are cached per parsed definition.
+7. `ProgressionService` emits the configured progress action bar for accepted activity or the level-up notification when a boundary is crossed.
+8. `InstanceRegistry` updates a concurrent in-memory record and coalesces the changed UUID into the asynchronous persistence queue.
 
-There is no YAML lookup or disk write in block, combat, farming, fishing, damage, or placement progression. A scheduled asynchronous task copies the concurrent registry and writes `data.yml`; shutdown performs a final checkpoint after event handling stops.
+There is no YAML lookup or database I/O in block, combat, farming, fishing, damage, or placement progression. A scheduled asynchronous task writes coalesced UUID updates to SQLite in bounded transactions; shutdown drains the queue and checkpoints the WAL after event handling stops.
 
 ## Definition graph
 
@@ -52,11 +53,17 @@ All keys use the `plexontools` namespace:
 | `stat_breakdown` | String | Compact normalized SPECIFIC counters |
 | `profile_hash` | Integer | Last applied profile fingerprint |
 
-The materialized item remains the gameplay/progression source of truth. `data.yml` is also the authoritative activation entitlement and recovery snapshot when the item is deactivated or temporarily absent.
+The materialized item remains the immediate gameplay/progression state while it exists. `plexontools.db` is the durable activation entitlement and recovery source when an item is deactivated or temporarily absent.
 
-## Asynchronous persistence
+## SQLite persistence
 
-Every registry mutation increments a revision counter. The async checkpoint task returns immediately if no revision changed or another write is active. A stable record copy is serialized to `data.yml.tmp`, then moved over `data.yml` atomically when supported. If events change the cache during a write, the persisted revision remains behind and the next scheduled checkpoint captures the newer state.
+Every registry mutation increments a revision counter and records the affected instance UUID in an insertion-ordered, coalescing queue. The asynchronous worker takes stable immutable record copies and executes prepared upserts in bounded transactions. An acknowledgment removes a UUID only when its queued revision still matches the written revision; an update that races with a write therefore remains pending for the next batch.
+
+If the number of distinct pending UUIDs reaches the configured bound, the queue switches to a safe full-snapshot marker instead of retaining unbounded keys or discarding state. Shutdown and `/pt backup` drain the same queue under the database lock. Backup then checkpoints WAL and copies the main database file.
+
+SQLite schema version 1 separates `players`, `tool_instances`, and normalized `target_progress`, with migration information in `schema_metadata`. Foreign keys and constraints protect parent/child identity. Owner, tool, owner/tool/world, and active-owner/world query paths are indexed. Startup requests WAL, applies a busy timeout, optionally runs `PRAGMA integrity_check`, and fails with an actionable error rather than silently accepting malformed state.
+
+An existing schema-v3/v4 `data.yml` is strictly parsed before a missing database is created. PlexonTools preserves a timestamped source backup, imports and verifies all state transactionally, then writes a source hash and completion marker. The original YAML is historical after migration and is never re-imported once marked complete.
 
 ## Configuration safety
 
@@ -64,7 +71,7 @@ Every registry mutation increments a revision counter. The async checkpoint task
 
 The parser accepts 2.0 list-filter and material-upgrade aliases. Missing item category PDC is treated as a legacy item and synchronized from its current definition on the next accepted refresh.
 
-Registry schema v4 adds `active` and `menu_managed`. Missing fields from a v3 record default to `true` and `false`, respectively: already-issued tools remain active, while menu-managed instances are revoked when their definition is disabled or their bound world is removed from `allowed_worlds`. In optional strict mode, removing the corresponding menu pin also revokes them. Loading an older schema marks the registry dirty so the next checkpoint materializes both fields. The item profile fingerprint includes the 3.5 clean-tooltip revision, so existing items receive permanent unbreakable and hidden-tooltip flags on their next reconciliation.
+Legacy registry schema v4 added `active` and `menu_managed`. During the one-time SQLite import, missing fields from a v3 record default to `true` and `false`, respectively: already-issued tools remain active, while menu-managed instances are revoked when their definition is disabled or their bound world is removed from `allowed_worlds`. In optional strict mode, removing the corresponding menu pin also revokes them. The item profile fingerprint includes the 3.5 clean-tooltip revision, so existing items receive permanent unbreakable and hidden-tooltip flags on their next reconciliation.
 
 ## Protection lifecycle
 
@@ -84,4 +91,6 @@ Registry schema v4 adds `active` and `menu_managed`. Missing fields from a v3 re
 
 ## Threading model
 
-Paper events, PDC mutation, inventory mutation, abilities, GUIs, and registry map updates run on the server thread. Only immutable registry snapshots are serialized by the async scheduler. Configuration file editing occurs only on low-frequency administrator control paths, never on gameplay progression paths.
+Paper events, PDC mutation, inventory mutation, abilities, GUIs, and registry map updates run on the server thread. Only immutable record copies and JDBC work run through the asynchronous persistence task. Configuration file editing occurs only on low-frequency administrator control paths, never on gameplay progression paths.
+
+PlexonTools inventory clicks and drags are claimed at `LOWEST` priority and denied immediately. Pagination opens on the following server tick with plugin-specific navigation items, isolating PlexonTools views from unrelated inventory listeners.

@@ -88,7 +88,7 @@ public final class CategoryRepository {
         mutate(config -> {
             String root = "categories." + id;
             config.set(root + ".display_name",
-                    "<gradient:#4158D0:#C850C0><bold>" + humanize(id) + "</bold></gradient>");
+                    "<gradient:#FFF176:#FF8F00><bold>" + humanize(id) + "</bold></gradient>");
             config.set(root + ".icon", Material.CHEST.name());
             config.set(root + ".slot", slot);
             config.set(root + ".description", List.of("<gray>Custom PlexonTools category.</gray>"));

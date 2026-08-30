@@ -1,41 +1,28 @@
-# Player-facing /pt menus. Admins can edit these in /pt gui.
-# Tool entries pin exact slots. By default, every enabled tool that allows the
-# world is shown automatically; set world-menu.auto-show-allowed-tools to false
-# in config.yml if every visible tool must also be listed here.
+# Player-facing /pt world layouts.
+#
+# World IDs are normalized lowercase keys; the title's {world} placeholder uses
+# the live Bukkit world name. Rows are clamped from 3 through 6. Tool slots are
+# zero-based inner content slots (borders/navigation are reserved).
+# Each world may omit title, rows, or filler fields to inherit `defaults`.
+#
+# With config.yml world-menu.auto-show-allowed-tools: true, entries under tools
+# only pin exact positions. Unlisted allowed tools are placed automatically.
+# Set it false when this file should also act as a strict membership list.
 defaults:
-  title: "<gradient:#4158D0:#C850C0><bold>World Tools</bold></gradient> <dark_gray>• {world}</dark_gray>"
-  rows: 4
+  title: "<gradient:#FFF176:#FF8F00><bold>Mining Loadout</bold></gradient> <dark_gray>• {world}</dark_gray>"
+  rows: 3
   filler:
-    material: GRAY_STAINED_GLASS_PANE
-    name: " "
-
+    material: BLACK_STAINED_GLASS_PANE
+    name: ' '
 worlds:
-  world:
-    title: "<gradient:#41E296:#A8FF78><bold>Survival Tools</bold></gradient>"
-    rows: 4
-    filler:
-      material: BLACK_STAINED_GLASS_PANE
-      name: " "
-    tools:
-      magma_breaker:
-        slot: 10
-      hunter_blade:
-        slot: 11
-      harvest_scythe:
-        slot: 12
-      deepwater_rod:
-        slot: 13
-      titan_axe:
-        slot: 14
-      architect_bricks:
-        slot: 15
-
-  world_nether:
-    title: "<gradient:#FF4500:#FFA500><bold>Nether Tools</bold></gradient>"
+  # This key matches the bundled tool's allowed world Survival_World.
+  survival_world:
+    title: "<gradient:#FFF176:#FF8F00><bold>Mining Loadout</bold></gradient> <dark_gray>• {world}</dark_gray>"
     rows: 3
     filler:
-      material: RED_STAINED_GLASS_PANE
-      name: " "
+      material: BLACK_STAINED_GLASS_PANE
+      name: ' '
     tools:
-      magma_breaker:
+      # Remove this entry to let automatic placement choose a free slot.
+      legendary_pickaxe:
         slot: 13

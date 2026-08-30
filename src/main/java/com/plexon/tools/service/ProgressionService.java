@@ -116,6 +116,9 @@ public final class ProgressionService {
 
         if (result.levelsGained() > 0) {
             announceUpgrade(player, definition, updated);
+        } else if (settings.progressActionBar()) {
+            messages.actionBar(player, "progress-update",
+                    itemService.progressPlaceholders(definition, updated));
         }
         return updated;
     }

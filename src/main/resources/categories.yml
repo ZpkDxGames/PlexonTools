@@ -1,25 +1,16 @@
+# Internal categories organize tools and power the legacy /pt <category> route.
+# IDs are the keys below and may contain lowercase letters, numbers, _ or -.
+#
+# display_name / description: Adventure MiniMessage
+# icon: any Bukkit item Material
+# slot: unique zero-based slot from 0 through 53 in the category inventory
 categories:
   mining:
-    display_name: "<gradient:#FF512F:#DD2476><bold>Mining Tools</bold></gradient>"
-    icon: DIAMOND_PICKAXE
-    slot: 11
-    description:
-      - "<gray>Progressive pickaxes and resource tools.</gray>"
-  combat:
-    display_name: "<gradient:#E55D87:#5FC3E4><bold>Combat Weapons</bold></gradient>"
-    icon: NETHERITE_SWORD
+    display_name: "<gradient:#FFF176:#FF8F00><bold>Mining Relics</bold></gradient>"
+    icon: NETHERITE_PICKAXE
     slot: 13
     description:
-      - "<gray>Weapons designed for combat progression.</gray>"
-  farming:
-    display_name: "<gradient:#11998E:#38EF7D><bold>Farming Tools</bold></gradient>"
-    icon: GOLDEN_HOE
-    slot: 15
-    description:
-      - "<gray>Harvesting and high-yield farming equipment.</gray>"
-  utility:
-    display_name: "<gradient:#8EC5FC:#E0C3FC><bold>Utility Tools</bold></gradient>"
-    icon: COMPASS
-    slot: 22
-    description:
-      - "<gray>Fishing, building, and specialized tools.</gray>"
+      - "<dark_gray>Upgradeable • Bound • Unbreakable</dark_gray>"
+      - ""
+      - "<gray>Progressive pickaxes forged for</gray>"
+      - "<gray>stone, deepslate, and rare-ore mastery.</gray>"

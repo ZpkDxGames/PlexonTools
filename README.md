@@ -2,16 +2,16 @@
 
 PlexonTools is a Paper-native progression engine for unique, world-activated custom tools. Every tool has its own UUID, permanent owner, world binding, activation state, level, aggregate progress, and optional per-target counters.
 
-> **Current release:** `3.5.1` — **Creator:** Tonim (`ZpkDxGames`)
+> **Current release:** `3.6.0` — **Creator:** Tonim (`ZpkDxGames`)
 
 ## Requirements
 
 - Paper `1.21.4`
 - Java `21`
-- No runtime dependencies
+- No external database service or manually installed runtime dependency
 - No NMS or CraftBukkit implementation access
 
-## 3.5.1 highlights
+## 3.6.0 highlights
 
 - `/pt` is now a configurable per-world activation menu instead of a category browser.
 - A tool appears automatically when its `allowed_worlds` includes the current world; `menus.yml` pins exact slots instead of acting as a second hidden allowlist.
@@ -21,18 +21,27 @@ PlexonTools is a Paper-native progression engine for unique, world-activated cus
 - Bound tools are always unbreakable, owner-only, non-droppable, retained on death, and blocked from external inventories.
 - SPECIFIC objectives render one requirement per lore line; enchantments, attributes, unbreakable text, and additional vanilla details are hidden.
 - Six tracking types: blocks broken, mobs killed, items farmed, fish caught, damage dealt, and blocks placed.
-- GENERAL shared totals and SPECIFIC per-target quotas on every level, with compatible overflow carried forward.
+- GENERAL shared totals and SPECIFIC per-target quotas reset at each level boundary; excess activity never counts toward the next level.
+- A configurable action bar shows the current level's progress bar after every accepted requirement event.
+- PlexonTools claims and defers its paginated GUI clicks so unrelated inventory plugins cannot hijack page navigation.
+- Mutable player/tool state now lives in generated `plexontools.db` SQLite storage with WAL, integrity checks, indexes, prepared statements, and transactional batches.
+- Normal gameplay performs no YAML or database I/O: repeated UUID updates coalesce in memory and flush asynchronously in bounded batches.
+- Existing schema-v3/v4 `data.yml` registries migrate automatically and idempotently with a timestamped backup and post-import verification.
+- `/pt backup` creates a checkpointed SQLite backup under `plugins/PlexonTools/backups`.
+- Every administrator YAML now includes an inline schema guide; the global `tool-lore.template` list is freely reorderable and GENERAL, SPECIFIC, and MAX rows have separate formats.
+- Current documented copies of every editable YAML are refreshed under `plugins/PlexonTools/examples` without overwriting live configuration.
 - Per-level Auto Smelt, protected-aware 3×3 mining, EXP Booster, potion effect, and Magnet abilities.
 - An in-game dashboard for world menus, tools, internal categories, global settings, requirements, levels, and abilities.
 - `<!italic>` normalization for every MiniMessage deserialization, including names, lore, messages, and GUIs.
-- Item PDC mutations and progression calculations stay in memory; the audit registry checkpoints asynchronously.
-- Backward-compatible loading for 2.0 definitions, issued items, list filters, and `data.yml` records.
+- Item PDC mutations and progression calculations stay in memory; changed registry records persist asynchronously in coalesced SQLite transactions.
+- Backward-compatible loading for 2.0 definitions, issued items, list filters, and legacy `data.yml` records.
+- Bundled defaults provide a gold-themed, 100-level `legendary_pickaxe` progression for `Survival_World`.
 
 ## Installation
 
-1. Download `PlexonTools-3.5.1.jar` from the GitHub release.
+1. Download `PlexonTools-3.6.0.jar` from the GitHub release.
 2. Place it in the Paper server's `plugins` directory.
-3. Start the server once to generate `config.yml`, `messages.yml`, `menus.yml`, `categories.yml`, `tools.yml`, and `data.yml`.
+3. Start the server once to generate the five editable YAML files, their `examples/` references, and `plexontools.db`.
 4. Customize through `/pt gui` or YAML, then run `/pt reload`.
 
 Build from source with Java 21 and `gradle clean build`.
@@ -47,6 +56,7 @@ Build from source with Java 21 and `gradle clean build`.
 | `/pt give <player> <tool_id> [world]` | `plexontools.give` | Grant a unique instance bound to an allowed world |
 | `/pt gui` | `plexontools.gui` | Open the administrative dashboard |
 | `/pt reload` | `plexontools.reload` | Reload settings, messages, categories, tools, and world menus |
+| `/pt backup` | `plexontools.backup` | Flush pending records and create a consistent SQLite backup |
 
 Aliases: `/plexontool` and `/plexontools`. `plexontools.admin` includes all administrative and bypass capabilities.
 
@@ -82,6 +92,10 @@ tracking:
 ```
 
 Levels can override root requirements with `requirement_mode`, `requirement`, or `requirements`.
+
+Progress is strictly per level. When a level completes, both its aggregate counter and SPECIFIC target counters reset to zero. For example, two consecutive levels that each require `STONE: 500` require 500 new Stone breaks at each level. The event that completes one level cannot contribute overflow to the next.
+
+Accepted requirement activity displays the live progress bar in the action bar by default. Toggle it with `effects.progress-action-bar` and customize `messages.progress-update`.
 
 ## World menus, categories, and abilities
 
@@ -126,22 +140,27 @@ Both `{placeholder}` and `<placeholder>` forms are accepted.
 - Profile: `material`, `enchantments`
 - Player menu state: `world`, `status`, `state`, `state_symbol`, `toggle_action`, `toggle_hint`
 
-The structured default layout lives under `default_lore_format` in `config.yml`. The special `{requirement_lines}` row expands to one line per SPECIFIC target and one summarized line for GENERAL requirements.
+The freely ordered default layout lives under `tool-lore.template` in `config.yml`. The special `{requirement_lines}` row expands to one line per SPECIFIC target and one summarized line for GENERAL requirements. `tool-lore.requirements` gives GENERAL, SPECIFIC, and maximum-level rows independent formats. A root or per-level `lore` list in `tools.yml` can override the global template; `lore: []` intentionally removes it.
 
 ## Persistence
 
-While materialized, the item carries `id`, `uuid`, `level`, `stat_count`, `category`, `bound_world`, `owner`, and optional `stat_breakdown` keys in the `plexontools` namespace. `data.yml` now also stores the authoritative activation entitlement so a deactivated or temporarily removed item can be reconstructed exactly. Snapshots are written asynchronously and atomically replaced where supported.
+While materialized, the item carries `id`, `uuid`, `level`, `stat_count`, `category`, `bound_world`, `owner`, and optional `stat_breakdown` keys in the `plexontools` namespace. `plexontools.db` stores players, authoritative activation entitlements, tool instances, and normalized target progress. Gameplay updates remain in memory; an asynchronous coalescing worker persists bounded transactions and shutdown drains the queue before checkpointing WAL.
+
+On the first 3.6 startup, an existing schema-v3/v4 `data.yml` is strictly validated, backed up as `data.yml.pre-sqlite-<timestamp>.bak`, imported in one transaction, verified, and marked migrated. The original remains available for rollback and is never re-imported after a successful migration.
 
 Block-break tracking remains material-based: matching player-placed blocks also count because PlexonTools does not maintain block-origin history.
 
 ## Documentation
 
-- [PlexonTools 3.5.1 current version and next-release roadmap](docs/PLEXONTOOLS_3_5_1.md)
+- [PlexonTools 3.6.0 database and configuration guide](docs/PLEXONTOOLS_3_6_0.md)
+- [PlexonTools 3.5.2 release behavior](docs/PLEXONTOOLS_3_5_2.md)
+- [PlexonTools 3.5.1 baseline and 3.6 roadmap](docs/PLEXONTOOLS_3_5_1.md)
 - [Capabilities and configuration](docs/CAPABILITIES.md)
 - [Administrative GUI](docs/ADMIN_EDITOR.md)
 - [Architecture and persistence](docs/ARCHITECTURE.md)
 - [Migrating from 2.0](docs/MIGRATION_3.md)
 - [Migrating from 3.0 to 3.5](docs/MIGRATION_3_5.md)
+- [Migrating from 3.5 to 3.6](docs/MIGRATION_3_6.md)
 
 ## License
 

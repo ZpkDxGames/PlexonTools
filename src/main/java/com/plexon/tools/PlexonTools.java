@@ -21,16 +21,24 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
 
 public final class PlexonTools extends JavaPlugin {
+    private static final List<String> CONFIGURATION_RESOURCES = List.of(
+            "config.yml", "tools.yml", "messages.yml", "categories.yml", "menus.yml");
     private final PluginSettings settings = new PluginSettings();
     private MessageService messages;
     private CategoryRepository categories;
     private ToolConfigRepository tools;
     private WorldMenuRepository worldMenus;
     private InstanceRegistry instanceRegistry;
+    private ToolItemService itemService;
     private ChatPromptService prompts;
     private AbilityService abilities;
     private ToolActivationService activations;
@@ -44,6 +52,7 @@ public final class PlexonTools extends JavaPlugin {
             saveBundledResource("messages.yml");
             saveBundledResource("categories.yml");
             saveBundledResource("menus.yml");
+            refreshConfigurationReferences();
 
             settings.load(getConfig());
             messages = new MessageService(this);
@@ -54,10 +63,10 @@ public final class PlexonTools extends JavaPlugin {
             tools.reload();
             worldMenus = new WorldMenuRepository(this);
             worldMenus.reload();
-            instanceRegistry = new InstanceRegistry(this);
+            instanceRegistry = new InstanceRegistry(this, settings);
             instanceRegistry.load();
 
-            ToolItemService itemService = new ToolItemService(this, messages, settings, categories);
+            itemService = new ToolItemService(this, messages, settings, categories);
             ProgressionService progression = new ProgressionService(
                     itemService, instanceRegistry, settings, messages);
             abilities = new AbilityService(this, tools, itemService, progression);
@@ -79,7 +88,8 @@ public final class PlexonTools extends JavaPlugin {
             PluginCommand command = Objects.requireNonNull(getCommand("plexontools"),
                     "plexontools command is missing from plugin.yml");
             PlexonToolsCommand executor = new PlexonToolsCommand(
-                    categories, tools, grants, gui, messages, this::reloadPlugin);
+                    categories, tools, grants, gui, messages, this::reloadPlugin,
+                    instanceRegistry::createBackup);
             command.setExecutor(executor);
             command.setTabCompleter(executor);
 
@@ -93,6 +103,7 @@ public final class PlexonTools extends JavaPlugin {
             getLogger().info("Loaded categories: " + categories.size());
             getLogger().info("Loaded world menus: " + worldMenus.size());
             getLogger().info("Tracked instances: " + instanceRegistry.size());
+            getLogger().info("Runtime database: " + instanceRegistry.databaseFile().getFileName());
             getLogger().info("Creator: Tonim (ZpkDxGames)");
             getLogger().info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         } catch (Exception exception) {
@@ -114,9 +125,10 @@ public final class PlexonTools extends JavaPlugin {
         }
         if (instanceRegistry != null) {
             try {
-                instanceRegistry.flushBlocking();
+                instanceRegistry.shutdown();
             } catch (RuntimeException exception) {
-                getLogger().log(Level.SEVERE, "Could not flush the tool instance registry", exception);
+                getLogger().log(Level.SEVERE,
+                        "Could not drain and close the tool instance database", exception);
             }
         }
     }
@@ -127,6 +139,7 @@ public final class PlexonTools extends JavaPlugin {
         messages.reload();
         categories.reload();
         tools.reload();
+        itemService.clearDefinitionCaches();
         worldMenus.reload();
         getServer().getOnlinePlayers().forEach(activations::reconcile);
         scheduleRegistrySave();
@@ -139,14 +152,26 @@ public final class PlexonTools extends JavaPlugin {
         registrySaveTask = getServer().getScheduler().runTaskTimerAsynchronously(
                 this,
                 instanceRegistry::flushAsync,
-                settings.registryAutosaveTicks(),
-                settings.registryAutosaveTicks()
+                settings.databaseFlushIntervalTicks(),
+                settings.databaseFlushIntervalTicks()
         );
     }
 
     private void saveBundledResource(String name) {
         if (!new File(getDataFolder(), name).exists()) {
             saveResource(name, false);
+        }
+    }
+
+    private void refreshConfigurationReferences() throws IOException {
+        java.nio.file.Path directory = getDataFolder().toPath().resolve("examples");
+        Files.createDirectories(directory);
+        for (String name : CONFIGURATION_RESOURCES) {
+            try (InputStream resource = Objects.requireNonNull(getResource(name),
+                    "Missing bundled resource " + name)) {
+                Files.copy(resource, directory.resolve(name),
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
         }
     }
 }

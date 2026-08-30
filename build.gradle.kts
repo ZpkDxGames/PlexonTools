@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.plexon"
-version = "3.5.1"
+version = "3.6.0"
 
 val pluginVersion = version.toString()
 
@@ -15,6 +15,9 @@ java {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    implementation("org.xerial:sqlite-jdbc:3.53.4.0") {
+        exclude(group = "org.slf4j", module = "slf4j-api")
+    }
     testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
@@ -38,6 +41,7 @@ tasks.processResources {
 
 tasks.test {
     useJUnitPlatform()
+    systemProperty("plexontools.test-classpath", sourceSets.test.get().runtimeClasspath.asPath)
 }
 
 tasks.jar {
@@ -45,11 +49,17 @@ tasks.jar {
     archiveVersion.set(pluginVersion)
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(configurations.runtimeClasspath.get().map { dependency ->
+        if (dependency.isDirectory) dependency else zipTree(dependency)
+    })
+    exclude("META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA")
     manifest {
         attributes(
             "Implementation-Title" to "PlexonTools",
             "Implementation-Version" to pluginVersion,
-            "Implementation-Vendor" to "ZpkDxGames"
+            "Implementation-Vendor" to "ZpkDxGames",
+            "Multi-Release" to "true"
         )
     }
 }

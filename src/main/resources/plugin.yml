@@ -10,7 +10,7 @@ website: https://github.com/ZpkDxGames/PlexonTools
 commands:
   plexontools:
     description: Opens the world tool menu and manages PlexonTools.
-    usage: /<command> | [<category>|all] [player] | give <player> <tool_id> [world] | reload | gui
+    usage: /<command> | [<category>|all] [player] | give <player> <tool_id> [world] | reload | backup | gui
     aliases: [pt, plexontool]
     permission: plexontools.use
 
@@ -25,6 +25,7 @@ permissions:
       plexontools.use: true
       plexontools.give: true
       plexontools.reload: true
+      plexontools.backup: true
       plexontools.gui: true
       plexontools.bypass.world: true
   plexontools.give:
@@ -32,6 +33,9 @@ permissions:
     default: op
   plexontools.reload:
     description: Reloads PlexonTools configuration and language files.
+    default: op
+  plexontools.backup:
+    description: Creates a consistent checkpointed SQLite database backup.
     default: op
   plexontools.gui:
     description: Opens the administrative tool editor.

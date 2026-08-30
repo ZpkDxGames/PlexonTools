@@ -39,70 +39,15 @@ public final class RequirementProgression {
             progress = requirement.rawProgress(0L, targetProgress);
         }
 
-        while (requirements.higherKey(level) != null
-                && requirement.complete(progress, targetProgress)) {
-            Carry carry = overflow(requirement, progress, targetProgress, target);
-            level = requirements.higherKey(level);
-            levelsGained++;
-            requirement = requirements.get(level);
-
-            if (requirement.mode() == RequirementMode.GENERAL) {
-                progress = carryForGeneral(requirement, carry);
-                targetProgress = Map.of();
-            } else {
-                targetProgress = carryForSpecific(requirement, carry);
-                progress = requirement.rawProgress(0L, targetProgress);
-            }
+        Integer nextLevel = requirements.higherKey(level);
+        if (nextLevel != null && requirement.complete(progress, targetProgress)) {
+            level = nextLevel;
+            progress = 0L;
+            targetProgress = Map.of();
+            levelsGained = 1;
         }
 
         return new Result(level, progress, targetProgress, levelsGained);
-    }
-
-    private static Carry overflow(
-            LevelRequirement requirement,
-            long progress,
-            Map<String, Long> targetProgress,
-            String eventTarget
-    ) {
-        if (requirement.mode() == RequirementMode.GENERAL) {
-            long excess = Math.max(0L, progress - requirement.amount());
-            return new Carry(excess, excess == 0L ? Map.of() : Map.of(eventTarget, excess));
-        }
-        Map<String, Long> excessTargets = new LinkedHashMap<>();
-        long total = 0L;
-        for (Map.Entry<String, Long> requirementTarget : requirement.targets().entrySet()) {
-            String target = requirementTarget.getKey();
-            long excess = Math.max(0L,
-                    targetProgress.getOrDefault(target, 0L) - requirementTarget.getValue());
-            if (excess > 0L) {
-                excessTargets.put(target, excess);
-                total = ProgressionMath.saturatingAdd(total, excess);
-            }
-        }
-        return new Carry(total, excessTargets);
-    }
-
-    private static long carryForGeneral(LevelRequirement next, Carry carry) {
-        if (next.targets().isEmpty()) {
-            return carry.total();
-        }
-        long accepted = 0L;
-        for (Map.Entry<String, Long> entry : carry.targets().entrySet()) {
-            if (next.accepts(entry.getKey())) {
-                accepted = ProgressionMath.saturatingAdd(accepted, entry.getValue());
-            }
-        }
-        return accepted;
-    }
-
-    private static Map<String, Long> carryForSpecific(LevelRequirement next, Carry carry) {
-        Map<String, Long> accepted = new LinkedHashMap<>();
-        carry.targets().forEach((target, value) -> {
-            if (next.accepts(target) && value > 0L) {
-                accepted.put(target, value);
-            }
-        });
-        return accepted;
     }
 
     private static Map<String, Long> normalize(Map<String, Long> progress) {
@@ -113,9 +58,6 @@ public final class RequirementProgression {
             }
         });
         return normalized;
-    }
-
-    private record Carry(long total, Map<String, Long> targets) {
     }
 
     public record Result(

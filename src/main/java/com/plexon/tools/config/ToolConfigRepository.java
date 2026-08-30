@@ -143,7 +143,7 @@ public final class ToolConfigRepository {
         mutate(config -> {
             String root = "tools." + id;
             config.set(root + ".enabled", true);
-            config.set(root + ".display_name", "<gradient:#4158D0:#C850C0><bold>" + humanize(id) + "</bold></gradient>");
+            config.set(root + ".display_name", "<gradient:#FFF176:#FF8F00><bold>" + humanize(id) + "</bold></gradient>");
             config.set(root + ".base_material", material.name());
             config.set(root + ".category", categories.defaultCategoryId());
             config.set(root + ".allowed_worlds", List.of(world));
@@ -584,9 +584,11 @@ public final class ToolConfigRepository {
         validateTargets(trackingType, legacyTargets, id);
         validateTargets(trackingType, new ArrayList<>(rootTargetRequirements.keySet()), id);
 
+        List<String> rootLore = lore(config, root + ".lore", settings.defaultLore(), id);
+
         NavigableMap<Integer, ToolLevel> levels = parseLevels(config, root, id, displayName,
                 baseMaterial, trackingType, defaultMode, modeExplicit, defaultAmount,
-                legacyTargetList, legacyTargets, rootTargetRequirements);
+                legacyTargetList, legacyTargets, rootTargetRequirements, rootLore);
         return new ToolDefinition(id, enabled, displayName, baseMaterial, worlds, category, trackingType,
                 defaultMode, levels);
     }
@@ -603,7 +605,8 @@ public final class ToolConfigRepository {
             long defaultAmount,
             boolean legacyTargetList,
             List<String> legacyTargets,
-            Map<String, Long> rootTargetRequirements
+            Map<String, Long> rootTargetRequirements,
+            List<String> rootLore
     ) {
         ConfigurationSection levelSection = config.getConfigurationSection(root + ".levels");
         if (levelSection == null || levelSection.getKeys(false).isEmpty()) {
@@ -657,9 +660,11 @@ public final class ToolConfigRepository {
                         ? LevelRequirement.filtered(amount, legacyTargets)
                         : LevelRequirement.general(amount);
             } else {
+                String requirementsPath = levelRoot + ".requirements";
+                boolean requirementsExplicit = config.contains(requirementsPath);
                 Map<String, Long> targetRequirements = parseTargetRequirements(
-                        config, levelRoot + ".requirements", "level " + level + " requirements");
-                if (targetRequirements.isEmpty()) {
+                        config, requirementsPath, "level " + level + " requirements");
+                if (targetRequirements.isEmpty() && !requirementsExplicit) {
                     targetRequirements = rootTargetRequirements;
                 }
                 validateTargets(trackingType, new ArrayList<>(targetRequirements.keySet()), id);
@@ -682,9 +687,7 @@ public final class ToolConfigRepository {
             }
 
             Map<Enchantment, Integer> enchantments = parseEnchantments(config, levelRoot, level);
-            List<String> lore = config.contains(levelRoot + ".lore")
-                    ? config.getStringList(levelRoot + ".lore")
-                    : settings.defaultLore();
+            List<String> lore = lore(config, levelRoot + ".lore", rootLore, id);
             boolean unbreakable = config.getBoolean(levelRoot + ".item.unbreakable", false);
             GlintMode glint = GlintMode.parse(config.getString(levelRoot + ".item.glint", GlintMode.AUTO.name()));
             boolean hideEnchantments = config.getBoolean(levelRoot + ".item.hide_enchantments", false);
@@ -807,6 +810,33 @@ public final class ToolConfigRepository {
             targets.put(target, amount);
         }
         return targets;
+    }
+
+    private static List<String> lore(
+            YamlConfiguration config,
+            String path,
+            List<String> fallback,
+            String id
+    ) {
+        if (!config.contains(path)) {
+            return fallback;
+        }
+        if (!config.isList(path)) {
+            throw new IllegalArgumentException(path + " must be a YAML list for " + id);
+        }
+        List<?> rawLines = config.getList(path);
+        if (rawLines == null) {
+            throw new IllegalArgumentException(path + " must be a YAML list for " + id);
+        }
+        List<String> lines = new ArrayList<>(rawLines.size());
+        for (Object rawLine : rawLines) {
+            if (!(rawLine instanceof String line)) {
+                throw new IllegalArgumentException(
+                        path + " may contain only text lines for " + id);
+            }
+            lines.add(line);
+        }
+        return List.copyOf(lines);
     }
 
     private static void writeLevels(YamlConfiguration config, String id, List<ToolLevel> levels) {
