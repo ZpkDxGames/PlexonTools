@@ -74,7 +74,7 @@ val verifyPluginJar by tasks.registering {
     inputs.file(tasks.jar.flatMap { it.archiveFile })
 
     doLast {
-        val jarFile = tasks.jar.get().archiveFile.get().asFile
+        val jarFile = inputs.files.singleFile
         val requiredEntries = listOf(
             "plugin.yml",
             "org/sqlite/JDBC.class",
