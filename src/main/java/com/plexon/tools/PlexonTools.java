@@ -41,6 +41,7 @@ public final class PlexonTools extends JavaPlugin {
     private ToolItemService itemService;
     private ChatPromptService prompts;
     private AbilityService abilities;
+    private ProgressionService progression;
     private ToolActivationService activations;
     private BukkitTask registrySaveTask;
 
@@ -67,9 +68,9 @@ public final class PlexonTools extends JavaPlugin {
             instanceRegistry.load();
 
             itemService = new ToolItemService(this, messages, settings, categories);
-            ProgressionService progression = new ProgressionService(
-                    itemService, instanceRegistry, settings, messages);
-            abilities = new AbilityService(this, tools, itemService, progression);
+            progression = new ProgressionService(
+                    this, itemService, instanceRegistry, settings, messages);
+            abilities = new AbilityService(this, tools, progression);
             ToolGrantService grants = new ToolGrantService(itemService, instanceRegistry, messages);
             activations = new ToolActivationService(
                     tools, worldMenus, settings, itemService, instanceRegistry, messages);
@@ -79,6 +80,7 @@ public final class PlexonTools extends JavaPlugin {
 
             getServer().getPluginManager().registerEvents(
                     new ToolProgressListener(tools, itemService, progression, abilities, settings), this);
+            getServer().getPluginManager().registerEvents(progression, this);
             getServer().getPluginManager().registerEvents(abilities, this);
             getServer().getPluginManager().registerEvents(
                     new ToolProtectionListener(this, itemService, activations), this);
@@ -94,6 +96,7 @@ public final class PlexonTools extends JavaPlugin {
             command.setTabCompleter(executor);
 
             scheduleRegistrySave();
+            progression.start();
             abilities.start();
             getServer().getScheduler().runTask(this,
                     () -> getServer().getOnlinePlayers().forEach(activations::reconcile));
@@ -120,6 +123,9 @@ public final class PlexonTools extends JavaPlugin {
         if (abilities != null) {
             abilities.stop();
         }
+        if (progression != null) {
+            progression.shutdown();
+        }
         if (registrySaveTask != null) {
             registrySaveTask.cancel();
         }
@@ -134,15 +140,21 @@ public final class PlexonTools extends JavaPlugin {
     }
 
     private void reloadPlugin() throws Exception {
-        reloadConfig();
-        settings.load(getConfig());
-        messages.reload();
-        categories.reload();
-        tools.reload();
-        itemService.clearDefinitionCaches();
-        worldMenus.reload();
-        getServer().getOnlinePlayers().forEach(activations::reconcile);
-        scheduleRegistrySave();
+        progression.pause();
+        try {
+            reloadConfig();
+            settings.load(getConfig());
+            messages.reload();
+            categories.reload();
+            tools.reload();
+            itemService.clearDefinitionCaches();
+            progression.clearDefinitionCaches();
+            worldMenus.reload();
+            getServer().getOnlinePlayers().forEach(activations::reconcile);
+            scheduleRegistrySave();
+        } finally {
+            progression.start();
+        }
     }
 
     private void scheduleRegistrySave() {

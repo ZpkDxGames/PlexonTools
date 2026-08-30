@@ -41,8 +41,15 @@ final class DefaultResourcesTest {
         ConfigurationSection definitions = requireSection(tools, "tools");
         assertEquals(Set.of("legendary_pickaxe"), definitions.getKeys(false));
         assertEquals("mining", tools.getString("tools.legendary_pickaxe.category"));
-        assertEquals(List.of("Survival_World"),
+        assertEquals(List.of(
+                        "Survival_World",
+                        "Survival_World_nether",
+                        "Survival_World_the_end"),
                 tools.getStringList("tools.legendary_pickaxe.allowed_worlds"));
+        assertEquals("PLAYER", tools.getString(
+                "tools.legendary_pickaxe.progression.scope"));
+        assertEquals("Survival_World", tools.getString(
+                "tools.legendary_pickaxe.progression.anchor_world"));
 
         ConfigurationSection levels = requireSection(tools, "tools.legendary_pickaxe.levels");
         assertEquals(100, levels.getKeys(false).size());
@@ -64,6 +71,8 @@ final class DefaultResourcesTest {
         assertTrue(config.getBoolean("effects.progress-action-bar"));
         assertEquals("plexontools.db", config.getString("storage.database-file"));
         assertEquals(20L, config.getLong("storage.flush-interval-ticks"));
+        assertEquals(4L, config.getLong(
+                "performance.progress-visual-refresh-ticks"));
         assertTrue(config.getBoolean("storage.integrity-check-on-startup"));
         assertTrue(config.getBoolean("tool-lore.enabled"));
         assertFalse(config.getStringList("tool-lore.template").isEmpty());

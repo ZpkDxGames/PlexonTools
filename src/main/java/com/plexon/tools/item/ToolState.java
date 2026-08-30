@@ -65,4 +65,9 @@ public record ToolState(
         return new ToolState(toolId, instanceId, level, progress, boundWorld, ownerId,
                 newCategoryId, targetProgress);
     }
+
+    public ToolState withBoundWorld(String newBoundWorld) {
+        return new ToolState(toolId, instanceId, level, progress, newBoundWorld, ownerId,
+                categoryId, targetProgress);
+    }
 }

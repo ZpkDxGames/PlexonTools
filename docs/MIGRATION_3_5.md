@@ -4,7 +4,7 @@
 
 1. Stop the Paper server.
 2. Back up the complete `plugins/PlexonTools` directory.
-3. Replace the 3.0 JAR with `PlexonTools-3.6.0.jar`.
+3. Replace the 3.0 JAR with `PlexonTools-3.6.1.jar`.
 4. Start the server. PlexonTools creates `menus.yml` without overwriting existing files, then migrates the legacy registry to SQLite as described in [`MIGRATION_3_6.md`](MIGRATION_3_6.md).
 
 ## Configure `/pt`

@@ -1,5 +1,7 @@
 # PlexonTools 3.6.0 — Database and Configuration Guide
 
+> Historical database foundation. PlexonTools 3.6.1 retains this schema and adds shared-dimension progression plus coalesced visual refreshes; see [`PLEXONTOOLS_3_6_1.md`](PLEXONTOOLS_3_6_1.md).
+
 PlexonTools 3.6.0 is the first database-backed release. Mutable player and tool-instance state moves from whole-file YAML snapshots to a generated SQLite database, while administrator-authored definitions remain readable and version-controllable YAML.
 
 ## Release contract

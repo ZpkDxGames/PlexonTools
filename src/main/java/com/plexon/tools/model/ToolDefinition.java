@@ -17,18 +17,39 @@ public record ToolDefinition(
         Material baseMaterial,
         Set<String> allowedWorlds,
         String category,
+        ProgressionScope progressionScope,
+        String progressionAnchorWorld,
         TrackingType trackingType,
         RequirementMode defaultRequirementMode,
         NavigableMap<Integer, ToolLevel> levels
 ) {
     public ToolDefinition {
-        allowedWorlds = Set.copyOf(allowedWorlds);
+        Set<String> normalizedAllowedWorlds = Collections.unmodifiableSet(
+                new LinkedHashSet<>(allowedWorlds));
+        if (normalizedAllowedWorlds.isEmpty()) {
+            throw new IllegalArgumentException("At least one allowed world is required.");
+        }
+        allowedWorlds = normalizedAllowedWorlds;
         if (category == null || category.isBlank()) {
             throw new IllegalArgumentException("Tool category is required.");
         }
         if (defaultRequirementMode == null) {
             throw new IllegalArgumentException("Default requirement mode is required.");
         }
+        progressionScope = progressionScope == null ? ProgressionScope.WORLD : progressionScope;
+        String requestedAnchor = progressionAnchorWorld == null
+                ? "" : progressionAnchorWorld.trim();
+        progressionAnchorWorld = normalizedAllowedWorlds.stream()
+                .filter(world -> world.equalsIgnoreCase(requestedAnchor))
+                .findFirst()
+                .orElseGet(() -> {
+                    if (!requestedAnchor.isBlank()) {
+                        throw new IllegalArgumentException(
+                                "Progression anchor world must also be listed in allowed_worlds: "
+                                        + requestedAnchor);
+                    }
+                    return normalizedAllowedWorlds.iterator().next();
+                });
         levels = Collections.unmodifiableNavigableMap(new TreeMap<>(levels));
     }
 
@@ -51,6 +72,14 @@ public record ToolDefinition(
 
     public boolean isAllowedWorld(String worldName) {
         return allowedWorlds.stream().anyMatch(world -> world.equalsIgnoreCase(worldName));
+    }
+
+    public boolean sharesProgressAcrossWorlds() {
+        return progressionScope == ProgressionScope.PLAYER;
+    }
+
+    public String persistenceWorld(String requestedWorld) {
+        return sharesProgressAcrossWorlds() ? progressionAnchorWorld : requestedWorld;
     }
 
     public boolean tracks(Material material, int level) {

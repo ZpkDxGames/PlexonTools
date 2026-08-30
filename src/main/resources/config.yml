@@ -1,5 +1,5 @@
 # ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-# ┃                     PlexonTools 3.6 configuration                  ┃
+# ┃                    PlexonTools 3.6.1 configuration                ┃
 # ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 #
 # Text supports Adventure MiniMessage:
@@ -11,7 +11,8 @@ config-version: 1
 
 # Core ownership and protection behavior.
 settings:
-  # Require the item to be used in its grant-time world as well as an allowed world.
+  # Require WORLD-scoped items to be used in their persisted world as well as
+  # an allowed world. PLAYER-scoped items may use every allowed world.
   enforce-bound-world: true
   # Retained for old configuration compatibility. Owner locking is always enforced.
   enforce-owner: true
@@ -47,6 +48,16 @@ storage:
   # Runs integrity and foreign-key checks before mutable state is loaded.
   # Requires a restart to change.
   integrity-check-on-startup: true
+
+# Server-thread work performed after accepted progression events. Authoritative
+# level/progress state is updated in memory immediately and remains protected by
+# the asynchronous SQLite queue above. Only expensive item lore/PDC rendering
+# and progress action-bar packets are coalesced into this short visual window.
+performance:
+  # 4 ticks = at most five visible refreshes per second per tool instance.
+  # Level-ups, quit/death/world transitions, reload, and shutdown flush at once.
+  # Use 1 for nearly immediate visuals; higher values reduce metadata/packet work.
+  progress-visual-refresh-ticks: 4
 
 # Shared progress bar renderer used by physical tool lore, menu cards, and the
 # progress action bar. Width is clamped between 5 and 50 characters.
@@ -153,5 +164,5 @@ admin-gui:
 effects:
   level-up-sound: "ENTITY_PLAYER_LEVELUP"
   level-up-particles: true
-  # Displays messages.progress-update after each accepted requirement event.
+  # Displays the newest messages.progress-update during each visual refresh window.
   progress-action-bar: true

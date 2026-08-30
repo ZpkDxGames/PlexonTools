@@ -1,4 +1,4 @@
-# PlexonTools 3.6.0 admin editor
+# PlexonTools 3.6.1 admin editor
 
 Open `/pt gui` with `plexontools.gui`.
 
@@ -31,7 +31,7 @@ When enabled and unobstructed, the ON/OFF panel occupies the slot directly below
 
 ## Tool editor
 
-The tool screen edits status, name, base material, allowed worlds, category, tracking type, level requirements, and profiles. Cycling tracking type clears incompatible targets and converts each level to a GENERAL requirement with its former combined total.
+The tool screen edits status, name, base material, allowed worlds, category, tracking type, level requirements, and profiles. Cycling tracking type clears incompatible targets and converts each level to a GENERAL requirement with its former combined total. Dimension progression scope and its anchor remain explicit YAML controls so administrators can review this persistence decision directly.
 
 Use the central preview to inspect the fully resolved item and **Give to yourself** to create a real unique instance. Deletion requires two shift-right-click confirmations within eight seconds.
 
@@ -88,8 +88,10 @@ Type `cancel` to return without a change. Prompts expire after 60 seconds. Every
 The GUI intentionally keeps persistence tuning and the full physical-item lore template out of click/chat editing. Configure these directly in `config.yml`:
 
 - `storage`: database filename, async flush cadence, transaction size, pending-write bound, busy timeout, WAL checkpoint size, and startup integrity check.
+- `performance.progress-visual-refresh-ticks`: coalesced item-lore/PDC/action-bar refresh window from 1 through 20 ticks.
 - `tool-lore.template`: the freely ordered global physical-tool layout.
 - `tool-lore.requirements`: independent GENERAL, SPECIFIC, and maximum-level rows.
+- `tools.yml` `progression.scope` and `progression.anchor_world`: shared-player or separate-world progression.
 
 Every editable YAML includes an inline schema guide. On startup, PlexonTools also refreshes clean reference copies under `plugins/PlexonTools/examples`; compare or copy from them without replacing a customized live file wholesale. Use `/pt reload` after visual or definition edits. Restart Paper after changing storage startup options.
 

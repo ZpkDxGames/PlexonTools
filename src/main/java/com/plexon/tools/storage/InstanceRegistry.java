@@ -141,19 +141,29 @@ public final class InstanceRegistry {
     }
 
     public List<InstanceRecord> findOwned(UUID ownerId, String toolId, String boundWorld) {
+        return findOwned(ownerId, toolId).stream()
+                .filter(record -> record.boundWorld().equalsIgnoreCase(boundWorld))
+                .toList();
+    }
+
+    public List<InstanceRecord> findOwned(UUID ownerId, String toolId) {
         return records.values().stream()
                 .filter(record -> record.ownerId().equals(ownerId))
                 .filter(record -> record.toolId().equalsIgnoreCase(toolId))
-                .filter(record -> record.boundWorld().equalsIgnoreCase(boundWorld))
                 .sorted(Comparator.comparingLong(InstanceRecord::updatedAt).reversed())
                 .toList();
     }
 
     public List<InstanceRecord> findActive(UUID ownerId, String boundWorld) {
+        return findActive(ownerId).stream()
+                .filter(record -> record.boundWorld().equalsIgnoreCase(boundWorld))
+                .toList();
+    }
+
+    public List<InstanceRecord> findActive(UUID ownerId) {
         return records.values().stream()
                 .filter(InstanceRecord::active)
                 .filter(record -> record.ownerId().equals(ownerId))
-                .filter(record -> record.boundWorld().equalsIgnoreCase(boundWorld))
                 .sorted(Comparator
                         .comparing(InstanceRecord::toolId, String.CASE_INSENSITIVE_ORDER)
                         .thenComparing(Comparator.comparingLong(

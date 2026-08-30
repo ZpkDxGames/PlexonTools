@@ -87,7 +87,8 @@ public final class ToolProgressListener implements Listener {
         abilities.boostBlockExperience(event, context.definition(), context.state());
         String target = blockTrackingTarget(context.definition().trackingType(), event.getBlock());
         if (target != null && context.definition().tracks(target, context.state().level())) {
-            progression.addProgress(player, item, EquipmentSlot.HAND, context.definition(), target, 1L);
+            progression.addProgress(player, item, EquipmentSlot.HAND, context.definition(),
+                    context.state(), target, 1L);
         }
     }
 
@@ -120,7 +121,7 @@ public final class ToolProgressListener implements Listener {
             String target = event.getEntityType().name();
             if (context.definition().tracks(target, context.state().level())) {
                 progression.addProgress(player, item, EquipmentSlot.HAND,
-                        context.definition(), target, 1L);
+                        context.definition(), context.state(), target, 1L);
             }
         }
     }
@@ -159,7 +160,7 @@ public final class ToolProgressListener implements Listener {
         if (context.definition().tracks(target, context.state().level())) {
             long amount = Math.max(1L, Math.round(event.getFinalDamage()));
             progression.addProgress(player, item, EquipmentSlot.HAND,
-                    context.definition(), target, amount);
+                    context.definition(), context.state(), target, amount);
         }
     }
 
@@ -177,7 +178,7 @@ public final class ToolProgressListener implements Listener {
         String target = event.getBlockPlaced().getType().name();
         if (context.definition().tracks(target, context.state().level())) {
             progression.addProgress(event.getPlayer(), item, hand,
-                    context.definition(), target, 1L);
+                    context.definition(), context.state(), target, 1L);
         }
     }
 
@@ -205,7 +206,7 @@ public final class ToolProgressListener implements Listener {
         String target = caughtType.name();
         if (context.definition().tracks(target, context.state().level())) {
             progression.addProgress(event.getPlayer(), item, hand,
-                    context.definition(), target, 1L);
+                    context.definition(), context.state(), target, 1L);
         }
     }
 
@@ -228,7 +229,7 @@ public final class ToolProgressListener implements Listener {
         String target = harvestedType.name();
         if (context.definition().tracks(target, context.state().level())) {
             progression.addProgress(event.getPlayer(), item, hand,
-                    context.definition(), target, 1L);
+                    context.definition(), context.state(), target, 1L);
         }
     }
 
@@ -254,7 +255,7 @@ public final class ToolProgressListener implements Listener {
     }
 
     private ToolContext usable(Player player, ItemStack item, boolean notify) {
-        ToolState state = itemService.read(item).orElse(null);
+        ToolState state = progression.resolveState(item).orElse(null);
         if (state == null) {
             if (notify && itemService.isTagged(item)) {
                 progression.warnInvalid(player);

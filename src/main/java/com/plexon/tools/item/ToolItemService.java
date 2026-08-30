@@ -79,7 +79,8 @@ public final class ToolItemService {
         ToolState state = new ToolState(definition.id(), instanceId,
                 definition.firstLevel().number(), 0L, boundWorld, owner.getUniqueId(),
                 definition.category(), Map.of());
-        ItemStack item = apply(ItemStack.of(definition.baseMaterial()), definition, state);
+        ItemStack item = apply(ItemStack.of(definition.baseMaterial()), definition, state,
+                owner.getName());
         return new CreatedTool(item, state);
     }
 
@@ -113,6 +114,26 @@ public final class ToolItemService {
         }
     }
 
+    public Optional<ToolIdentity> readIdentity(ItemStack item) {
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) {
+            return Optional.empty();
+        }
+        PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
+        String id = pdc.get(idKey, PersistentDataType.STRING);
+        String rawUuid = pdc.get(uuidKey, PersistentDataType.STRING);
+        String boundWorld = pdc.get(boundWorldKey, PersistentDataType.STRING);
+        String rawOwner = pdc.get(ownerKey, PersistentDataType.STRING);
+        if (id == null || rawUuid == null || boundWorld == null || rawOwner == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(new ToolIdentity(id, UUID.fromString(rawUuid),
+                    UUID.fromString(rawOwner), boundWorld));
+        } catch (IllegalArgumentException exception) {
+            return Optional.empty();
+        }
+    }
+
     public boolean isTagged(ItemStack item) {
         return item != null
                 && !item.getType().isAir()
@@ -121,6 +142,15 @@ public final class ToolItemService {
     }
 
     public ItemStack apply(ItemStack item, ToolDefinition definition, ToolState state) {
+        return apply(item, definition, state, null);
+    }
+
+    public ItemStack apply(
+            ItemStack item,
+            ToolDefinition definition,
+            ToolState state,
+            String knownOwnerName
+    ) {
         ToolLevel level = definition.level(state.level())
                 .orElseThrow(() -> new IllegalArgumentException("Tool level is no longer configured: " + state.level()));
         Material material = level.material();
@@ -132,7 +162,8 @@ public final class ToolItemService {
         writeState(meta.getPersistentDataContainer(), state, definition.category());
         meta.getPersistentDataContainer().set(profileHashKey, PersistentDataType.INTEGER,
                 profileFingerprint(level));
-        Map<String, String> placeholders = placeholders(definition, state);
+        Map<String, String> placeholders = placeholders(
+                definition, state, knownOwnerName);
         meta.displayName(messages.parse(level.displayName(), placeholders));
         meta.lore(renderLore(level.lore(), definition, state, placeholders));
 
@@ -150,16 +181,26 @@ public final class ToolItemService {
     }
 
     public ItemStack refreshProgress(ItemStack item, ToolDefinition definition, ToolState state) {
+        return refreshProgress(item, definition, state, null);
+    }
+
+    public ItemStack refreshProgress(
+            ItemStack item,
+            ToolDefinition definition,
+            ToolState state,
+            String knownOwnerName
+    ) {
         ToolLevel level = definition.level(state.level())
                 .orElseThrow(() -> new IllegalArgumentException("Tool level is no longer configured: " + state.level()));
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         Integer storedProfileHash = pdc.get(profileHashKey, PersistentDataType.INTEGER);
         if (storedProfileHash == null || storedProfileHash != profileFingerprint(level)) {
-            return apply(item, definition, state);
+            return apply(item, definition, state, knownOwnerName);
         }
         writeState(pdc, state, definition.category());
-        Map<String, String> placeholders = placeholders(definition, state);
+        Map<String, String> placeholders = placeholders(
+                definition, state, knownOwnerName);
         meta.displayName(messages.parse(level.displayName(), placeholders));
         meta.lore(renderLore(level.lore(), definition, state, placeholders));
         meta.setUnbreakable(true);
@@ -256,13 +297,24 @@ public final class ToolItemService {
     }
 
     public Map<String, String> placeholders(ToolDefinition definition, ToolState state) {
+        return placeholders(definition, state, null);
+    }
+
+    public Map<String, String> placeholders(
+            ToolDefinition definition,
+            ToolState state,
+            String knownOwnerName
+    ) {
         ToolLevel currentLevel = definition.level(state.level()).orElse(definition.firstLevel());
         boolean maximum = definition.nextLevel(state.level()).isEmpty();
         LevelRequirement requirement = currentLevel.requirement();
-        String ownerName = Optional.ofNullable(Bukkit.getPlayer(state.ownerId()))
-                .map(Player::getName)
-                .orElseGet(() -> Optional.ofNullable(Bukkit.getOfflinePlayer(state.ownerId()).getName())
-                        .orElse(state.ownerId().toString()));
+        String ownerName = knownOwnerName == null || knownOwnerName.isBlank()
+                ? Optional.ofNullable(Bukkit.getPlayer(state.ownerId()))
+                        .map(Player::getName)
+                        .orElseGet(() -> Optional.ofNullable(
+                                Bukkit.getOfflinePlayer(state.ownerId()).getName())
+                                .orElse(state.ownerId().toString()))
+                : knownOwnerName;
         String goal = maximum ? "Maximum level reached" : goalDescription(definition, requirement);
 
         Map<String, String> values = new HashMap<>(progressPlaceholders(definition, state));
@@ -503,5 +555,13 @@ public final class ToolItemService {
     }
 
     public record CreatedTool(ItemStack item, ToolState state) {
+    }
+
+    public record ToolIdentity(
+            String toolId,
+            UUID instanceId,
+            UUID ownerId,
+            String boundWorld
+    ) {
     }
 }

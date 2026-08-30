@@ -36,6 +36,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -78,6 +79,8 @@ public final class GuiManager implements Listener {
     private final NamespacedKey valueKey;
     private final Map<UUID, PendingDelete> pendingDeletes = new HashMap<>();
     private final Map<UUID, String> targetSearches = new HashMap<>();
+    private final Map<UUID, Long> guardedInventoryOpens = new HashMap<>();
+    private long inventoryGuardSequence;
 
     public GuiManager(
             JavaPlugin plugin,
@@ -327,7 +330,7 @@ public final class GuiManager implements Listener {
                     "<yellow>Click to customize.</yellow>"));
         }
         addNavigation(inventory, page, pages, "world-menus-page");
-        inventory.setItem(45, button("admin-dashboard", "", Material.ARROW,
+        inventory.setItem(45, button("admin-dashboard", "", navigationMaterial(),
                 "<yellow><bold>Dashboard</bold></yellow>", "<gray>Return to the admin dashboard.</gray>"));
         inventory.setItem(49, button("create-world-menu", "", Material.LIME_DYE,
                 "<green><bold>Add Unloaded World</bold></green>",
@@ -385,7 +388,7 @@ public final class GuiManager implements Listener {
         inventory.setItem(24, button("world-menu-style", "", Material.PAINTING,
                 "<light_purple><bold>Tool Cards & Toggle Panels</bold></light_purple>",
                 "<gray>Edit the default player-facing appearance.</gray>"));
-        inventory.setItem(31, button("world-menus", "", Material.ARROW,
+        inventory.setItem(31, button("world-menus", "", navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to all world menus.</gray>"));
         player.openInventory(inventory);
     }
@@ -466,7 +469,7 @@ public final class GuiManager implements Listener {
             inventory.setItem(40, card);
             inventory.setItem(49, panel);
         }
-        inventory.setItem(45, button("admin-dashboard", "", Material.ARROW,
+        inventory.setItem(45, button("admin-dashboard", "", navigationMaterial(),
                 "<yellow><bold>Dashboard</bold></yellow>",
                 "<gray>Return to the administrative dashboard.</gray>"));
         inventory.setItem(53, button("close", "", Material.BARRIER,
@@ -512,7 +515,7 @@ public final class GuiManager implements Listener {
                     assigned ? "<aqua>Right-click to change its slot.</aqua>" : ""));
         }
         addNavigation(inventory, page, pages, "world-menu-tools-page");
-        inventory.setItem(45, button("world-menu-editor", worldName, Material.ARROW,
+        inventory.setItem(45, button("world-menu-editor", worldName, navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the world menu editor.</gray>"));
         player.openInventory(inventory);
     }
@@ -539,7 +542,7 @@ public final class GuiManager implements Listener {
             inventory.setItem(GRID_SLOTS[index], adminToolIcon(definition));
         }
         addNavigation(inventory, page, pages, "admin-page");
-        inventory.setItem(45, button("admin-dashboard", "", Material.ARROW,
+        inventory.setItem(45, button("admin-dashboard", "", navigationMaterial(),
                 "<yellow><bold>Dashboard</bold></yellow>", "<gray>Return to the admin dashboard.</gray>"));
         inventory.setItem(46, button("showcase-entry", "", Material.COMPASS,
                 "<aqua><bold>Player showcase</bold></aqua>", "<gray>Preview the player-facing menu.</gray>"));
@@ -579,7 +582,7 @@ public final class GuiManager implements Listener {
                     "<yellow>Click to customize.</yellow>"));
         }
         addNavigation(inventory, page, pages, "categories-page");
-        inventory.setItem(45, button("admin-dashboard", "", Material.ARROW,
+        inventory.setItem(45, button("admin-dashboard", "", navigationMaterial(),
                 "<yellow><bold>Dashboard</bold></yellow>", "<gray>Return to the admin dashboard.</gray>"));
         inventory.setItem(49, button("create-category", "", Material.LIME_DYE,
                 "<green><bold>Create Category</bold></green>",
@@ -615,7 +618,7 @@ public final class GuiManager implements Listener {
                 "<green><bold>Description</bold></green>",
                 "<white>" + category.description().size() + " line(s)</white>", "",
                 "<gray>Separate MiniMessage lines with <white>;;</white>.</gray>"));
-        inventory.setItem(22, button("categories", "", Material.ARROW,
+        inventory.setItem(22, button("categories", "", navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to all categories.</gray>"));
         player.openInventory(inventory);
     }
@@ -641,7 +644,7 @@ public final class GuiManager implements Listener {
                     (selected ? "<green>✓ </green>" : "") + category.displayName(),
                     selected ? "<green>Currently assigned.</green>" : "<gray>Click to assign.</gray>"));
         }
-        inventory.setItem(45, button("editor", tool.id(), Material.ARROW,
+        inventory.setItem(45, button("editor", tool.id(), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the tool editor.</gray>"));
         player.openInventory(inventory);
     }
@@ -672,7 +675,7 @@ public final class GuiManager implements Listener {
         inventory.setItem(18, toggleButton("global-toggle", "effects.progress-action-bar",
                 Material.EXPERIENCE_BOTTLE, "Progress Action Bar",
                 settings.progressActionBar()));
-        inventory.setItem(22, button("admin-dashboard", "", Material.ARROW,
+        inventory.setItem(22, button("admin-dashboard", "", navigationMaterial(),
                 "<yellow><bold>Dashboard</bold></yellow>", "<gray>Return to the admin dashboard.</gray>"));
         player.openInventory(inventory);
     }
@@ -727,7 +730,7 @@ public final class GuiManager implements Listener {
                         : category.displayName(), "",
                 "<gray>Click to assign or reassign this tool.</gray>"));
         inventory.setItem(31, previewIcon(tool));
-        inventory.setItem(45, button("admin-list", "", Material.ARROW,
+        inventory.setItem(45, button("admin-list", "", navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to all tools.</gray>"));
         inventory.setItem(49, button("give-self", tool.id(), Material.CHEST,
                 "<green><bold>Give to yourself</bold></green>",
@@ -768,7 +771,7 @@ public final class GuiManager implements Listener {
                     allowed ? "<yellow>Click to remove access.</yellow>"
                             : "<green>Click to allow access.</green>"));
         }
-        inventory.setItem(45, button("editor", tool.id(), Material.ARROW,
+        inventory.setItem(45, button("editor", tool.id(), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the tool editor.</gray>"));
         inventory.setItem(49, button("add-world", tool.id(), Material.ENDER_PEARL,
                 "<aqua><bold>Add unloaded world</bold></aqua>",
@@ -806,7 +809,7 @@ public final class GuiManager implements Listener {
                     "<dark_gray>Shift-click inside the editor to manage order.</dark_gray>"));
         }
         addNavigation(inventory, page, pages, "levels-page");
-        inventory.setItem(45, button("editor", tool.id(), Material.ARROW,
+        inventory.setItem(45, button("editor", tool.id(), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the tool editor.</gray>"));
         inventory.setItem(49, button("add-level", tool.id(), Material.LIME_DYE,
                 "<green><bold>Add level</bold></green>",
@@ -882,19 +885,19 @@ public final class GuiManager implements Listener {
                     "<gray>Swaps this complete profile with level " + (level.number() - 1) + ".</gray>"));
         }
         if (level.number() < tool.maxLevel()) {
-            inventory.setItem(25, button("move-level-down", tool.id(), Material.ARROW,
+            inventory.setItem(25, button("move-level-down", tool.id(), navigationMaterial(),
                     "<yellow><bold>Move one level later</bold></yellow>",
                     "<gray>Swaps this complete profile with level " + (level.number() + 1) + ".</gray>"));
         }
         inventory.setItem(31, previewIcon(tool, level));
-        inventory.setItem(45, button("levels", tool.id(), Material.ARROW,
+        inventory.setItem(45, button("levels", tool.id(), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to all levels.</gray>"));
         if (level.number() > 1) {
-            inventory.setItem(47, button("edit-level", Integer.toString(level.number() - 1), Material.ARROW,
+            inventory.setItem(47, button("edit-level", Integer.toString(level.number() - 1), navigationMaterial(),
                     "<yellow><bold>Previous level</bold></yellow>", "<gray>Open level " + (level.number() - 1) + ".</gray>"));
         }
         if (level.number() < tool.maxLevel()) {
-            inventory.setItem(51, button("edit-level", Integer.toString(level.number() + 1), Material.ARROW,
+            inventory.setItem(51, button("edit-level", Integer.toString(level.number() + 1), navigationMaterial(),
                     "<yellow><bold>Next level</bold></yellow>", "<gray>Open level " + (level.number() + 1) + ".</gray>"));
         }
         if (tool.levels().size() > 1) {
@@ -951,7 +954,7 @@ public final class GuiManager implements Listener {
                             + (ability == null ? "</red>" : "</green>"),
                     lore.toArray(String[]::new)));
         }
-        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), Material.ARROW,
+        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the level profile.</gray>"));
         player.openInventory(inventory);
     }
@@ -1021,7 +1024,7 @@ public final class GuiManager implements Listener {
                         "<gray>at least one target is added.</gray>"));
             }
         }
-        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), Material.ARROW,
+        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the level profile.</gray>"));
         player.openInventory(inventory);
     }
@@ -1071,7 +1074,7 @@ public final class GuiManager implements Listener {
                     selected ? "<red>Right-click:</red> <gray>remove</gray>" : ""));
         }
         addNavigation(inventory, page, pages, "target-page");
-        inventory.setItem(45, button("requirement", tool.id(), Material.ARROW,
+        inventory.setItem(45, button("requirement", tool.id(), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the requirement editor.</gray>"));
         inventory.setItem(48, button("target-clear-search", tool.id(), Material.MILK_BUCKET,
                 "<white><bold>Clear search</bold></white>",
@@ -1107,7 +1110,7 @@ public final class GuiManager implements Listener {
                 "<gray>Required:</gray> <white>" + amount + "</white>", "",
                 "<gray>Click to enter an exact amount in chat.</gray>"));
         addAmountControls(inventory, "target-adjust", amount);
-        inventory.setItem(45, button("requirement-targets", tool.id(), Material.ARROW,
+        inventory.setItem(45, button("requirement-targets", tool.id(), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to all target quotas.</gray>"));
         inventory.setItem(49, button("target-exact", normalized, Material.ANVIL,
                 "<aqua><bold>Enter exact amount</bold></aqua>",
@@ -1170,7 +1173,7 @@ public final class GuiManager implements Listener {
                     "<red>Shift-right:</red> <gray>remove</gray>"));
         }
         addNavigation(inventory, page, pages, "enchantments-page");
-        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), Material.ARROW,
+        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the level profile.</gray>"));
         inventory.setItem(49, button("enchantments-bulk", tool.id(), Material.WRITABLE_BOOK,
                 "<aqua><bold>Bulk text editor</bold></aqua>",
@@ -1208,7 +1211,7 @@ public final class GuiManager implements Listener {
                     "<yellow>Shift-right:</yellow> <gray>move down</gray>"));
         }
         addNavigation(inventory, page, pages, "lore-page");
-        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), Material.ARROW,
+        inventory.setItem(45, button("edit-level", Integer.toString(level.number()), navigationMaterial(),
                 "<yellow><bold>Back</bold></yellow>", "<gray>Return to the level profile.</gray>"));
         inventory.setItem(48, button("lore-bulk", tool.id(), Material.WRITABLE_BOOK,
                 "<aqua><bold>Bulk text editor</bold></aqua>",
@@ -1229,8 +1232,11 @@ public final class GuiManager implements Listener {
         }
         event.setCancelled(true);
         event.setResult(Event.Result.DENY);
-        if (!(event.getWhoClicked() instanceof Player player)
-                || event.getRawSlot() < 0
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        guardExternalInventoryOpens(player);
+        if (event.getRawSlot() < 0
                 || event.getRawSlot() >= event.getView().getTopInventory().getSize()) {
             return;
         }
@@ -1406,7 +1412,20 @@ public final class GuiManager implements Listener {
         if (event.getRawSlots().stream().anyMatch(slot -> slot < topSize)) {
             event.setCancelled(true);
             event.setResult(Event.Result.DENY);
+            if (event.getWhoClicked() instanceof Player player) {
+                guardExternalInventoryOpens(player);
+            }
         }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onOpen(InventoryOpenEvent event) {
+        if (!(event.getPlayer() instanceof Player player)
+                || !guardedInventoryOpens.containsKey(player.getUniqueId())
+                || event.getInventory().getHolder() instanceof PlexonGuiHolder) {
+            return;
+        }
+        event.setCancelled(true);
     }
 
     @EventHandler
@@ -1414,6 +1433,7 @@ public final class GuiManager implements Listener {
         UUID playerId = event.getPlayer().getUniqueId();
         pendingDeletes.remove(playerId);
         targetSearches.remove(playerId);
+        guardedInventoryOpens.remove(playerId);
     }
 
     private Player showcaseSubject(PlexonGuiHolder holder, Player fallback) {
@@ -2850,16 +2870,28 @@ public final class GuiManager implements Listener {
     private void addNavigation(Inventory inventory, int page, int pages, String action) {
         if (page > 0) {
             inventory.setItem(inventory.getSize() - 8, button(action, Integer.toString(page - 1),
-                    Material.SPECTRAL_ARROW,
+                    navigationMaterial(),
                     "<gradient:#FFF176:#FF8F00><bold>PlexonTools</bold></gradient> <dark_gray>•</dark_gray> <yellow>Previous page</yellow>",
                     "<gray>Page " + page + " of " + pages + "</gray>"));
         }
         if (page + 1 < pages) {
             inventory.setItem(inventory.getSize() - 2, button(action, Integer.toString(page + 1),
-                    Material.SPECTRAL_ARROW,
+                    navigationMaterial(),
                     "<gradient:#FFF176:#FF8F00><bold>PlexonTools</bold></gradient> <dark_gray>•</dark_gray> <yellow>Next page</yellow>",
                     "<gray>Page " + (page + 2) + " of " + pages + "</gray>"));
         }
+    }
+
+    static Material navigationMaterial() {
+        return Material.SPECTRAL_ARROW;
+    }
+
+    private void guardExternalInventoryOpens(Player player) {
+        long token = ++inventoryGuardSequence;
+        UUID playerId = player.getUniqueId();
+        guardedInventoryOpens.put(playerId, token);
+        plugin.getServer().getScheduler().runTaskLater(plugin,
+                () -> guardedInventoryOpens.remove(playerId, token), 2L);
     }
 
     private void openNextTick(Player player, Runnable action) {

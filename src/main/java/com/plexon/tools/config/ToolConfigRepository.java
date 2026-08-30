@@ -2,6 +2,7 @@ package com.plexon.tools.config;
 
 import com.plexon.tools.model.GlintMode;
 import com.plexon.tools.model.LevelRequirement;
+import com.plexon.tools.model.ProgressionScope;
 import com.plexon.tools.model.RequirementMode;
 import com.plexon.tools.model.AbilityTarget;
 import com.plexon.tools.model.ToolAbilitySettings;
@@ -147,6 +148,8 @@ public final class ToolConfigRepository {
             config.set(root + ".base_material", material.name());
             config.set(root + ".category", categories.defaultCategoryId());
             config.set(root + ".allowed_worlds", List.of(world));
+            config.set(root + ".progression.scope", ProgressionScope.PLAYER.name());
+            config.set(root + ".progression.anchor_world", world);
             config.set(root + ".tracking.type", TrackingType.BLOCKS_BROKEN.name());
             config.set(root + ".tracking.mode", RequirementMode.GENERAL.name());
             config.set(root + ".tracking.amount", 500L);
@@ -210,7 +213,37 @@ public final class ToolConfigRepository {
         } else {
             worlds.add(world);
         }
-        mutate(config -> config.set(path(id, "allowed_worlds"), worlds));
+        mutate(config -> {
+            config.set(path(id, "allowed_worlds"), worlds);
+            if (worlds.stream().noneMatch(value -> value.equalsIgnoreCase(
+                    tool.progressionAnchorWorld()))) {
+                config.set(path(id, "progression.anchor_world"), worlds.getFirst());
+            }
+        });
+    }
+
+    public synchronized void setProgressionScope(String id, ProgressionScope scope)
+            throws IOException, InvalidConfigurationException {
+        ToolDefinition tool = requireTool(id);
+        ProgressionScope requested = java.util.Objects.requireNonNull(scope, "scope");
+        mutate(config -> {
+            config.set(path(id, "progression.scope"), requested.name());
+            if (!config.contains(path(id, "progression.anchor_world"))) {
+                config.set(path(id, "progression.anchor_world"),
+                        tool.progressionAnchorWorld());
+            }
+        });
+    }
+
+    public synchronized void setProgressionAnchorWorld(String id, String world)
+            throws IOException, InvalidConfigurationException {
+        ToolDefinition tool = requireTool(id);
+        String matched = tool.allowedWorlds().stream()
+                .filter(candidate -> candidate.equalsIgnoreCase(world))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "The progression anchor must be one of this tool's allowed worlds."));
+        mutate(config -> config.set(path(id, "progression.anchor_world"), matched));
     }
 
     public synchronized void setTrackingType(String id, TrackingType trackingType)
@@ -551,6 +584,13 @@ public final class ToolConfigRepository {
             throw new IllegalArgumentException("allowed_worlds cannot be empty");
         }
         Set<String> worlds = new LinkedHashSet<>(worldList);
+        boolean scopeConfigured = config.contains(root + ".progression.scope");
+        ProgressionScope progressionScope = scopeConfigured
+                ? ProgressionScope.parse(requireText(config.getString(
+                        root + ".progression.scope"), "progression.scope", id))
+                : worldList.size() > 1 ? ProgressionScope.PLAYER : ProgressionScope.WORLD;
+        String progressionAnchorWorld = config.getString(
+                root + ".progression.anchor_world", worldList.getFirst());
 
         TrackingType trackingType = TrackingType.parse(requireText(
                 config.getString(root + ".tracking.type"), "tracking.type", id));
@@ -589,8 +629,8 @@ public final class ToolConfigRepository {
         NavigableMap<Integer, ToolLevel> levels = parseLevels(config, root, id, displayName,
                 baseMaterial, trackingType, defaultMode, modeExplicit, defaultAmount,
                 legacyTargetList, legacyTargets, rootTargetRequirements, rootLore);
-        return new ToolDefinition(id, enabled, displayName, baseMaterial, worlds, category, trackingType,
-                defaultMode, levels);
+        return new ToolDefinition(id, enabled, displayName, baseMaterial, worlds, category,
+                progressionScope, progressionAnchorWorld, trackingType, defaultMode, levels);
     }
 
     private NavigableMap<Integer, ToolLevel> parseLevels(

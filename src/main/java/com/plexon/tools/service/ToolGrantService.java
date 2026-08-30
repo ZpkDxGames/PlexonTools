@@ -38,7 +38,9 @@ public final class ToolGrantService {
             return GrantResult.INVENTORY_FULL;
         }
 
-        ToolItemService.CreatedTool created = itemService.create(target, definition, boundWorld);
+        String persistenceWorld = definition.persistenceWorld(boundWorld);
+        ToolItemService.CreatedTool created = itemService.create(
+                target, definition, persistenceWorld);
         registry.register(created.state(), target.getName(), true);
         target.getInventory().setItem(slot, created.item());
         if (notifyTarget) {

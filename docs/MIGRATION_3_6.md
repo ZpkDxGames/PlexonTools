@@ -4,7 +4,7 @@
 
 1. Stop the Paper server.
 2. Back up the complete `plugins/PlexonTools` directory, especially `data.yml` and all five administrator YAML files.
-3. Replace the old JAR with `PlexonTools-3.6.0.jar`.
+3. Replace the old JAR with `PlexonTools-3.6.1.jar`.
 4. Start the server and watch the PlexonTools startup log.
 
 PlexonTools creates `plexontools.db` and migrates schema-v3/v4 `data.yml` automatically. Do not create an empty database manually and do not delete the YAML before the first successful startup.
@@ -23,6 +23,8 @@ If migration validation fails, fix or restore the reported `data.yml` and start 
 
 Existing YAML files remain compatible and are not overwritten. New settings use safe defaults in memory. Compare the live files with the references under `examples`, then copy only the controls you want.
 
+For 3.6.1, a definition already listing multiple allowed worlds without `progression.scope` automatically uses shared `PLAYER` progress. A definition listing one world without the field stays `WORLD`-scoped for backward compatibility. Add an explicit scope and anchor when you want the policy visible in live YAML.
+
 The main new lore layout is `tool-lore.template`; older `default_lore_format` keys remain supported as fallbacks. The main new persistence section is `storage`. Changing database startup options requires a full restart.
 
 ## After upgrading
@@ -32,4 +34,4 @@ The main new lore layout is `tool-lore.template`; older `default_lore_format` ke
 3. Run `/pt backup` and confirm a database copy appears under `plugins/PlexonTools/backups`.
 4. Retain the original YAML and pre-SQLite backup until the release is fully validated on your server.
 
-Detailed restore and rollback procedures are in [`PLEXONTOOLS_3_6_0.md`](PLEXONTOOLS_3_6_0.md).
+Current scope/tuning guidance is in [`PLEXONTOOLS_3_6_1.md`](PLEXONTOOLS_3_6_1.md); detailed restore and rollback procedures remain in [`PLEXONTOOLS_3_6_0.md`](PLEXONTOOLS_3_6_0.md).

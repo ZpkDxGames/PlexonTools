@@ -1,6 +1,6 @@
 # PlexonTools 3.5.1 — Historical Baseline and 3.6 Roadmap
 
-> Historical baseline: PlexonTools 3.6.0 supersedes this release. See [`PLEXONTOOLS_3_6_0.md`](PLEXONTOOLS_3_6_0.md) for the implemented database/configuration behavior and [`PLEXONTOOLS_3_5_2.md`](PLEXONTOOLS_3_5_2.md) for the intervening progression patch. The original roadmap below is preserved for release history.
+> Historical baseline: PlexonTools 3.6.1 supersedes this release. See [`PLEXONTOOLS_3_6_1.md`](PLEXONTOOLS_3_6_1.md) for the current behavior, [`PLEXONTOOLS_3_6_0.md`](PLEXONTOOLS_3_6_0.md) for the database foundation, and [`PLEXONTOOLS_3_5_2.md`](PLEXONTOOLS_3_5_2.md) for the intervening progression patch. The original roadmap below is preserved for release history.
 
 PlexonTools 3.5.1 established persistent, player-bound and world-scoped entitlements that players can activate or deactivate through `/pt` without losing their identity, level, or progress.
 

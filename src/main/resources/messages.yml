@@ -17,8 +17,8 @@ messages:
   invalid-world: "<red><white>{tool}</white> cannot be bound to <white>{world}</white>.</red>"
 
   # Granting and activation
-  tool-given: "<green>Granted <white>{tool}</white> to <white>{player}</white>, bound to <white>{world}</white>.</green>"
-  tool-received: "<green>You received <white>{tool}</white>, bound to <white>{world}</white>.</green>"
+  tool-given: "<green>Granted <white>{tool}</white> to <white>{player}</white> for <white>{world}</white>.</green>"
+  tool-received: "<green>You received <white>{tool}</white> for <white>{world}</white>.</green>"
   inventory-full: "<yellow>Your inventory is full. The bound tool was not dropped.</yellow>"
   activation-inventory-full: "<yellow>Your inventory is full. Free one slot to activate the bound tool.</yellow>"
   target-inventory-full: "<yellow><white>{player}</white>'s inventory is full; no tool was issued or dropped.</yellow>"
@@ -27,7 +27,7 @@ messages:
   tool-deactivated: "<#FFD54F>◆ Safely stored <white>{tool}</white> for <white>{world}</white>.</#FFD54F>"
 
   # Protection and progression
-  world-locked: "<red>⚠ This custom tool cannot be leveled up in world <white>{world}</white>!</red>"
+  world-locked: "<red>⚠ This custom tool cannot be leveled up in <white>{world}</white>!</red>"
   owner-locked: "<red>This tool belongs to <white>{owner}</white>.</red>"
   invalid-tool-item: "<red>This Plexon tool is invalid or no longer configured.</red>"
   # level-up placeholders: {tool}, {level}

@@ -1,4 +1,4 @@
-# PlexonTools 3.6.0 capabilities
+# PlexonTools 3.6.1 capabilities
 
 ## Platform
 
@@ -12,13 +12,17 @@ All text enters Adventure through one parser that prefixes `<!italic>`. This app
 
 ## Unique progressive items
 
-Each first activation or direct grant creates a unique instance UUID and permanently binds it to one owner and world. The registry retains its active state, level, aggregate counter, optional target breakdown, category, and timestamps even while the physical item is deactivated. Definitions can still change an item's name, material, enchantments, lore, glint, custom model data, and abilities at every level.
+Each first activation or direct grant creates a unique instance UUID and permanently binds it to one owner. A definition chooses whether the instance is anchored once for the player or independently to each world. The registry retains its active state, level, aggregate counter, optional target breakdown, category, and timestamps even while the physical item is deactivated. Definitions can still change an item's name, material, enchantments, lore, glint, custom model data, and abilities at every level.
 
-All custom tools are permanently unbreakable and clean-tooltip protected. They cannot be manually dropped, transferred into external inventories, lost on death, picked up by another player, or used by a non-owner. Leaving a bound world temporarily removes active tools and returning restores them.
+All custom tools are permanently unbreakable and clean-tooltip protected. They cannot be manually dropped, transferred into external inventories, lost on death, picked up by another player, or used by a non-owner. A `WORLD`-scoped tool remains bound to one world; a `PLAYER`-scoped tool follows its owner through every world in its allowlist.
 
 Progress is isolated per level. Completing a level resets both the GENERAL total and SPECIFIC target map to zero, and excess activity from the completing event is discarded. One event can advance at most one level, so repeated quotas must be completed independently.
 
-Every accepted requirement event displays the current level, progress bar, credited amount, requirement, and percentage in the action bar by default. Administrators can disable this with `effects.progress-action-bar` or customize `messages.progress-update`.
+Every accepted requirement event updates cached progress immediately. By default, visible item metadata and the action bar coalesce into a four-tick per-instance refresh window, reducing repeated lore/PDC parsing and packets during rapid or 3×3 mining. Administrators can tune `performance.progress-visual-refresh-ticks`, disable the action bar with `effects.progress-action-bar`, or customize `messages.progress-update`.
+
+## Multi-dimension progression
+
+`tools.yml` supports `progression.scope: PLAYER|WORLD` and `progression.anchor_world`. `PLAYER` shares one canonical owner/tool record across all allowed dimensions. When upgrading from separate dimension copies, the configured anchor-world record is retained; if it does not yet exist, the most-progressed copy is retained and rebound to the anchor. `WORLD` keeps independent UUIDs and counters. Multi-world definitions without an explicit scope default to `PLAYER`; single-world legacy definitions default to `WORLD`.
 
 ## Tracking types
 
@@ -139,7 +143,7 @@ A root `lore` list in a tool definition overrides the global template; an indivi
 | `/pt reload` | `plexontools.reload` |
 | `/pt backup` | `plexontools.backup` |
 
-Owner binding cannot be bypassed in 3.5. `plexontools.bypass.world` retains its narrow use-check bypass; activation and inventory materialization remain world-scoped. `plexontools.admin` includes all administrative child permissions.
+Owner binding cannot be bypassed. `plexontools.bypass.world` retains its narrow use-check bypass; activation still requires an allowed world, while persistence follows the definition's `PLAYER` or `WORLD` scope. `plexontools.admin` includes all administrative child permissions.
 
 ## Files
 
@@ -148,7 +152,7 @@ Owner binding cannot be bypassed in 3.5. `plexontools.bypass.world` retains its 
 | `config.yml` | Enforcement, SQLite tuning, effects, progress bars, player-menu templates, and global item lore |
 | `menus.yml` | Per-world `/pt` layouts and exact tool-slot pins |
 | `categories.yml` | Category names, icons, slots, and descriptions |
-| `tools.yml` | Tool definitions, requirements, profiles, and abilities |
+| `tools.yml` | Tool definitions, dimension scope/anchor, requirements, profiles, and abilities |
 | `messages.yml` | MiniMessage feedback |
 | `plexontools.db` | Generated transactional activation and instance recovery database |
 | `examples/*.yml` | Refreshed format references that never overwrite live YAML |

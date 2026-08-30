@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.plexon"
-version = "3.6.0"
+version = "3.6.1"
 
 val pluginVersion = version.toString()
 
@@ -47,6 +47,7 @@ tasks.test {
 tasks.jar {
     archiveBaseName.set("PlexonTools")
     archiveVersion.set(pluginVersion)
+    isZip64 = true
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

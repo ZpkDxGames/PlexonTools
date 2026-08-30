@@ -1,26 +1,26 @@
-# PlexonTools 3.6.0 architecture
+# PlexonTools 3.6.1 architecture
 
 ## Activation lifecycle
 
 1. `/pt` selects enabled definitions whose `allowed_worlds` contains the current world; optional strict mode also requires membership in its immutable `WorldToolMenu`.
 2. Explicit `menus.yml` entries pin cards to exact slots, while unpinned available tools use panel-aware automatic placement.
-3. A click on the card or its panel toggles the owner's existing registry record or creates one unique instance on first activation.
-4. Deactivation copies the latest item PDC state into memory, marks the record inactive, and removes the physical item.
-5. Join, respawn, reload, and world-change reconciliation selects one active instance per tool/world and reconstructs missing items.
-6. Leaving the bound world removes the item without changing its active entitlement; returning restores it when inventory space exists.
+3. A click on the card or its panel toggles the owner's canonical registry record or creates one unique instance on first activation.
+4. `PLAYER` scope selects one owner/tool record across every allowed world and anchors its persisted binding; `WORLD` scope selects one record per owner/tool/world.
+5. Deactivation marks the in-memory record inactive and removes the physical item without replacing newer cached progress with older item PDC.
+6. Join, respawn, reload, and world-change reconciliation consolidates legacy shared copies, selects the canonical active instance, and reconstructs missing items.
 
 The activation registry—not an item entity on the ground—is the recovery source. A full inventory delays materialization and never drops a protected tool.
 
 ## Gameplay flow
 
-1. A listener reads the held/event-hand item's PDC into an immutable `ToolState`.
+1. A listener reads the held/event-hand item's small identity PDC and resolves the latest immutable `ToolState` from the in-memory registry; full PDC progress parsing is only a legacy fallback.
 2. The ID resolves against the cached immutable `ToolDefinition` map.
 3. `ProgressionService` validates the configured level, owner, allowed world, and instance-bound world.
 4. The tracking listener converts the accepted event into a normalized material/entity target and long increment.
 5. `RequirementProgression` updates the GENERAL total or SPECIFIC target map; completing a level advances once and resets both counters without carrying overflow.
-6. `ToolItemService` refreshes dynamic text/PDC or reapplies the complete level profile after a level or fingerprint change. Immutable profile fingerprints and cumulative-level prefixes are cached per parsed definition.
-7. `ProgressionService` emits the configured progress action bar for accepted activity or the level-up notification when a boundary is crossed.
-8. `InstanceRegistry` updates a concurrent in-memory record and coalesces the changed UUID into the asynchronous persistence queue.
+6. `InstanceRegistry` immediately replaces the authoritative cached record and coalesces the changed UUID into the asynchronous persistence queue.
+7. Non-boundary events replace one pending visual entry per instance. A short server-thread task applies the newest PDC/lore once and sends the newest configured action bar; rapid events overwrite pending visuals instead of rerendering each item.
+8. Level-ups and lifecycle boundaries flush visual state immediately, and a changed level/profile reapplies the complete item profile.
 
 There is no YAML lookup or database I/O in block, combat, farming, fishing, damage, or placement progression. A scheduled asynchronous task writes coalesced UUID updates to SQLite in bounded transactions; shutdown drains the queue and checkpoints the WAL after event handling stops.
 
@@ -29,7 +29,7 @@ There is no YAML lookup or database I/O in block, combat, farming, fishing, dama
 - `WorldToolMenu` controls the player-facing world title, layout, filler, and exact slot pins.
 - `PluginSettings` owns the default tool-card and toggle-panel templates plus automatic/strict membership mode.
 - `ToolCategory` remains internal organization and explicit legacy-showcase metadata.
-- `ToolDefinition` contains identity, category, world allowlist, tracking type, and ordered levels.
+- `ToolDefinition` contains identity, category, world allowlist, progression scope/anchor, tracking type, and ordered levels.
 - `ToolLevel` is the resolved item/requirement/ability profile for one numeric level.
 - `LevelRequirement` models GENERAL totals or SPECIFIC quotas.
 - `ToolAbilitySettings` validates optional multiplier and potion parameters.
@@ -48,12 +48,12 @@ All keys use the `plexontools` namespace:
 | `level` | Integer | Current level |
 | `stat_count` | Long | Aggregate/raw current-level progress |
 | `category` | String | Current definition category |
-| `bound_world` | String | Immutable grant-time world binding |
+| `bound_world` | String | Per-world binding, or canonical anchor for shared-player progression |
 | `owner` | String | Owner UUID |
 | `stat_breakdown` | String | Compact normalized SPECIFIC counters |
 | `profile_hash` | Integer | Last applied profile fingerprint |
 
-The materialized item remains the immediate gameplay/progression state while it exists. `plexontools.db` is the durable activation entitlement and recovery source when an item is deactivated or temporarily absent.
+The concurrent registry record is authoritative during runtime. The materialized item's PDC is a coalesced portable snapshot, and `plexontools.db` is the durable activation entitlement and recovery source when an item is deactivated or temporarily absent.
 
 ## SQLite persistence
 
@@ -91,6 +91,6 @@ Legacy registry schema v4 added `active` and `menu_managed`. During the one-time
 
 ## Threading model
 
-Paper events, PDC mutation, inventory mutation, abilities, GUIs, and registry map updates run on the server thread. Only immutable record copies and JDBC work run through the asynchronous persistence task. Configuration file editing occurs only on low-frequency administrator control paths, never on gameplay progression paths.
+Paper events, PDC mutation, inventory mutation, abilities, GUIs, and registry map updates run on the server thread because Bukkit inventory/world APIs are not generally safe to mutate asynchronously. Expensive item metadata/lore rendering and action-bar output are coalesced per UUID; only immutable record copies and JDBC work run through the asynchronous persistence task. Configuration file editing occurs only on low-frequency administrator control paths, never on gameplay progression paths.
 
-PlexonTools inventory clicks and drags are claimed at `LOWEST` priority and denied immediately. Pagination opens on the following server tick with plugin-specific navigation items, isolating PlexonTools views from unrelated inventory listeners.
+PlexonTools inventory clicks and drags are claimed at `LOWEST` priority and denied immediately. Navigation uses namespaced PDC actions and spectral arrows. A short transition guard rejects non-Plexon inventory opens at `HIGHEST` priority after a Plexon click, including replacement menus requested by unrelated listeners on the same or following ticks.

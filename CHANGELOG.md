@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.6.1 — 2026-08-30
+
+- Added configurable `PLAYER` and `WORLD` progression scopes. `PLAYER` uses one owner/tool record across every allowed dimension, while `WORLD` retains independent records.
+- Added `progression.anchor_world` and deterministic legacy consolidation: an existing anchor-world record wins; otherwise the most-progressed copy is selected and rebound to the anchor.
+- Made multi-world definitions without an explicit scope default to shared `PLAYER` progression, while omitted scope on existing single-world definitions remains `WORLD` for compatibility.
+- Expanded the bundled Legendary Pickaxe to `Survival_World`, `Survival_World_nether`, and `Survival_World_the_end` with Overworld-anchored shared progression.
+- Kept gameplay progress authoritative in the in-memory registry on every accepted event while coalescing item PDC, lore, and progress-action-bar refreshes per instance.
+- Added `performance.progress-visual-refresh-ticks` with a default four-tick window and immediate visual flushes for level-ups and lifecycle boundaries.
+- Retained periodic asynchronous SQLite batches and the final synchronous shutdown drain so optimization does not trade away crash safety.
+- Replaced generic GUI arrow items with PlexonTools-specific spectral arrows and added a short guarded transition that rejects external inventory opens triggered by PlexonTools clicks.
+- Enabled ZIP64 release packaging so the bundled cross-platform SQLite natives always produce a complete, verifiable plugin JAR.
+- Added regression coverage for shared-dimension selection, per-level reset behavior, GUI priorities/navigation material, coalesced-refresh configuration, YAML defaults, and SQLite durability.
+
 ## 3.6.0 — 2026-08-29
 
 - Replaced mutable `data.yml` runtime snapshots with generated `plexontools.db` SQLite storage.

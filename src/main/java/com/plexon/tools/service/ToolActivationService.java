@@ -43,8 +43,8 @@ public final class ToolActivationService {
     }
 
     public boolean isActive(Player player, ToolDefinition definition, String worldName) {
-        return matchingInventoryState(player, definition.id(), worldName).isPresent()
-                || registry.findOwned(player.getUniqueId(), definition.id(), worldName).stream()
+        return matchingInventoryState(player, definition, worldName).isPresent()
+                || ownedRecords(player, definition, worldName).stream()
                         .anyMatch(InstanceRegistry.InstanceRecord::active);
     }
 
@@ -56,13 +56,11 @@ public final class ToolActivationService {
 
     public Optional<ToolState> stateFor(Player player, ToolDefinition definition, String worldName) {
         Optional<InventoryState> inventoryState = matchingInventoryState(
-                player, definition.id(), worldName);
-        if (inventoryState.isPresent()) {
-            return Optional.of(inventoryState.get().state());
-        }
-        return registry.findOwned(player.getUniqueId(), definition.id(), worldName).stream()
-                .findFirst()
-                .map(InstanceRegistry.InstanceRecord::state);
+                player, definition, worldName);
+        Optional<InstanceRegistry.InstanceRecord> canonical = ProgressionRecordSelector.canonical(
+                definition, ownedRecords(player, definition, worldName));
+        return canonical.map(InstanceRegistry.InstanceRecord::state)
+                .or(() -> inventoryState.map(InventoryState::state));
     }
 
     public ToggleResult toggle(Player player, ToolDefinition definition, String worldName) {
@@ -79,15 +77,26 @@ public final class ToolActivationService {
             return ToggleResult.UNAVAILABLE;
         }
 
-        Optional<InventoryState> existing = matchingInventoryState(player, definition.id(), worldName);
+        List<InstanceRegistry.InstanceRecord> owned = ownedRecords(
+                player, definition, worldName);
+        InstanceRegistry.InstanceRecord canonical = ProgressionRecordSelector.canonical(
+                definition, owned).orElse(null);
+        Optional<InventoryState> existing = matchingInventoryState(
+                player, definition, worldName);
         if (existing.isPresent()) {
             InventoryState inventoryState = existing.get();
-            registry.register(inventoryState.state(), player.getName(), true);
-            registry.update(inventoryState.state(), 0L, player.getName());
-            registry.setActive(inventoryState.state().instanceId(), true);
-            registry.setMenuManaged(inventoryState.state().instanceId(), true);
+            ToolState selectedState = canonical == null
+                    ? inventoryState.state() : canonical.state();
+            selectedState = normalizeSharedState(
+                    definition, selectedState, player.getName());
+            registry.register(selectedState, player.getName(), true);
+            registry.update(selectedState, 0L, player.getName());
+            registry.setActive(selectedState.instanceId(), true);
+            registry.setMenuManaged(selectedState.instanceId(), true);
+            deactivateDuplicates(owned, selectedState.instanceId());
             ItemStack refreshed = itemService.refreshProgress(
-                    inventoryState.item(), definition, inventoryState.state());
+                    inventoryState.item(), definition, selectedState,
+                    player.getName());
             if (inventoryState.slot() < 0) {
                 player.setItemOnCursor(refreshed);
             } else {
@@ -102,30 +111,31 @@ public final class ToolActivationService {
             return ToggleResult.INVENTORY_FULL;
         }
 
-        List<InstanceRegistry.InstanceRecord> owned = registry.findOwned(
-                player.getUniqueId(), definition.id(), worldName);
         ToolState state;
         ItemStack item;
         if (owned.isEmpty()) {
-            ToolItemService.CreatedTool created = itemService.create(player, definition, worldName);
+            ToolItemService.CreatedTool created = itemService.create(
+                    player, definition, definition.persistenceWorld(worldName));
             state = created.state();
             item = created.item();
             registry.register(state, player.getName(), true, true);
         } else {
-            InstanceRegistry.InstanceRecord record = owned.getFirst();
-            state = record.state();
+            InstanceRegistry.InstanceRecord record = canonical == null
+                    ? owned.getFirst() : canonical;
+            state = normalizeSharedState(
+                    definition, record.state(), player.getName());
             item = itemService.restore(definition, state);
             registry.setActive(record.instanceId(), true);
             registry.setMenuManaged(record.instanceId(), true);
-            owned.stream().skip(1).forEach(duplicate -> registry.setActive(duplicate.instanceId(), false));
+            deactivateDuplicates(owned, record.instanceId());
         }
         inventory.setItem(slot, item);
         return ToggleResult.ACTIVATED;
     }
 
     public ToggleResult deactivate(Player player, ToolDefinition definition, String worldName) {
-        removeMatchingItems(player, definition.id(), worldName, true);
-        registry.findOwned(player.getUniqueId(), definition.id(), worldName)
+        removeMatchingItems(player, definition, worldName, true);
+        ownedRecords(player, definition, worldName)
                 .forEach(record -> registry.setActive(record.instanceId(), false));
         return ToggleResult.DEACTIVATED;
     }
@@ -150,10 +160,18 @@ public final class ToolActivationService {
             registry.register(cursorState, player.getName(), true);
         }
 
+        consolidateSharedProgress(player);
         String currentWorld = player.getWorld().getName();
         Map<String, InstanceRegistry.InstanceRecord> preferred = new LinkedHashMap<>();
         for (InstanceRegistry.InstanceRecord record : registry.findActive(
-                player.getUniqueId(), currentWorld)) {
+                player.getUniqueId())) {
+            ToolDefinition definition = tools.find(record.toolId()).orElse(null);
+            if (definition == null || (!definition.sharesProgressAcrossWorlds()
+                    && !record.boundWorld().equalsIgnoreCase(currentWorld))
+                    || (definition.sharesProgressAcrossWorlds()
+                    && !definition.isAllowedWorld(currentWorld))) {
+                continue;
+            }
             String toolKey = record.toolId().toLowerCase(java.util.Locale.ROOT);
             if (preferred.putIfAbsent(toolKey, record) != null) {
                 registry.setActive(record.instanceId(), false);
@@ -171,24 +189,30 @@ public final class ToolActivationService {
                 inventory.setItem(slot, null);
                 continue;
             }
-            if (!state.boundWorld().equalsIgnoreCase(currentWorld)) {
+            ToolDefinition definition = tools.find(state.toolId()).orElse(null);
+            if (definition == null
+                    || !definition.isAllowedWorld(currentWorld)
+                    || (!definition.sharesProgressAcrossWorlds()
+                    && !state.boundWorld().equalsIgnoreCase(currentWorld))) {
+                registry.setActive(state.instanceId(), false);
                 inventory.setItem(slot, null);
                 continue;
             }
 
             InstanceRegistry.InstanceRecord selected = preferred.get(
                     state.toolId().toLowerCase(java.util.Locale.ROOT));
-            ToolDefinition definition = tools.find(state.toolId()).orElse(null);
             if (selected == null || !selected.instanceId().equals(state.instanceId())
-                    || definition == null || !definition.enabled()
-                    || !definition.isAllowedWorld(currentWorld)
+                    || present.containsKey(selected == null ? state.instanceId()
+                            : selected.instanceId())
+                    || !definition.enabled()
                     || (selected.menuManaged() && !isAvailable(definition, currentWorld))) {
                 registry.setActive(state.instanceId(), false);
                 inventory.setItem(slot, null);
                 continue;
             }
-            inventory.setItem(slot, itemService.refreshProgress(item, definition, state));
-            present.put(state.instanceId(), slot);
+            inventory.setItem(slot, itemService.refreshProgress(
+                    item, definition, selected.state()));
+            present.put(selected.instanceId(), slot);
         }
 
         ItemStack cursor = player.getItemOnCursor();
@@ -198,19 +222,22 @@ public final class ToolActivationService {
                     cursorState.toolId().toLowerCase(java.util.Locale.ROOT));
             ToolDefinition definition = tools.find(cursorState.toolId()).orElse(null);
             boolean valid = cursorState.ownerId().equals(player.getUniqueId())
-                    && cursorState.boundWorld().equalsIgnoreCase(currentWorld)
+                    && definition != null
+                    && definition.isAllowedWorld(currentWorld)
+                    && (definition.sharesProgressAcrossWorlds()
+                            || cursorState.boundWorld().equalsIgnoreCase(currentWorld))
                     && selected != null
                     && selected.instanceId().equals(cursorState.instanceId())
                     && !present.containsKey(cursorState.instanceId())
-                    && definition != null && definition.enabled()
-                    && definition.isAllowedWorld(currentWorld)
+                    && definition.enabled()
                     && (!selected.menuManaged() || isAvailable(definition, currentWorld));
             if (valid) {
                 player.setItemOnCursor(itemService.refreshProgress(
-                        cursor, definition, cursorState));
-                present.put(cursorState.instanceId(), -1);
+                        cursor, definition, selected.state()));
+                present.put(selected.instanceId(), -1);
             } else {
-                if (cursorState.boundWorld().equalsIgnoreCase(currentWorld)) {
+                if (definition == null || definition.sharesProgressAcrossWorlds()
+                        || cursorState.boundWorld().equalsIgnoreCase(currentWorld)) {
                     registry.setActive(cursorState.instanceId(), false);
                 }
                 player.setItemOnCursor(null);
@@ -243,7 +270,7 @@ public final class ToolActivationService {
 
     private Optional<InventoryState> matchingInventoryState(
             Player player,
-            String toolId,
+            ToolDefinition definition,
             String worldName
     ) {
         PlayerInventory inventory = player.getInventory();
@@ -252,8 +279,9 @@ public final class ToolActivationService {
             ToolState state = itemService.read(item).orElse(null);
             if (state != null
                     && state.ownerId().equals(player.getUniqueId())
-                    && state.toolId().equalsIgnoreCase(toolId)
-                    && state.boundWorld().equalsIgnoreCase(worldName)) {
+                    && state.toolId().equalsIgnoreCase(definition.id())
+                    && (definition.sharesProgressAcrossWorlds()
+                            || state.boundWorld().equalsIgnoreCase(worldName))) {
                 return Optional.of(new InventoryState(slot, item, state));
             }
         }
@@ -261,8 +289,9 @@ public final class ToolActivationService {
         ToolState cursorState = itemService.read(cursor).orElse(null);
         if (cursorState != null
                 && cursorState.ownerId().equals(player.getUniqueId())
-                && cursorState.toolId().equalsIgnoreCase(toolId)
-                && cursorState.boundWorld().equalsIgnoreCase(worldName)) {
+                && cursorState.toolId().equalsIgnoreCase(definition.id())
+                && (definition.sharesProgressAcrossWorlds()
+                        || cursorState.boundWorld().equalsIgnoreCase(worldName))) {
             return Optional.of(new InventoryState(-1, cursor, cursorState));
         }
         return Optional.empty();
@@ -270,7 +299,7 @@ public final class ToolActivationService {
 
     private void removeMatchingItems(
             Player player,
-            String toolId,
+            ToolDefinition definition,
             String worldName,
             boolean persistLatestState
     ) {
@@ -280,13 +309,13 @@ public final class ToolActivationService {
             ToolState state = itemService.read(item).orElse(null);
             if (state == null
                     || !state.ownerId().equals(player.getUniqueId())
-                    || !state.toolId().equalsIgnoreCase(toolId)
-                    || !state.boundWorld().equalsIgnoreCase(worldName)) {
+                    || !state.toolId().equalsIgnoreCase(definition.id())
+                    || (!definition.sharesProgressAcrossWorlds()
+                            && !state.boundWorld().equalsIgnoreCase(worldName))) {
                 continue;
             }
-            if (persistLatestState) {
+            if (persistLatestState && registry.find(state.instanceId()).isEmpty()) {
                 registry.register(state, player.getName(), false);
-                registry.update(state, 0L, player.getName());
             }
             registry.setActive(state.instanceId(), false);
             inventory.setItem(slot, null);
@@ -295,15 +324,78 @@ public final class ToolActivationService {
         ToolState cursorState = itemService.read(cursor).orElse(null);
         if (cursorState != null
                 && cursorState.ownerId().equals(player.getUniqueId())
-                && cursorState.toolId().equalsIgnoreCase(toolId)
-                && cursorState.boundWorld().equalsIgnoreCase(worldName)) {
-            if (persistLatestState) {
+                && cursorState.toolId().equalsIgnoreCase(definition.id())
+                && (definition.sharesProgressAcrossWorlds()
+                        || cursorState.boundWorld().equalsIgnoreCase(worldName))) {
+            if (persistLatestState && registry.find(cursorState.instanceId()).isEmpty()) {
                 registry.register(cursorState, player.getName(), false);
-                registry.update(cursorState, 0L, player.getName());
             }
             registry.setActive(cursorState.instanceId(), false);
             player.setItemOnCursor(null);
         }
+    }
+
+    private List<InstanceRegistry.InstanceRecord> ownedRecords(
+            Player player,
+            ToolDefinition definition,
+            String worldName
+    ) {
+        return definition.sharesProgressAcrossWorlds()
+                ? registry.findOwned(player.getUniqueId(), definition.id())
+                : registry.findOwned(player.getUniqueId(), definition.id(), worldName);
+    }
+
+    private void consolidateSharedProgress(Player player) {
+        Map<String, ToolDefinition> activeSharedDefinitions = new LinkedHashMap<>();
+        for (InstanceRegistry.InstanceRecord active : registry.findActive(player.getUniqueId())) {
+            tools.find(active.toolId())
+                    .filter(ToolDefinition::sharesProgressAcrossWorlds)
+                    .ifPresent(definition -> activeSharedDefinitions.putIfAbsent(
+                            definition.id().toLowerCase(java.util.Locale.ROOT), definition));
+        }
+        for (ToolDefinition definition : activeSharedDefinitions.values()) {
+            List<InstanceRegistry.InstanceRecord> owned = registry.findOwned(
+                    player.getUniqueId(), definition.id());
+            InstanceRegistry.InstanceRecord canonical = ProgressionRecordSelector.canonical(
+                    definition, owned).orElse(null);
+            if (canonical == null) {
+                continue;
+            }
+            normalizeSharedState(definition, canonical.state(), player.getName());
+            boolean menuManaged = owned.stream()
+                    .filter(InstanceRegistry.InstanceRecord::active)
+                    .anyMatch(InstanceRegistry.InstanceRecord::menuManaged);
+            registry.setActive(canonical.instanceId(), true);
+            if (menuManaged) {
+                registry.setMenuManaged(canonical.instanceId(), true);
+            }
+            deactivateDuplicates(owned, canonical.instanceId());
+        }
+    }
+
+    private void deactivateDuplicates(
+            List<InstanceRegistry.InstanceRecord> records,
+            UUID canonicalId
+    ) {
+        records.stream()
+                .filter(record -> !record.instanceId().equals(canonicalId))
+                .forEach(record -> registry.setActive(record.instanceId(), false));
+    }
+
+    private ToolState normalizeSharedState(
+            ToolDefinition definition,
+            ToolState state,
+            String ownerName
+    ) {
+        if (!definition.sharesProgressAcrossWorlds()
+                || state.boundWorld().equalsIgnoreCase(
+                        definition.progressionAnchorWorld())) {
+            return state;
+        }
+        ToolState normalized = state.withBoundWorld(
+                definition.progressionAnchorWorld());
+        registry.update(normalized, 0L, ownerName);
+        return normalized;
     }
 
     private record InventoryState(int slot, ItemStack item, ToolState state) {

@@ -1,6 +1,6 @@
 # PlexonTools 3.5.2 — Per-Level Progress and GUI Isolation
 
-> Historical patch documentation. PlexonTools 3.6.0 retains these behaviors and replaces live `data.yml` persistence with SQLite; see [`PLEXONTOOLS_3_6_0.md`](PLEXONTOOLS_3_6_0.md).
+> Historical patch documentation. PlexonTools 3.6.1 retains these behaviors and replaces live `data.yml` persistence with SQLite; see [`PLEXONTOOLS_3_6_1.md`](PLEXONTOOLS_3_6_1.md).
 
 PlexonTools 3.5.2 is a compatibility patch for Paper 1.21.4 and Java 21. It keeps the 3.5.1 entitlement, protection, world-menu, and registry behavior while changing progression boundaries and strengthening GUI ownership.
 

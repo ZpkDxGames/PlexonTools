@@ -41,5 +41,5 @@ permissions:
     description: Opens the administrative tool editor.
     default: op
   plexontools.bypass.world:
-    description: Allows use of custom tools outside their bound world.
+    description: Allows use of custom tools outside configured allowed or bound worlds.
     default: false

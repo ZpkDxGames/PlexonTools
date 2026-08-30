@@ -54,4 +54,18 @@ final class PluginSettingsTest {
 
         assertTrue(exception.getMessage().contains("must be a YAML list"));
     }
+
+    @Test
+    void clampsCoalescedProgressRefreshWindow() {
+        YamlConfiguration tooFast = new YamlConfiguration();
+        tooFast.set("performance.progress-visual-refresh-ticks", 0L);
+        assertEquals(1L, PluginSettings.progressVisualRefreshTicks(tooFast));
+
+        YamlConfiguration tooSlow = new YamlConfiguration();
+        tooSlow.set("performance.progress-visual-refresh-ticks", 200L);
+        assertEquals(20L, PluginSettings.progressVisualRefreshTicks(tooSlow));
+
+        assertEquals(4L, PluginSettings.progressVisualRefreshTicks(
+                new YamlConfiguration()));
+    }
 }

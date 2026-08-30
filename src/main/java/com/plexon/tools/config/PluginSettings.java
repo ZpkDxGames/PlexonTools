@@ -20,6 +20,7 @@ public final class PluginSettings {
     private int databaseBusyTimeoutMillis;
     private int databaseWalAutoCheckpointPages;
     private boolean databaseIntegrityCheck;
+    private long progressVisualRefreshTicks;
     private int progressBarWidth;
     private String progressFilledSymbol;
     private String progressEmptySymbol;
@@ -65,6 +66,7 @@ public final class PluginSettings {
         databaseWalAutoCheckpointPages = Math.max(1, Math.min(100000,
                 config.getInt("storage.wal-autocheckpoint-pages", 1000)));
         databaseIntegrityCheck = config.getBoolean("storage.integrity-check-on-startup", true);
+        progressVisualRefreshTicks = progressVisualRefreshTicks(config);
 
         progressBarWidth = Math.max(5, Math.min(50, config.getInt("progress-bar.width", 20)));
         progressFilledSymbol = config.getString("progress-bar.filled-symbol", "■");
@@ -135,6 +137,7 @@ public final class PluginSettings {
     public int databaseBusyTimeoutMillis() { return databaseBusyTimeoutMillis; }
     public int databaseWalAutoCheckpointPages() { return databaseWalAutoCheckpointPages; }
     public boolean databaseIntegrityCheck() { return databaseIntegrityCheck; }
+    public long progressVisualRefreshTicks() { return progressVisualRefreshTicks; }
     public int progressBarWidth() { return progressBarWidth; }
     public String progressFilledSymbol() { return progressFilledSymbol; }
     public String progressEmptySymbol() { return progressEmptySymbol; }
@@ -226,6 +229,11 @@ public final class PluginSettings {
             );
         }
         return new LoreSettings(List.copyOf(template), generalLine, specificLine, maximumLine);
+    }
+
+    static long progressVisualRefreshTicks(FileConfiguration config) {
+        return Math.max(1L, Math.min(20L,
+                config.getLong("performance.progress-visual-refresh-ticks", 4L)));
     }
 
     private static List<String> stringList(FileConfiguration config, String path) {

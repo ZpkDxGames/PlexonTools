@@ -2,7 +2,7 @@
 
 PlexonTools is a Paper-native progression engine for unique, world-activated custom tools. Every tool has its own UUID, permanent owner, world binding, activation state, level, aggregate progress, and optional per-target counters.
 
-> **Current release:** `3.6.0` — **Creator:** Tonim (`ZpkDxGames`)
+> **Current release:** `3.6.1` — **Creator:** Tonim (`ZpkDxGames`)
 
 ## Requirements
 
@@ -11,19 +11,19 @@ PlexonTools is a Paper-native progression engine for unique, world-activated cus
 - No external database service or manually installed runtime dependency
 - No NMS or CraftBukkit implementation access
 
-## 3.6.0 highlights
+## 3.6.1 highlights
 
 - `/pt` is now a configurable per-world activation menu instead of a category browser.
 - A tool appears automatically when its `allowed_worlds` includes the current world; `menus.yml` pins exact slots instead of acting as a second hidden allowlist.
 - Admins customize each world's title, rows, filler, pinned slots, default tool cards, and ON/OFF panels through `/pt gui` or YAML.
 - Players can activate and deactivate an available tool without losing its UUID, level, or progress.
-- Active tools leave the inventory outside their bound world and safely return on join, respawn, or re-entry.
+- A tool can share one player-owned progression record across Overworld, Nether, and End variants, or keep intentional per-world progression.
 - Bound tools are always unbreakable, owner-only, non-droppable, retained on death, and blocked from external inventories.
 - SPECIFIC objectives render one requirement per lore line; enchantments, attributes, unbreakable text, and additional vanilla details are hidden.
 - Six tracking types: blocks broken, mobs killed, items farmed, fish caught, damage dealt, and blocks placed.
 - GENERAL shared totals and SPECIFIC per-target quotas reset at each level boundary; excess activity never counts toward the next level.
-- A configurable action bar shows the current level's progress bar after every accepted requirement event.
-- PlexonTools claims and defers its paginated GUI clicks so unrelated inventory plugins cannot hijack page navigation.
+- A configurable action bar shows current progress; item lore/PDC and action-bar rendering coalesce per instance while authoritative progress updates immediately.
+- PlexonTools claims its GUI clicks, uses distinct navigation items, and rejects external inventory opens during its transitions so unrelated plugins cannot hijack Back or page navigation.
 - Mutable player/tool state now lives in generated `plexontools.db` SQLite storage with WAL, integrity checks, indexes, prepared statements, and transactional batches.
 - Normal gameplay performs no YAML or database I/O: repeated UUID updates coalesce in memory and flush asynchronously in bounded batches.
 - Existing schema-v3/v4 `data.yml` registries migrate automatically and idempotently with a timestamped backup and post-import verification.
@@ -35,11 +35,11 @@ PlexonTools is a Paper-native progression engine for unique, world-activated cus
 - `<!italic>` normalization for every MiniMessage deserialization, including names, lore, messages, and GUIs.
 - Item PDC mutations and progression calculations stay in memory; changed registry records persist asynchronously in coalesced SQLite transactions.
 - Backward-compatible loading for 2.0 definitions, issued items, list filters, and legacy `data.yml` records.
-- Bundled defaults provide a gold-themed, 100-level `legendary_pickaxe` progression for `Survival_World`.
+- Bundled defaults provide a gold-themed, 100-level `legendary_pickaxe` shared across `Survival_World` and its Nether/End variants.
 
 ## Installation
 
-1. Download `PlexonTools-3.6.0.jar` from the GitHub release.
+1. Download `PlexonTools-3.6.1.jar` from the GitHub release.
 2. Place it in the Paper server's `plugins` directory.
 3. Start the server once to generate the five editable YAML files, their `examples/` references, and `plexontools.db`.
 4. Customize through `/pt gui` or YAML, then run `/pt reload`.
@@ -53,7 +53,7 @@ Build from source with Java 21 and `gradle clean build`.
 | `/pt` | `plexontools.use` | Open the current world's tool activation menu |
 | `/pt <category> [player]` | `plexontools.use`; target requires `plexontools.admin` | Open one category |
 | `/pt all [player]` | `plexontools.use`; target requires `plexontools.admin` | Open the unified showcase |
-| `/pt give <player> <tool_id> [world]` | `plexontools.give` | Grant a unique instance bound to an allowed world |
+| `/pt give <player> <tool_id> [world]` | `plexontools.give` | Grant a unique instance for an allowed world |
 | `/pt gui` | `plexontools.gui` | Open the administrative dashboard |
 | `/pt reload` | `plexontools.reload` | Reload settings, messages, categories, tools, and world menus |
 | `/pt backup` | `plexontools.backup` | Flush pending records and create a consistent SQLite backup |
@@ -95,7 +95,23 @@ Levels can override root requirements with `requirement_mode`, `requirement`, or
 
 Progress is strictly per level. When a level completes, both its aggregate counter and SPECIFIC target counters reset to zero. For example, two consecutive levels that each require `STONE: 500` require 500 new Stone breaks at each level. The event that completes one level cannot contribute overflow to the next.
 
-Accepted requirement activity displays the live progress bar in the action bar by default. Toggle it with `effects.progress-action-bar` and customize `messages.progress-update`.
+Accepted requirement activity updates authoritative state immediately. The item lore/PDC and live action bar refresh together in a short configurable window (`performance.progress-visual-refresh-ticks`, default `4`) to reduce block-event work. Toggle the action bar with `effects.progress-action-bar` and customize `messages.progress-update`.
+
+## Multi-dimension progression
+
+Every tool can choose its persistence boundary in `tools.yml`:
+
+```yaml
+allowed_worlds:
+  - Survival_World
+  - Survival_World_nether
+  - Survival_World_the_end
+progression:
+  scope: PLAYER
+  anchor_world: Survival_World
+```
+
+`PLAYER` keeps one UUID, level, GENERAL counter, and SPECIFIC target map across every allowed world. The anchor must appear in `allowed_worlds`; it is the canonical record when older per-world copies already exist. `WORLD` deliberately keeps independent progress in each allowed world. Existing multi-world definitions with no explicit scope default to `PLAYER`; existing single-world definitions remain `WORLD` until configured or expanded. World names must match the exact Bukkit names used by the server (comparison is case-insensitive).
 
 ## World menus, categories, and abilities
 
@@ -144,7 +160,7 @@ The freely ordered default layout lives under `tool-lore.template` in `config.ym
 
 ## Persistence
 
-While materialized, the item carries `id`, `uuid`, `level`, `stat_count`, `category`, `bound_world`, `owner`, and optional `stat_breakdown` keys in the `plexontools` namespace. `plexontools.db` stores players, authoritative activation entitlements, tool instances, and normalized target progress. Gameplay updates remain in memory; an asynchronous coalescing worker persists bounded transactions and shutdown drains the queue before checkpointing WAL.
+While materialized, the item carries `id`, `uuid`, `level`, `stat_count`, `category`, `bound_world`, `owner`, and optional `stat_breakdown` keys in the `plexontools` namespace. `plexontools.db` stores players, authoritative activation entitlements, tool instances, and normalized target progress. Gameplay updates remain in memory; visual metadata is coalesced on the server thread, an asynchronous worker persists bounded database transactions, and shutdown drains the queue before checkpointing WAL.
 
 On the first 3.6 startup, an existing schema-v3/v4 `data.yml` is strictly validated, backed up as `data.yml.pre-sqlite-<timestamp>.bak`, imported in one transaction, verified, and marked migrated. The original remains available for rollback and is never re-imported after a successful migration.
 
@@ -152,6 +168,7 @@ Block-break tracking remains material-based: matching player-placed blocks also 
 
 ## Documentation
 
+- [PlexonTools 3.6.1 performance and multi-dimension guide](docs/PLEXONTOOLS_3_6_1.md)
 - [PlexonTools 3.6.0 database and configuration guide](docs/PLEXONTOOLS_3_6_0.md)
 - [PlexonTools 3.5.2 release behavior](docs/PLEXONTOOLS_3_5_2.md)
 - [PlexonTools 3.5.1 baseline and 3.6 roadmap](docs/PLEXONTOOLS_3_5_1.md)

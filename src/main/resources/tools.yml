@@ -9,7 +9,14 @@
 #   display_name: fallback name before level overrides are resolved
 #   base_material: any Bukkit item Material
 #   allowed_worlds: exact Bukkit world names (case-insensitive at runtime)
+#   progression.scope: PLAYER shares one owner/tool record across all allowed
+#     worlds; WORLD keeps a separate record in every world
+#   progression.anchor_world: canonical existing world used when PLAYER scope
+#     consolidates old per-world copies (must also be in allowed_worlds)
 #   lore: optional per-tool default; otherwise config.yml tool-lore.template is used
+# Multi-world tools without an explicit scope default to PLAYER so adding a
+# Nether or End variant does not silently reset progress. Use WORLD explicitly
+# when independent dimension progression is intentional.
 #
 # tracking.type options:
 #   BLOCKS_BROKEN, MOBS_KILLED, ITEMS_FARMED, FISH_CAUGHT,
@@ -57,6 +64,11 @@ tools:
     base_material: WOODEN_PICKAXE
     allowed_worlds:
       - Survival_World
+      - Survival_World_nether
+      - Survival_World_the_end
+    progression:
+      scope: PLAYER
+      anchor_world: Survival_World
     tracking:
       type: BLOCKS_BROKEN
       mode: SPECIFIC

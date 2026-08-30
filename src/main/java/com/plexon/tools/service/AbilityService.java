@@ -1,7 +1,6 @@
 package com.plexon.tools.service;
 
 import com.plexon.tools.config.ToolConfigRepository;
-import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.item.ToolState;
 import com.plexon.tools.model.AbilityTarget;
 import com.plexon.tools.model.ToolAbilitySettings;
@@ -73,7 +72,6 @@ public final class AbilityService implements Listener {
 
     private final JavaPlugin plugin;
     private final ToolConfigRepository tools;
-    private final ToolItemService itemService;
     private final ProgressionService progression;
     private final Set<UUID> areaMiningPlayers = new HashSet<>();
     private BukkitTask passiveTask;
@@ -81,12 +79,10 @@ public final class AbilityService implements Listener {
     public AbilityService(
             JavaPlugin plugin,
             ToolConfigRepository tools,
-            ToolItemService itemService,
             ProgressionService progression
     ) {
         this.plugin = plugin;
         this.tools = tools;
-        this.itemService = itemService;
         this.progression = progression;
     }
 
@@ -163,7 +159,7 @@ public final class AbilityService implements Listener {
     public void onBlockDrops(BlockDropItemEvent event) {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
-        ToolState state = itemService.read(item).orElse(null);
+        ToolState state = progression.resolveState(item).orElse(null);
         ToolDefinition definition = state == null ? null : tools.find(state.toolId()).orElse(null);
         if (definition == null || !definition.enabled()
                 || !progression.canUse(player, definition, state, false)) {
@@ -204,7 +200,7 @@ public final class AbilityService implements Listener {
                 }
 
                 ItemStack currentTool = player.getInventory().getItemInMainHand();
-                ToolState currentState = itemService.read(currentTool).orElse(state);
+                ToolState currentState = progression.resolveState(currentTool).orElse(state);
                 boolean autoSmelt = hasAbility(definition, currentState, ToolAbilityType.AUTO_SMELT);
                 boolean magnet = hasAbility(definition, currentState, ToolAbilityType.MAGNET);
                 List<ItemStack> drops = extra.isDropItems()
@@ -231,7 +227,7 @@ public final class AbilityService implements Listener {
     private void refreshPassiveEffects() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             ItemStack item = player.getInventory().getItemInMainHand();
-            ToolState state = itemService.read(item).orElse(null);
+            ToolState state = progression.resolveState(item).orElse(null);
             ToolDefinition definition = state == null ? null : tools.find(state.toolId()).orElse(null);
             if (definition == null || !definition.enabled()
                     || !progression.canUse(player, definition, state, false)) {
