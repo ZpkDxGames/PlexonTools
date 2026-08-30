@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,14 @@ final class GuiIsolationTest {
         EventHandler handler = method.getAnnotation(EventHandler.class);
         assertNotNull(handler, "onOpen must remain a Bukkit event handler");
         assertEquals(EventPriority.HIGHEST, handler.priority());
+    }
+
+    @Test
+    void plexonGuiSessionGuardIsReleasedOnClose() throws NoSuchMethodException {
+        Method method = GuiManager.class.getDeclaredMethod(
+                "onClose", InventoryCloseEvent.class);
+        assertNotNull(method.getAnnotation(EventHandler.class),
+                "onClose must retain GUI-session cleanup");
     }
 
     @Test

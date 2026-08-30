@@ -19,7 +19,7 @@ The activation registry—not an item entity on the ground—is the recovery sou
 4. The tracking listener converts the accepted event into a normalized material/entity target and long increment.
 5. `RequirementProgression` updates the GENERAL total or SPECIFIC target map; completing a level advances once and resets both counters without carrying overflow.
 6. `InstanceRegistry` immediately replaces the authoritative cached record and coalesces the changed UUID into the asynchronous persistence queue.
-7. Non-boundary events replace one pending visual entry per instance. A short server-thread task applies the newest PDC/lore once and sends the newest configured action bar; rapid events overwrite pending visuals instead of rerendering each item.
+7. Non-boundary events retain one pending visual marker per instance. A short server-thread task fetches newest registry state, applies PDC/lore once, and sends the configured action bar; rapid events do not allocate or replace visual markers repeatedly.
 8. Level-ups and lifecycle boundaries flush visual state immediately, and a changed level/profile reapplies the complete item profile.
 
 There is no YAML lookup or database I/O in block, combat, farming, fishing, damage, or placement progression. A scheduled asynchronous task writes coalesced UUID updates to SQLite in bounded transactions; shutdown drains the queue and checkpoints the WAL after event handling stops.
@@ -59,7 +59,7 @@ The concurrent registry record is authoritative during runtime. The materialized
 
 Every registry mutation increments a revision counter and records the affected instance UUID in an insertion-ordered, coalescing queue. The asynchronous worker takes stable immutable record copies and executes prepared upserts in bounded transactions. An acknowledgment removes a UUID only when its queued revision still matches the written revision; an update that races with a write therefore remains pending for the next batch.
 
-If the number of distinct pending UUIDs reaches the configured bound, the queue switches to a safe full-snapshot marker instead of retaining unbounded keys or discarding state. Shutdown and `/pt backup` drain the same queue under the database lock. Backup then checkpoints WAL and copies the main database file.
+If the number of distinct pending UUIDs reaches the configured bound, the queue switches to a safe full-snapshot marker instead of retaining unbounded keys or discarding state. Once that snapshot starts, newer mutations enter the ordinary delta queue, so continuous activity does not force the same full registry to be written repeatedly. A failed snapshot restores the full marker before reporting the database error. Shutdown and `/pt backup` drain the same queue under the database lock. Backup then checkpoints WAL and copies the main database file.
 
 SQLite schema version 1 separates `players`, `tool_instances`, and normalized `target_progress`, with migration information in `schema_metadata`. Foreign keys and constraints protect parent/child identity. Owner, tool, owner/tool/world, and active-owner/world query paths are indexed. Startup requests WAL, applies a busy timeout, optionally runs `PRAGMA integrity_check`, and fails with an actionable error rather than silently accepting malformed state.
 
@@ -93,4 +93,4 @@ Legacy registry schema v4 added `active` and `menu_managed`. During the one-time
 
 Paper events, PDC mutation, inventory mutation, abilities, GUIs, and registry map updates run on the server thread because Bukkit inventory/world APIs are not generally safe to mutate asynchronously. Expensive item metadata/lore rendering and action-bar output are coalesced per UUID; only immutable record copies and JDBC work run through the asynchronous persistence task. Configuration file editing occurs only on low-frequency administrator control paths, never on gameplay progression paths.
 
-PlexonTools inventory clicks and drags are claimed at `LOWEST` priority and denied immediately. Navigation uses namespaced PDC actions and spectral arrows. A short transition guard rejects non-Plexon inventory opens at `HIGHEST` priority after a Plexon click, including replacement menus requested by unrelated listeners on the same or following ticks.
+PlexonTools inventory clicks and drags are claimed at `LOWEST` priority and denied immediately. Navigation uses namespaced PDC actions and spectral arrows. A session guard rejects non-Plexon inventory opens at `HIGHEST` priority for as long as a PlexonTools holder is active, with a short transition token covering close/open races.

@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -146,21 +145,28 @@ public final class AbilityService implements Listener {
             ToolDefinition definition,
             ToolState state
     ) {
-        ability(definition, state, ToolAbilityType.MOB_POTION_EFFECT).ifPresent(settings -> {
-            if (settings.potionTarget() == AbilityTarget.TARGET) {
-                applyPotion(target, settings);
-            } else {
-                applyPotion(player, settings);
-            }
-        });
+        ToolAbilitySettings settings = ability(
+                definition, state, ToolAbilityType.MOB_POTION_EFFECT);
+        if (settings == null) {
+            return;
+        }
+        if (settings.potionTarget() == AbilityTarget.TARGET) {
+            applyPotion(target, settings);
+        } else {
+            applyPotion(player, settings);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockDrops(BlockDropItemEvent event) {
+        if (!tools.hasEnabledAbility(ToolAbilityType.AUTO_SMELT)
+                && !tools.hasEnabledAbility(ToolAbilityType.MAGNET)) {
+            return;
+        }
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
         ToolState state = progression.resolveState(item).orElse(null);
-        ToolDefinition definition = state == null ? null : tools.find(state.toolId()).orElse(null);
+        ToolDefinition definition = state == null ? null : tools.findCached(state.toolId());
         if (definition == null || !definition.enabled()
                 || !progression.canUse(player, definition, state, false)) {
             return;
@@ -168,6 +174,9 @@ public final class AbilityService implements Listener {
 
         boolean autoSmelt = hasAbility(definition, state, ToolAbilityType.AUTO_SMELT);
         boolean magnet = hasAbility(definition, state, ToolAbilityType.MAGNET);
+        if (!autoSmelt && !magnet) {
+            return;
+        }
         for (Item drop : new ArrayList<>(event.getItems())) {
             if (autoSmelt) {
                 drop.setItemStack(smelt(drop.getItemStack()));
@@ -200,7 +209,7 @@ public final class AbilityService implements Listener {
                 }
 
                 ItemStack currentTool = player.getInventory().getItemInMainHand();
-                ToolState currentState = progression.resolveState(currentTool).orElse(state);
+                ToolState currentState = progression.latestState(state);
                 boolean autoSmelt = hasAbility(definition, currentState, ToolAbilityType.AUTO_SMELT);
                 boolean magnet = hasAbility(definition, currentState, ToolAbilityType.MAGNET);
                 List<ItemStack> drops = extra.isDropItems()
@@ -225,17 +234,22 @@ public final class AbilityService implements Listener {
     }
 
     private void refreshPassiveEffects() {
+        if (!tools.hasEnabledAbility(ToolAbilityType.MOB_POTION_EFFECT)) {
+            return;
+        }
         for (Player player : Bukkit.getOnlinePlayers()) {
             ItemStack item = player.getInventory().getItemInMainHand();
             ToolState state = progression.resolveState(item).orElse(null);
-            ToolDefinition definition = state == null ? null : tools.find(state.toolId()).orElse(null);
+            ToolDefinition definition = state == null ? null : tools.findCached(state.toolId());
             if (definition == null || !definition.enabled()
                     || !progression.canUse(player, definition, state, false)) {
                 continue;
             }
-            ability(definition, state, ToolAbilityType.MOB_POTION_EFFECT)
-                    .filter(settings -> settings.potionTarget() == AbilityTarget.HOLDER)
-                    .ifPresent(settings -> applyPotion(player, settings));
+            ToolAbilitySettings ability = ability(
+                    definition, state, ToolAbilityType.MOB_POTION_EFFECT);
+            if (ability != null && ability.potionTarget() == AbilityTarget.HOLDER) {
+                applyPotion(player, ability);
+            }
         }
     }
 
@@ -250,8 +264,8 @@ public final class AbilityService implements Listener {
     }
 
     private static int boostedExperience(int base, ToolDefinition definition, ToolState state) {
-        ToolAbilitySettings settings = ability(definition, state, ToolAbilityType.EXP_BOOSTER)
-                .orElse(null);
+        ToolAbilitySettings settings = ability(
+                definition, state, ToolAbilityType.EXP_BOOSTER);
         if (settings == null || base <= 0) {
             return Math.max(0, base);
         }
@@ -264,15 +278,16 @@ public final class AbilityService implements Listener {
             ToolState state,
             ToolAbilityType type
     ) {
-        return ability(definition, state, type).isPresent();
+        return ability(definition, state, type) != null;
     }
 
-    private static Optional<ToolAbilitySettings> ability(
+    private static ToolAbilitySettings ability(
             ToolDefinition definition,
             ToolState state,
             ToolAbilityType type
     ) {
-        return definition.level(state.level()).map(level -> level.abilities().get(type));
+        var level = definition.levels().get(state.level());
+        return level == null ? null : level.abilities().get(type);
     }
 
     private static ItemStack smelt(ItemStack source) {

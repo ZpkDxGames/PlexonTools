@@ -2,7 +2,6 @@ package com.plexon.tools.listener;
 
 import com.plexon.tools.config.PluginSettings;
 import com.plexon.tools.config.ToolConfigRepository;
-import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.item.ToolState;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.TrackingType;
@@ -28,6 +27,7 @@ import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.IdentityHashMap;
 import java.util.Set;
 
 public final class ToolProgressListener implements Listener {
@@ -53,20 +53,21 @@ public final class ToolProgressListener implements Listener {
             Material.PUFFERFISH
     );
     private final ToolConfigRepository tools;
-    private final ToolItemService itemService;
     private final ProgressionService progression;
     private final AbilityService abilities;
     private final PluginSettings settings;
+    private final IdentityHashMap<BlockBreakEvent, ToolUse> blockBreakContexts =
+            new IdentityHashMap<>();
+    private final IdentityHashMap<EntityDamageByEntityEvent, ToolUse> damageContexts =
+            new IdentityHashMap<>();
 
     public ToolProgressListener(
             ToolConfigRepository tools,
-            ToolItemService itemService,
             ProgressionService progression,
             AbilityService abilities,
             PluginSettings settings
     ) {
         this.tools = tools;
-        this.itemService = itemService;
         this.progression = progression;
         this.abilities = abilities;
         this.settings = settings;
@@ -76,32 +77,36 @@ public final class ToolProgressListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
-        ToolContext context = usable(player, item, true);
-        if (context == null) {
-            if (itemService.isTagged(item)) {
+        ToolUse context = inspect(player, item, true);
+        if (!context.usable()) {
+            if (context.tagged()) {
                 event.setCancelled(settings.cancelBlockBreaks());
             }
             return;
         }
+        blockBreakContexts.put(event, context);
 
         abilities.boostBlockExperience(event, context.definition(), context.state());
-        String target = blockTrackingTarget(context.definition().trackingType(), event.getBlock());
-        if (target != null && context.definition().tracks(target, context.state().level())) {
-            progression.addProgress(player, item, EquipmentSlot.HAND, context.definition(),
-                    context.state(), target, 1L);
-        }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onBlockBreakAbilities(BlockBreakEvent event) {
-        if (abilities.isAreaMining(event.getPlayer())) {
+        ToolUse context = blockBreakContexts.remove(event);
+        if (event.isCancelled() || context == null) {
             return;
         }
-        ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
-        ToolContext context = usable(event.getPlayer(), item, false);
-        if (context != null) {
-            abilities.mineArea(event, context.definition(), context.state());
+        Player player = event.getPlayer();
+        ToolState latest = progression.latestState(context.state());
+        String target = blockTrackingTarget(
+                context.definition().trackingType(), event.getBlock());
+        if (target != null && context.definition().tracks(target, latest.level())) {
+            latest = progression.addResolvedProgress(
+                    player, EquipmentSlot.HAND, context.definition(), latest, target, 1L);
         }
+        if (abilities.isAreaMining(player)) {
+            return;
+        }
+        abilities.mineArea(event, context.definition(), latest);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -111,8 +116,8 @@ public final class ToolProgressListener implements Listener {
             return;
         }
         ItemStack item = player.getInventory().getItemInMainHand();
-        ToolContext context = usable(player, item, false);
-        if (context == null) {
+        ToolUse context = inspect(player, item, false);
+        if (!context.usable()) {
             return;
         }
 
@@ -120,7 +125,7 @@ public final class ToolProgressListener implements Listener {
         if (context.definition().trackingType() == TrackingType.MOBS_KILLED) {
             String target = event.getEntityType().name();
             if (context.definition().tracks(target, context.state().level())) {
-                progression.addProgress(player, item, EquipmentSlot.HAND,
+                progression.addResolvedProgress(player, EquipmentSlot.HAND,
                         context.definition(), context.state(), target, 1L);
             }
         }
@@ -132,35 +137,34 @@ public final class ToolProgressListener implements Listener {
             return;
         }
         ItemStack item = player.getInventory().getItemInMainHand();
-        if (usable(player, item, true) == null
-                && itemService.isTagged(item)
-                && settings.cancelAttacks()) {
+        ToolUse context = inspect(player, item, true);
+        if (context.usable()) {
+            damageContexts.put(event, context);
+        } else if (context.tagged() && settings.cancelAttacks()) {
             event.setCancelled(true);
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onDamageResolved(EntityDamageByEntityEvent event) {
-        if (!(event.getDamager() instanceof Player player)
+        ToolUse context = damageContexts.remove(event);
+        if (event.isCancelled() || context == null
+                || !(event.getDamager() instanceof Player player)
                 || !(event.getEntity() instanceof LivingEntity targetEntity)) {
             return;
         }
-        ItemStack item = player.getInventory().getItemInMainHand();
-        ToolContext context = usable(player, item, false);
-        if (context == null) {
-            return;
-        }
+        ToolState latest = progression.latestState(context.state());
 
-        abilities.applyHitEffect(player, targetEntity, context.definition(), context.state());
+        abilities.applyHitEffect(player, targetEntity, context.definition(), latest);
         if (context.definition().trackingType() != TrackingType.DAMAGE_DEALT
                 || event.getFinalDamage() <= 0.0D) {
             return;
         }
         String target = event.getEntityType().name();
-        if (context.definition().tracks(target, context.state().level())) {
+        if (context.definition().tracks(target, latest.level())) {
             long amount = Math.max(1L, Math.round(event.getFinalDamage()));
-            progression.addProgress(player, item, EquipmentSlot.HAND,
-                    context.definition(), context.state(), target, amount);
+            progression.addResolvedProgress(player, EquipmentSlot.HAND,
+                    context.definition(), latest, target, amount);
         }
     }
 
@@ -171,13 +175,14 @@ public final class ToolProgressListener implements Listener {
         }
         EquipmentSlot hand = event.getHand();
         ItemStack item = held(event.getPlayer(), hand);
-        ToolContext context = usable(event.getPlayer(), item, false);
-        if (context == null || context.definition().trackingType() != TrackingType.BLOCKS_PLACED) {
+        ToolUse context = inspect(event.getPlayer(), item, false);
+        if (!context.usable()
+                || context.definition().trackingType() != TrackingType.BLOCKS_PLACED) {
             return;
         }
         String target = event.getBlockPlaced().getType().name();
         if (context.definition().tracks(target, context.state().level())) {
-            progression.addProgress(event.getPlayer(), item, hand,
+            progression.addResolvedProgress(event.getPlayer(), hand,
                     context.definition(), context.state(), target, 1L);
         }
     }
@@ -190,8 +195,8 @@ public final class ToolProgressListener implements Listener {
         }
         EquipmentSlot hand = event.getHand() == null ? EquipmentSlot.HAND : event.getHand();
         ItemStack item = held(event.getPlayer(), hand);
-        ToolContext context = usable(event.getPlayer(), item, false);
-        if (context == null) {
+        ToolUse context = inspect(event.getPlayer(), item, false);
+        if (!context.usable()) {
             return;
         }
 
@@ -205,7 +210,7 @@ public final class ToolProgressListener implements Listener {
         }
         String target = caughtType.name();
         if (context.definition().tracks(target, context.state().level())) {
-            progression.addProgress(event.getPlayer(), item, hand,
+            progression.addResolvedProgress(event.getPlayer(), hand,
                     context.definition(), context.state(), target, 1L);
         }
     }
@@ -214,8 +219,8 @@ public final class ToolProgressListener implements Listener {
     public void onHarvest(PlayerHarvestBlockEvent event) {
         EquipmentSlot hand = event.getHand();
         ItemStack item = held(event.getPlayer(), hand);
-        ToolContext context = usable(event.getPlayer(), item, false);
-        if (context == null) {
+        ToolUse context = inspect(event.getPlayer(), item, false);
+        if (!context.usable()) {
             return;
         }
         abilities.handleHarvest(event, context.definition(), context.state());
@@ -228,7 +233,7 @@ public final class ToolProgressListener implements Listener {
         }
         String target = harvestedType.name();
         if (context.definition().tracks(target, context.state().level())) {
-            progression.addProgress(event.getPlayer(), item, hand,
+            progression.addResolvedProgress(event.getPlayer(), hand,
                     context.definition(), context.state(), target, 1L);
         }
     }
@@ -239,9 +244,8 @@ public final class ToolProgressListener implements Listener {
             return;
         }
         ItemStack item = event.getItem();
-        if (usable(event.getPlayer(), item, true) == null
-                && itemService.isTagged(item)
-                && settings.cancelInteractions()) {
+        ToolUse context = inspect(event.getPlayer(), item, true);
+        if (!context.usable() && context.tagged() && settings.cancelInteractions()) {
             event.setCancelled(true);
         }
     }
@@ -249,30 +253,32 @@ public final class ToolProgressListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onItemDamage(PlayerItemDamageEvent event) {
         ItemStack item = event.getItem();
-        if (usable(event.getPlayer(), item, true) == null && itemService.isTagged(item)) {
+        ToolUse context = inspect(event.getPlayer(), item, true);
+        if (!context.usable() && context.tagged()) {
             event.setCancelled(true);
         }
     }
 
-    private ToolContext usable(Player player, ItemStack item, boolean notify) {
-        ToolState state = progression.resolveState(item).orElse(null);
+    private ToolUse inspect(Player player, ItemStack item, boolean notify) {
+        ProgressionService.ToolResolution resolution = progression.resolve(item);
+        ToolState state = resolution.state();
         if (state == null) {
-            if (notify && itemService.isTagged(item)) {
+            if (notify && resolution.tagged()) {
                 progression.warnInvalid(player);
             }
-            return null;
+            return resolution.tagged() ? ToolUse.invalid() : ToolUse.untagged();
         }
-        ToolDefinition definition = tools.find(state.toolId()).orElse(null);
+        ToolDefinition definition = tools.findCached(state.toolId());
         if (definition == null || !definition.enabled()) {
             if (notify) {
                 progression.warnInvalid(player);
             }
-            return null;
+            return ToolUse.invalid();
         }
         if (!progression.canUse(player, definition, state, notify)) {
-            return null;
+            return ToolUse.invalid();
         }
-        return new ToolContext(state, definition);
+        return ToolUse.usable(state, definition);
     }
 
     private static ItemStack held(Player player, EquipmentSlot hand) {
@@ -304,6 +310,24 @@ public final class ToolProgressListener implements Listener {
         };
     }
 
-    private record ToolContext(ToolState state, ToolDefinition definition) {
+    private record ToolUse(boolean tagged, ToolState state, ToolDefinition definition) {
+        private static final ToolUse UNTAGGED = new ToolUse(false, null, null);
+        private static final ToolUse INVALID = new ToolUse(true, null, null);
+
+        private static ToolUse untagged() {
+            return UNTAGGED;
+        }
+
+        private static ToolUse invalid() {
+            return INVALID;
+        }
+
+        private static ToolUse usable(ToolState state, ToolDefinition definition) {
+            return new ToolUse(true, state, definition);
+        }
+
+        private boolean usable() {
+            return state != null && definition != null;
+        }
     }
 }

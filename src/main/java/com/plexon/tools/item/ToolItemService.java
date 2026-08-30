@@ -53,6 +53,8 @@ public final class ToolItemService {
             new IdentityHashMap<>();
     private final IdentityHashMap<ToolDefinition, Map<Integer, Long>> cumulativeProgress =
             new IdentityHashMap<>();
+    private final IdentityHashMap<ToolDefinition, Map<Integer, Map<String, String>>>
+            staticPlaceholders = new IdentityHashMap<>();
 
     public ToolItemService(
             JavaPlugin plugin,
@@ -115,22 +117,35 @@ public final class ToolItemService {
     }
 
     public Optional<ToolIdentity> readIdentity(ItemStack item) {
+        return Optional.ofNullable(inspectIdentity(item).identity());
+    }
+
+    /**
+     * Reads the tag and compact identity in one metadata pass. An item can be
+     * tagged while carrying an incomplete or malformed identity; callers use
+     * that distinction to reject it without probing the same ItemMeta again.
+     */
+    public ToolIdentityInspection inspectIdentity(ItemStack item) {
         if (item == null || item.getType().isAir() || !item.hasItemMeta()) {
-            return Optional.empty();
+            return ToolIdentityInspection.untagged();
         }
         PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
         String id = pdc.get(idKey, PersistentDataType.STRING);
+        if (id == null) {
+            return ToolIdentityInspection.untagged();
+        }
         String rawUuid = pdc.get(uuidKey, PersistentDataType.STRING);
         String boundWorld = pdc.get(boundWorldKey, PersistentDataType.STRING);
         String rawOwner = pdc.get(ownerKey, PersistentDataType.STRING);
-        if (id == null || rawUuid == null || boundWorld == null || rawOwner == null) {
-            return Optional.empty();
+        if (id.isBlank() || rawUuid == null || boundWorld == null
+                || boundWorld.isBlank() || rawOwner == null) {
+            return ToolIdentityInspection.invalid();
         }
         try {
-            return Optional.of(new ToolIdentity(id, UUID.fromString(rawUuid),
-                    UUID.fromString(rawOwner), boundWorld));
+            return ToolIdentityInspection.tagged(new ToolIdentity(
+                    id, UUID.fromString(rawUuid), UUID.fromString(rawOwner), boundWorld));
         } catch (IllegalArgumentException exception) {
-            return Optional.empty();
+            return ToolIdentityInspection.invalid();
         }
     }
 
@@ -213,6 +228,7 @@ public final class ToolItemService {
         synchronized (definitionCacheLock) {
             profileFingerprints.clear();
             cumulativeProgress.clear();
+            staticPlaceholders.clear();
         }
     }
 
@@ -265,7 +281,9 @@ public final class ToolItemService {
 
     public Map<String, String> progressPlaceholders(ToolDefinition definition, ToolState state) {
         ToolLevel currentLevel = definition.level(state.level()).orElse(definition.firstLevel());
-        boolean maximum = definition.nextLevel(state.level()).isEmpty();
+        Map.Entry<Integer, ToolLevel> nextEntry = definition.levels().higherEntry(state.level());
+        boolean maximum = nextEntry == null;
+        int nextLevel = maximum ? -1 : nextEntry.getKey();
         LevelRequirement requirement = currentLevel.requirement();
         long required = requirement.requiredTotal();
         long credited = requirement.creditedProgress(state.progress(), state.targetProgress());
@@ -290,7 +308,7 @@ public final class ToolItemService {
         values.put("percent", Integer.toString(percent));
         values.put("percentage", Integer.toString(percent));
         values.put("total", Long.toString(total));
-        values.put("next_level", maximum ? "MAX" : Integer.toString(state.level() + 1));
+        values.put("next_level", maximum ? "MAX" : Integer.toString(nextLevel));
         values.put("bar", bar);
         values.put("progress_bar", bar);
         return Map.copyOf(values);
@@ -315,35 +333,56 @@ public final class ToolItemService {
                                 Bukkit.getOfflinePlayer(state.ownerId()).getName())
                                 .orElse(state.ownerId().toString()))
                 : knownOwnerName;
-        String goal = maximum ? "Maximum level reached" : goalDescription(definition, requirement);
-
-        Map<String, String> values = new HashMap<>(progressPlaceholders(definition, state));
-        values.put("tool_id", messages.plain(definition.id()));
-        values.put("tool", definition.displayName());
-        values.put("level_name", currentLevel.displayName());
+        Map<String, String> values = new HashMap<>(
+                staticPlaceholders(definition, currentLevel, maximum));
+        values.putAll(progressPlaceholders(definition, state));
         values.put("uuid", state.instanceId().toString());
         values.put("world", messages.plain(state.boundWorld()));
         values.put("bound_world", messages.plain(state.boundWorld()));
         values.put("owner", messages.plain(ownerName));
         values.put("owner_name", messages.plain(ownerName));
         values.put("owner_uuid", state.ownerId().toString());
-        values.put("tracking", messages.plain(definition.trackingType().displayName()));
         values.put("category", messages.plain(definition.category()));
         values.put("category_name", categories.find(definition.category())
                 .map(com.plexon.tools.model.ToolCategory::displayName)
                 .orElse(messages.plain(humanizeTarget(definition.category()))));
-        values.put("requirement_mode", requirement.mode().name());
-        values.put("goal_type_description", messages.plain(goal));
         values.put("target_progress", messages.plain(targetProgressDescription(requirement, state)));
-        values.put("targets", messages.plain(requirement.targets().isEmpty()
-                ? "All" : String.join(", ", requirement.targets().keySet())));
-        values.put("material", currentLevel.material().name());
-        values.put("enchantments", messages.plain(currentLevel.enchantments().entrySet().stream()
-                .sorted(Comparator.comparing(entry -> entry.getKey().getKey().toString()))
-                .map(entry -> entry.getKey().getKey().getKey().toUpperCase(java.util.Locale.ROOT)
-                        + " " + entry.getValue())
-                .collect(Collectors.joining(", "))));
         return values;
+    }
+
+    private Map<String, String> staticPlaceholders(
+            ToolDefinition definition,
+            ToolLevel currentLevel,
+            boolean maximum
+    ) {
+        synchronized (definitionCacheLock) {
+            if (staticPlaceholders.size() >= 1024) {
+                staticPlaceholders.clear();
+            }
+            Map<Integer, Map<String, String>> levels = staticPlaceholders.computeIfAbsent(
+                    definition, ignored -> new HashMap<>());
+            return levels.computeIfAbsent(currentLevel.number(), ignored -> {
+                LevelRequirement requirement = currentLevel.requirement();
+                String goal = maximum
+                        ? "Maximum level reached" : goalDescription(definition, requirement);
+                Map<String, String> values = new HashMap<>();
+                values.put("tool_id", messages.plain(definition.id()));
+                values.put("tool", definition.displayName());
+                values.put("level_name", currentLevel.displayName());
+                values.put("tracking", messages.plain(definition.trackingType().displayName()));
+                values.put("requirement_mode", requirement.mode().name());
+                values.put("goal_type_description", messages.plain(goal));
+                values.put("targets", messages.plain(requirement.targets().isEmpty()
+                        ? "All" : String.join(", ", requirement.targets().keySet())));
+                values.put("material", currentLevel.material().name());
+                values.put("enchantments", messages.plain(currentLevel.enchantments().entrySet().stream()
+                        .sorted(Comparator.comparing(entry -> entry.getKey().getKey().toString()))
+                        .map(entry -> entry.getKey().getKey().getKey()
+                                .toUpperCase(java.util.Locale.ROOT) + " " + entry.getValue())
+                        .collect(Collectors.joining(", "))));
+                return Map.copyOf(values);
+            });
+        }
     }
 
     private List<Component> renderLore(
@@ -563,5 +602,24 @@ public final class ToolItemService {
             UUID ownerId,
             String boundWorld
     ) {
+    }
+
+    public record ToolIdentityInspection(boolean tagged, ToolIdentity identity) {
+        private static final ToolIdentityInspection UNTAGGED =
+                new ToolIdentityInspection(false, null);
+        private static final ToolIdentityInspection INVALID =
+                new ToolIdentityInspection(true, null);
+
+        public static ToolIdentityInspection untagged() {
+            return UNTAGGED;
+        }
+
+        public static ToolIdentityInspection invalid() {
+            return INVALID;
+        }
+
+        public static ToolIdentityInspection tagged(ToolIdentity identity) {
+            return new ToolIdentityInspection(true, Objects.requireNonNull(identity));
+        }
     }
 }

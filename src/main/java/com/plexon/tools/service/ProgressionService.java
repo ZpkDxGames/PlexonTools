@@ -27,11 +27,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -98,23 +97,52 @@ public final class ProgressionService implements Listener {
      * item state is parsed only for pre-database or otherwise unregistered items.
      */
     public Optional<ToolState> resolveState(ItemStack item) {
-        ToolItemService.ToolIdentity identity = itemService.readIdentity(item).orElse(null);
+        return resolve(item).stateOptional();
+    }
+
+    /**
+     * Resolves state and tag validity from one compact ItemMeta inspection.
+     * Registry state is authoritative whenever an instance UUID is known; a
+     * stale item world is repaired by the next visual refresh instead of being
+     * allowed to override the database-backed record.
+     */
+    public ToolResolution resolve(ItemStack item) {
+        ToolItemService.ToolIdentityInspection inspection =
+                itemService.inspectIdentity(item);
+        if (!inspection.tagged()) {
+            return ToolResolution.untagged();
+        }
+        ToolItemService.ToolIdentity identity = inspection.identity();
         if (identity == null) {
-            return Optional.empty();
+            return ToolResolution.invalid();
         }
-        InstanceRegistry.InstanceRecord record = instanceRegistry.find(
-                identity.instanceId()).orElse(null);
-        if (record != null
-                && record.toolId().equalsIgnoreCase(identity.toolId())
-                && record.ownerId().equals(identity.ownerId())
-                && record.boundWorld().equalsIgnoreCase(identity.boundWorld())) {
-            return Optional.of(record.state());
+        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(
+                identity.instanceId());
+        if (record != null) {
+            if (record.toolId().equalsIgnoreCase(identity.toolId())
+                    && record.ownerId().equals(identity.ownerId())) {
+                return ToolResolution.resolved(record.state());
+            }
+            return ToolResolution.invalid();
         }
-        return itemService.read(item);
+        return itemService.read(item)
+                .map(ToolResolution::resolved)
+                .orElseGet(ToolResolution::invalid);
+    }
+
+    public ToolState latestState(ToolState suppliedState) {
+        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(
+                suppliedState.instanceId());
+        if (record == null
+                || !record.toolId().equalsIgnoreCase(suppliedState.toolId())
+                || !record.ownerId().equals(suppliedState.ownerId())) {
+            return suppliedState;
+        }
+        return record.state();
     }
 
     public boolean canUse(Player player, ToolDefinition definition, ToolState state, boolean notify) {
-        if (definition.level(state.level()).isEmpty()) {
+        if (!definition.levels().containsKey(state.level())) {
             if (notify) {
                 warnInvalid(player);
             }
@@ -152,10 +180,10 @@ public final class ProgressionService implements Listener {
             String target,
             long amount
     ) {
-        return addProgress(player, item, EquipmentSlot.HAND, definition,
-                resolveState(item).orElseThrow(() ->
-                        new IllegalArgumentException("Item is not a valid Plexon tool.")),
-                target, amount);
+        ToolState resolved = resolveState(item).orElseThrow(() ->
+                new IllegalArgumentException("Item is not a valid Plexon tool."));
+        return addProgressInternal(player, EquipmentSlot.HAND, definition,
+                resolved, target, amount);
     }
 
     public ToolState addProgress(
@@ -166,10 +194,9 @@ public final class ProgressionService implements Listener {
             String target,
             long amount
     ) {
-        return addProgress(player, item, hand, definition,
-                resolveState(item).orElseThrow(() ->
-                        new IllegalArgumentException("Item is not a valid Plexon tool.")),
-                target, amount);
+        ToolState resolved = resolveState(item).orElseThrow(() ->
+                new IllegalArgumentException("Item is not a valid Plexon tool."));
+        return addProgressInternal(player, hand, definition, resolved, target, amount);
     }
 
     public ToolState addProgress(
@@ -181,11 +208,45 @@ public final class ProgressionService implements Listener {
             String target,
             long amount
     ) {
-        ToolState current = instanceRegistry.find(suppliedState.instanceId())
-                .map(InstanceRegistry.InstanceRecord::state)
-                .orElse(suppliedState);
+        return addProgressInternal(player, hand, definition,
+                latestState(suppliedState), target, amount);
+    }
+
+    /**
+     * Applies progress from state resolved in the current server-thread event
+     * phase, avoiding a redundant registry lookup.
+     */
+    public ToolState addResolvedProgress(
+            Player player,
+            EquipmentSlot hand,
+            ToolDefinition definition,
+            ToolState resolvedState,
+            String target,
+            long amount
+    ) {
+        return addProgressInternal(player, hand, definition,
+                resolvedState, target, amount);
+    }
+
+    private ToolState addProgressInternal(
+            Player player,
+            EquipmentSlot hand,
+            ToolDefinition definition,
+            ToolState registryState,
+            String target,
+            long amount
+    ) {
+        ToolState current = registryState;
         if (!current.categoryId().equalsIgnoreCase(definition.category())) {
             current = current.withCategory(definition.category());
+        }
+        if (definition.levels().higherKey(current.level()) == null) {
+            if (!current.equals(registryState)
+                    || instanceRegistry.findCached(current.instanceId()) == null) {
+                instanceRegistry.update(current, 0L, player.getName());
+                queueVisual(player, hand, definition, current.instanceId());
+            }
+            return current;
         }
 
         RequirementProgression.Result result = RequirementProgression.advance(
@@ -200,16 +261,31 @@ public final class ProgressionService implements Listener {
         instanceRegistry.update(updated, amount, player.getName());
         if (result.levelsGained() > 0) {
             pendingVisuals.remove(updated.instanceId());
-            ItemStack updatedItem = itemService.apply(
-                    item, definition, updated, player.getName());
-            setHeldItem(player, hand, updatedItem);
+            LocatedItem located = locate(player, updated.instanceId(), hand);
+            if (located == null) {
+                queueVisual(player, hand, definition, updated.instanceId());
+            } else {
+                ItemStack updatedItem = itemService.apply(
+                        located.item(), definition, updated, player.getName());
+                located.replace(player, updatedItem);
+            }
             announceUpgrade(player, definition, updated);
         } else {
-            pendingVisuals.put(updated.instanceId(), new PendingVisual(
-                    player.getUniqueId(), updated.instanceId(), hand, definition,
-                    settings.progressActionBar()));
+            queueVisual(player, hand, definition, updated.instanceId());
         }
         return updated;
+    }
+
+    private void queueVisual(
+            Player player,
+            EquipmentSlot hand,
+            ToolDefinition definition,
+            UUID instanceId
+    ) {
+        if (!pendingVisuals.containsKey(instanceId)) {
+            pendingVisuals.put(instanceId, new PendingVisual(
+                    player.getUniqueId(), instanceId, hand, definition));
+        }
     }
 
     public void warnInvalid(Player player) {
@@ -247,9 +323,10 @@ public final class ProgressionService implements Listener {
         if (pendingVisuals.isEmpty()) {
             return;
         }
-        List<PendingVisual> pending = new ArrayList<>(pendingVisuals.values());
-        pendingVisuals.clear();
-        for (PendingVisual visual : pending) {
+        Iterator<PendingVisual> iterator = pendingVisuals.values().iterator();
+        while (iterator.hasNext()) {
+            PendingVisual visual = iterator.next();
+            iterator.remove();
             try {
                 flushVisual(visual, sendActionBars);
             } catch (RuntimeException exception) {
@@ -260,11 +337,13 @@ public final class ProgressionService implements Listener {
     }
 
     private void flushPlayer(Player player) {
-        List<PendingVisual> selected = pendingVisuals.values().stream()
-                .filter(visual -> visual.playerId().equals(player.getUniqueId()))
-                .toList();
-        selected.forEach(visual -> pendingVisuals.remove(visual.instanceId()));
-        for (PendingVisual visual : selected) {
+        Iterator<PendingVisual> iterator = pendingVisuals.values().iterator();
+        while (iterator.hasNext()) {
+            PendingVisual visual = iterator.next();
+            if (!visual.playerId().equals(player.getUniqueId())) {
+                continue;
+            }
+            iterator.remove();
             try {
                 flushVisual(visual, false);
             } catch (RuntimeException exception) {
@@ -280,8 +359,8 @@ public final class ProgressionService implements Listener {
         if (player == null) {
             return;
         }
-        InstanceRegistry.InstanceRecord record = instanceRegistry.find(
-                visual.instanceId()).orElse(null);
+        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(
+                visual.instanceId());
         if (record == null) {
             return;
         }
@@ -293,7 +372,7 @@ public final class ProgressionService implements Listener {
         ItemStack refreshed = itemService.refreshProgress(
                 located.item(), visual.definition(), state, player.getName());
         located.replace(player, refreshed);
-        if (sendActionBar && visual.actionBar() && settings.progressActionBar()) {
+        if (sendActionBar && settings.progressActionBar()) {
             messages.actionBar(player, "progress-update",
                     itemService.progressPlaceholders(visual.definition(), state));
         }
@@ -327,17 +406,8 @@ public final class ProgressionService implements Listener {
     }
 
     private boolean matches(ItemStack item, UUID instanceId) {
-        return itemService.readIdentity(item)
-                .map(identity -> identity.instanceId().equals(instanceId))
-                .orElse(false);
-    }
-
-    private static void setHeldItem(Player player, EquipmentSlot hand, ItemStack item) {
-        if (hand == EquipmentSlot.OFF_HAND) {
-            player.getInventory().setItemInOffHand(item);
-        } else {
-            player.getInventory().setItemInMainHand(item);
-        }
+        ToolItemService.ToolIdentity identity = itemService.inspectIdentity(item).identity();
+        return identity != null && identity.instanceId().equals(instanceId);
     }
 
     private void stopTask() {
@@ -394,9 +464,29 @@ public final class ProgressionService implements Listener {
             UUID playerId,
             UUID instanceId,
             EquipmentSlot preferredHand,
-            ToolDefinition definition,
-            boolean actionBar
+            ToolDefinition definition
     ) {
+    }
+
+    public record ToolResolution(boolean tagged, ToolState state) {
+        private static final ToolResolution UNTAGGED = new ToolResolution(false, null);
+        private static final ToolResolution INVALID = new ToolResolution(true, null);
+
+        public static ToolResolution untagged() {
+            return UNTAGGED;
+        }
+
+        public static ToolResolution invalid() {
+            return INVALID;
+        }
+
+        public static ToolResolution resolved(ToolState state) {
+            return new ToolResolution(true, java.util.Objects.requireNonNull(state));
+        }
+
+        public Optional<ToolState> stateOptional() {
+            return Optional.ofNullable(state);
+        }
     }
 
     private record LocatedItem(ItemStack item, int inventorySlot, boolean offHand, boolean cursor) {

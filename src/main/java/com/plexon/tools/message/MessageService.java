@@ -67,12 +67,8 @@ public final class MessageService {
     }
 
     public Component parse(String input, Map<String, String> placeholders) {
-        String rendered = input == null ? "" : input;
-        for (Map.Entry<String, String> entry : placeholders.entrySet()) {
-            rendered = rendered.replace("{" + entry.getKey() + "}", entry.getValue());
-            rendered = rendered.replace("<" + entry.getKey() + ">", entry.getValue());
-        }
-        return miniMessage.deserialize(normalizeItalics(rendered));
+        return miniMessage.deserialize(normalizeItalics(
+                renderPlaceholders(input, placeholders)));
     }
 
     public String plain(String value) {
@@ -92,5 +88,41 @@ public final class MessageService {
     private static String normalizeItalics(String input) {
         String value = input == null ? "" : input;
         return value.startsWith("<!italic>") ? value : "<!italic>" + value;
+    }
+
+    /**
+     * Resolves brace and legacy angle placeholders in one pass. MiniMessage
+     * tags that are not configured placeholder keys are copied unchanged.
+     */
+    static String renderPlaceholders(String input, Map<String, String> placeholders) {
+        String value = input == null ? "" : input;
+        if (value.isEmpty() || placeholders == null || placeholders.isEmpty()) {
+            return value;
+        }
+        StringBuilder rendered = null;
+        int copiedUntil = 0;
+        for (int index = 0; index < value.length(); index++) {
+            char opening = value.charAt(index);
+            char closing = opening == '{' ? '}' : opening == '<' ? '>' : '\0';
+            if (closing == '\0') {
+                continue;
+            }
+            int end = value.indexOf(closing, index + 1);
+            if (end < 0) {
+                continue;
+            }
+            String replacement = placeholders.get(value.substring(index + 1, end));
+            if (replacement == null) {
+                continue;
+            }
+            if (rendered == null) {
+                rendered = new StringBuilder(value.length() + replacement.length());
+            }
+            rendered.append(value, copiedUntil, index).append(replacement);
+            copiedUntil = end + 1;
+            index = end;
+        }
+        return rendered == null
+                ? value : rendered.append(value, copiedUntil, value.length()).toString();
     }
 }

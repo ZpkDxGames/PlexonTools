@@ -23,7 +23,7 @@ PlexonTools is a Paper-native progression engine for unique, world-activated cus
 - Six tracking types: blocks broken, mobs killed, items farmed, fish caught, damage dealt, and blocks placed.
 - GENERAL shared totals and SPECIFIC per-target quotas reset at each level boundary; excess activity never counts toward the next level.
 - A configurable action bar shows current progress; item lore/PDC and action-bar rendering coalesce per instance while authoritative progress updates immediately.
-- PlexonTools claims its GUI clicks, uses distinct navigation items, and rejects external inventory opens during its transitions so unrelated plugins cannot hijack Back or page navigation.
+- PlexonTools claims its GUI clicks, uses distinct navigation items, and rejects external inventory opens throughout its GUI session so unrelated plugins cannot hijack Back or page navigation.
 - Mutable player/tool state now lives in generated `plexontools.db` SQLite storage with WAL, integrity checks, indexes, prepared statements, and transactional batches.
 - Normal gameplay performs no YAML or database I/O: repeated UUID updates coalesce in memory and flush asynchronously in bounded batches.
 - Existing schema-v3/v4 `data.yml` registries migrate automatically and idempotently with a timestamped backup and post-import verification.

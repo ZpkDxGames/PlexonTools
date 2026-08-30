@@ -53,12 +53,16 @@ PlexonTools already kept registry state in a concurrent memory cache and wrote S
 
 The optimized event path now:
 
-- reads only the small identity portion of item PDC when a registry record exists;
+- reads the small identity portion of item PDC once and reuses the validated event context;
 - resolves current progress from the authoritative memory record;
 - caches immutable per-definition requirement maps;
 - updates progress and the dirty UUID immediately;
-- retains only the newest pending item/action-bar visual for each instance;
+- retains one pending item/action-bar marker per instance and fetches newest state at flush time;
+- bypasses drop-item inspection globally when no enabled definition can modify block drops;
+- treats maximum-level progression as a no-op instead of continually mutating the cache;
 - renders item metadata, lore, and action-bar output once per configured window.
+
+GENERAL-mode updates avoid building empty target maps, static lore fragments are cached per immutable level profile, and brace/angle placeholders are rendered in one pass. When the pending UUID safety bound is reached, SQLite receives one full snapshot followed by ordinary deltas; a failed snapshot is explicitly re-queued rather than acknowledged.
 
 Configure the window in `config.yml`:
 
@@ -73,9 +77,11 @@ SQLite still writes through the asynchronous worker using `storage.flush-interva
 
 ## GUI isolation
 
-All PlexonTools top-inventory clicks and relevant drags are cancelled and denied at `LOWEST` priority. Back, previous, next, and level-move controls now use `SPECTRAL_ARROW` plus PlexonTools PDC action tags instead of a generic vanilla arrow.
+All PlexonTools top-inventory clicks and relevant drags are cancelled and denied at `LOWEST` priority. Back, previous, next, and level-move controls use `SPECTRAL_ARROW` plus PlexonTools PDC action tags instead of a generic vanilla arrow.
 
-For two ticks after PlexonTools owns an input, an `InventoryOpenEvent` guard allows only inventories backed by `PlexonGuiHolder`. This blocks GhostBlocks Remastered or another plugin from replacing the requested PlexonTools page because it matched the same clicked item.
+An `InventoryOpenEvent` session guard allows only inventories backed by `PlexonGuiHolder` while a PlexonTools menu is active, then releases on close. This blocks GhostBlocks Remastered or another plugin even if it reacts to the clicked item before PlexonTools' own callback. The existing short transition token remains as an additional close/open race guard.
+
+Targeted legacy showcase routes also separate viewer and subject: an administrator running `/pt all <player>` or `/pt <category> <player>` sees the menu themselves while cards and actions refer to the selected player.
 
 ## Upgrade checklist
 

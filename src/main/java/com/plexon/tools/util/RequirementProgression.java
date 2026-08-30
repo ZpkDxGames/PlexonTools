@@ -21,20 +21,21 @@ public final class RequirementProgression {
     ) {
         int level = currentLevel;
         long progress = Math.max(0L, currentProgress);
-        Map<String, Long> targetProgress = normalize(currentTargets);
         String target = LevelRequirement.normalize(eventTarget);
         long increment = Math.max(0L, amount);
         int levelsGained = 0;
 
         LevelRequirement requirement = requirements.get(level);
         if (requirement == null || increment == 0L || !requirement.accepts(target)) {
-            return new Result(level, progress, targetProgress, 0);
+            return new Result(level, progress, normalize(currentTargets), 0);
         }
 
+        Map<String, Long> targetProgress;
         if (requirement.mode() == RequirementMode.GENERAL) {
             progress = ProgressionMath.saturatingAdd(progress, increment);
             targetProgress = Map.of();
         } else {
+            targetProgress = normalize(currentTargets);
             targetProgress.merge(target, increment, ProgressionMath::saturatingAdd);
             progress = requirement.rawProgress(0L, targetProgress);
         }
@@ -51,6 +52,9 @@ public final class RequirementProgression {
     }
 
     private static Map<String, Long> normalize(Map<String, Long> progress) {
+        if (progress.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
         Map<String, Long> normalized = new LinkedHashMap<>();
         progress.forEach((target, value) -> {
             if (value != null && value > 0L) {
@@ -67,7 +71,7 @@ public final class RequirementProgression {
             int levelsGained
     ) {
         public Result {
-            targetProgress = Map.copyOf(targetProgress);
+            targetProgress = targetProgress.isEmpty() ? Map.of() : Map.copyOf(targetProgress);
         }
     }
 }

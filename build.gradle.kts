@@ -1,3 +1,6 @@
+import java.io.OutputStream
+import java.util.zip.ZipFile
+
 plugins {
     java
 }
@@ -47,7 +50,6 @@ tasks.test {
 tasks.jar {
     archiveBaseName.set("PlexonTools")
     archiveVersion.set(pluginVersion)
-    isZip64 = true
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
@@ -63,4 +65,42 @@ tasks.jar {
             "Multi-Release" to "true"
         )
     }
+}
+
+val verifyPluginJar by tasks.registering {
+    group = "verification"
+    description = "Opens and fully reads the release JAR, including bundled SQLite natives."
+    dependsOn(tasks.jar)
+    inputs.file(tasks.jar.flatMap { it.archiveFile })
+
+    doLast {
+        val jarFile = tasks.jar.get().archiveFile.get().asFile
+        val requiredEntries = listOf(
+            "plugin.yml",
+            "org/sqlite/JDBC.class",
+            "org/sqlite/native/Linux/x86_64/libsqlitejdbc.so",
+            "org/sqlite/native/Mac/x86_64/libsqlitejdbc.dylib",
+            "org/sqlite/native/Windows/x86_64/sqlitejdbc.dll"
+        )
+        ZipFile(jarFile).use { archive ->
+            requiredEntries.forEach { name ->
+                check(archive.getEntry(name) != null) {
+                    "Release JAR is missing required entry: $name"
+                }
+            }
+            val entries = archive.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                if (!entry.isDirectory) {
+                    archive.getInputStream(entry).use { input ->
+                        input.transferTo(OutputStream.nullOutputStream())
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(verifyPluginJar)
 }

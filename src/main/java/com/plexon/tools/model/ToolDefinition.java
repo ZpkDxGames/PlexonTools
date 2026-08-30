@@ -71,7 +71,12 @@ public record ToolDefinition(
     }
 
     public boolean isAllowedWorld(String worldName) {
-        return allowedWorlds.stream().anyMatch(world -> world.equalsIgnoreCase(worldName));
+        for (String world : allowedWorlds) {
+            if (world.equalsIgnoreCase(worldName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean sharesProgressAcrossWorlds() {
@@ -83,17 +88,20 @@ public record ToolDefinition(
     }
 
     public boolean tracks(Material material, int level) {
-        return trackingType.usesMaterialTargets()
-                && level(level).map(profile -> profile.requirement().accepts(material.name())).orElse(false);
+        ToolLevel profile = levels.get(level);
+        return trackingType.usesMaterialTargets() && profile != null
+                && profile.requirement().accepts(material.name());
     }
 
     public boolean tracks(EntityType entityType, int level) {
-        return trackingType.usesEntityTargets()
-                && level(level).map(profile -> profile.requirement().accepts(entityType.name())).orElse(false);
+        ToolLevel profile = levels.get(level);
+        return trackingType.usesEntityTargets() && profile != null
+                && profile.requirement().accepts(entityType.name());
     }
 
     public boolean tracks(String target, int level) {
-        return level(level).map(profile -> profile.requirement().accepts(target)).orElse(false);
+        ToolLevel profile = levels.get(level);
+        return profile != null && profile.requirement().accepts(target);
     }
 
     public Set<String> targetNames() {

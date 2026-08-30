@@ -145,6 +145,7 @@ public final class PlexonToolsCommand implements TabExecutor {
             return true;
         }
 
+        Player viewer;
         Player target;
         if (args.length == 2) {
             if (!sender.hasPermission("plexontools.admin")) {
@@ -157,14 +158,16 @@ public final class PlexonToolsCommand implements TabExecutor {
                         "player", messages.plain(args[1])));
                 return true;
             }
+            viewer = sender instanceof Player player ? player : target;
         } else if (sender instanceof Player player) {
+            viewer = player;
             target = player;
         } else {
             messages.send(sender, "players-only");
             return true;
         }
 
-        gui.openShowcase(target, target, categoryId, 0);
+        gui.openShowcase(viewer, target, categoryId, 0);
         return true;
     }
 

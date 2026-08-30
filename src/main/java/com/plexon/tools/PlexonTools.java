@@ -79,7 +79,7 @@ public final class PlexonTools extends JavaPlugin {
                     activations, grants, prompts, settings, messages);
 
             getServer().getPluginManager().registerEvents(
-                    new ToolProgressListener(tools, itemService, progression, abilities, settings), this);
+                    new ToolProgressListener(tools, progression, abilities, settings), this);
             getServer().getPluginManager().registerEvents(progression, this);
             getServer().getPluginManager().registerEvents(abilities, this);
             getServer().getPluginManager().registerEvents(

@@ -35,6 +35,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -47,6 +48,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -80,6 +82,7 @@ public final class GuiManager implements Listener {
     private final Map<UUID, PendingDelete> pendingDeletes = new HashMap<>();
     private final Map<UUID, String> targetSearches = new HashMap<>();
     private final Map<UUID, Long> guardedInventoryOpens = new HashMap<>();
+    private final Set<UUID> protectedGuiSessions = new HashSet<>();
     private long inventoryGuardSequence;
 
     public GuiManager(
@@ -1420,12 +1423,40 @@ public final class GuiManager implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onOpen(InventoryOpenEvent event) {
-        if (!(event.getPlayer() instanceof Player player)
-                || !guardedInventoryOpens.containsKey(player.getUniqueId())
-                || event.getInventory().getHolder() instanceof PlexonGuiHolder) {
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        if (event.getInventory().getHolder() instanceof PlexonGuiHolder) {
+            protectedGuiSessions.add(playerId);
+            verifyGuiSessionNextTick(player, playerId);
+            return;
+        }
+        if (!protectedGuiSessions.contains(playerId)
+                && !guardedInventoryOpens.containsKey(playerId)) {
             return;
         }
         event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player)
+                || !(event.getInventory().getHolder() instanceof PlexonGuiHolder)) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        verifyGuiSessionNextTick(player, playerId);
+    }
+
+    private void verifyGuiSessionNextTick(Player player, UUID playerId) {
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (!player.isOnline()
+                    || !(player.getOpenInventory().getTopInventory().getHolder()
+                            instanceof PlexonGuiHolder)) {
+                protectedGuiSessions.remove(playerId);
+            }
+        });
     }
 
     @EventHandler
@@ -1434,6 +1465,7 @@ public final class GuiManager implements Listener {
         pendingDeletes.remove(playerId);
         targetSearches.remove(playerId);
         guardedInventoryOpens.remove(playerId);
+        protectedGuiSessions.remove(playerId);
     }
 
     private Player showcaseSubject(PlexonGuiHolder holder, Player fallback) {

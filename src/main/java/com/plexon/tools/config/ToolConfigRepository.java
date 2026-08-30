@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -70,6 +71,7 @@ public final class ToolConfigRepository {
     private final CategoryRepository categories;
     private final File file;
     private volatile Map<String, ToolDefinition> definitions = Map.of();
+    private volatile Set<ToolAbilityType> enabledAbilities = Set.of();
     private YamlConfiguration yaml = new YamlConfiguration();
 
     public ToolConfigRepository(
@@ -88,6 +90,7 @@ public final class ToolConfigRepository {
         candidate.load(file);
         Map<String, ToolDefinition> parsed = parseDefinitions(candidate, false);
         yaml = candidate;
+        enabledAbilities = collectEnabledAbilities(parsed);
         definitions = Collections.unmodifiableMap(parsed);
     }
 
@@ -96,14 +99,24 @@ public final class ToolConfigRepository {
     }
 
     public Optional<ToolDefinition> find(String id) {
+        return Optional.ofNullable(findCached(id));
+    }
+
+    /** Returns the immutable cached definition without allocating an Optional. */
+    public ToolDefinition findCached(String id) {
         if (id == null) {
-            return Optional.empty();
+            return null;
         }
-        return Optional.ofNullable(definitions.get(normalizeId(id)));
+        return definitions.get(normalizeId(id));
     }
 
     public int size() {
         return definitions.size();
+    }
+
+    /** Reports whether any enabled definition can use the supplied ability. */
+    public boolean hasEnabledAbility(ToolAbilityType type) {
+        return enabledAbilities.contains(type);
     }
 
     public List<Enchantment> enchantmentOptions() {
@@ -536,7 +549,19 @@ public final class ToolConfigRepository {
         Map<String, ToolDefinition> parsed = parseDefinitions(candidate, true);
         candidate.save(file);
         yaml = candidate;
+        enabledAbilities = collectEnabledAbilities(parsed);
         definitions = Collections.unmodifiableMap(parsed);
+    }
+
+    private static Set<ToolAbilityType> collectEnabledAbilities(
+            Map<String, ToolDefinition> definitions
+    ) {
+        EnumSet<ToolAbilityType> abilities = EnumSet.noneOf(ToolAbilityType.class);
+        definitions.values().stream()
+                .filter(ToolDefinition::enabled)
+                .flatMap(definition -> definition.levels().values().stream())
+                .forEach(level -> abilities.addAll(level.abilities().keySet()));
+        return abilities.isEmpty() ? Set.of() : Set.copyOf(abilities);
     }
 
     private Map<String, ToolDefinition> parseDefinitions(YamlConfiguration config, boolean strict) {

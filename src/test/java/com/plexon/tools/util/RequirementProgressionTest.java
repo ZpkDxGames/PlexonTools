@@ -115,4 +115,18 @@ class RequirementProgressionTest {
         assertEquals(0L, secondLevel.progress());
         assertEquals(Map.of(), secondLevel.targetProgress());
     }
+
+    @Test
+    void acceptedGeneralProgressDropsIrrelevantTargetBreakdown() {
+        TreeMap<Integer, LevelRequirement> requirements = new TreeMap<>();
+        requirements.put(1, LevelRequirement.general(100L));
+        requirements.put(2, LevelRequirement.general(100L));
+
+        RequirementProgression.Result result = RequirementProgression.advance(
+                1, 20L, Map.of("STALE_TARGET", 20L), "STONE", 1L, requirements);
+
+        assertEquals(1, result.level());
+        assertEquals(21L, result.progress());
+        assertEquals(Map.of(), result.targetProgress());
+    }
 }

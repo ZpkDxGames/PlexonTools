@@ -17,13 +17,17 @@ public record ToolState(
         Map<String, Long> targetProgress
 ) {
     public ToolState {
-        Map<String, Long> normalized = new LinkedHashMap<>();
-        targetProgress.forEach((target, value) -> {
-            if (value != null && value > 0L) {
-                normalized.put(LevelRequirement.normalize(target), value);
-            }
-        });
-        targetProgress = Map.copyOf(normalized);
+        if (targetProgress.isEmpty()) {
+            targetProgress = Map.of();
+        } else {
+            Map<String, Long> normalized = new LinkedHashMap<>();
+            targetProgress.forEach((target, value) -> {
+                if (value != null && value > 0L) {
+                    normalized.put(LevelRequirement.normalize(target), value);
+                }
+            });
+            targetProgress = normalized.isEmpty() ? Map.of() : Map.copyOf(normalized);
+        }
         categoryId = categoryId == null ? "" : categoryId.trim().toLowerCase(java.util.Locale.ROOT);
     }
 

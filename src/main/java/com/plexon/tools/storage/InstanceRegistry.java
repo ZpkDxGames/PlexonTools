@@ -43,6 +43,7 @@ public final class InstanceRegistry {
     private final Object databaseLock = new Object();
     private final LinkedHashMap<UUID, Long> pendingWrites = new LinkedHashMap<>();
     private boolean fullSnapshotPending;
+    private boolean fullSnapshotInFlight;
 
     public InstanceRegistry(JavaPlugin plugin, PluginSettings settings) {
         this.plugin = plugin;
@@ -109,7 +110,7 @@ public final class InstanceRegistry {
     }
 
     public void register(ToolState state, String ownerName, boolean active, boolean menuManaged) {
-        long now = Instant.now().toEpochMilli();
+        long now = System.currentTimeMillis();
         InstanceRecord created = new InstanceRecord(
                 state.instanceId(), state.toolId(), state.categoryId(), state.ownerId(), ownerName,
                 state.boundWorld(), state.level(), state.progress(), state.targetProgress(),
@@ -121,7 +122,7 @@ public final class InstanceRegistry {
     }
 
     public void update(ToolState state, long progressAdded, String ownerName) {
-        long now = Instant.now().toEpochMilli();
+        long now = System.currentTimeMillis();
         records.compute(state.instanceId(), (instanceId, existing) -> {
             long createdAt = existing == null ? now : existing.createdAt();
             long lifetime = existing == null ? 0L : existing.lifetime();
@@ -137,7 +138,12 @@ public final class InstanceRegistry {
     }
 
     public Optional<InstanceRecord> find(UUID instanceId) {
-        return Optional.ofNullable(records.get(instanceId));
+        return Optional.ofNullable(findCached(instanceId));
+    }
+
+    /** Returns an authoritative in-memory record without allocating an Optional. */
+    public InstanceRecord findCached(UUID instanceId) {
+        return records.get(instanceId);
     }
 
     public List<InstanceRecord> findOwned(UUID ownerId, String toolId, String boundWorld) {
@@ -182,7 +188,7 @@ public final class InstanceRegistry {
                     record.instanceId(), record.toolId(), record.categoryId(), record.ownerId(),
                     record.ownerName(), record.boundWorld(), record.level(), record.progress(),
                     record.targetProgress(), active, record.menuManaged(), record.lifetime(),
-                    record.createdAt(), Instant.now().toEpochMilli());
+                    record.createdAt(), System.currentTimeMillis());
         });
         if (changed.get()) {
             markDirty(instanceId);
@@ -200,7 +206,7 @@ public final class InstanceRegistry {
                     record.instanceId(), record.toolId(), record.categoryId(), record.ownerId(),
                     record.ownerName(), record.boundWorld(), record.level(), record.progress(),
                     record.targetProgress(), record.active(), menuManaged, record.lifetime(),
-                    record.createdAt(), Instant.now().toEpochMilli());
+                    record.createdAt(), System.currentTimeMillis());
         });
         if (changed.get()) {
             markDirty(instanceId);
@@ -217,7 +223,8 @@ public final class InstanceRegistry {
 
     public int pendingWriteCount() {
         synchronized (pendingLock) {
-            return fullSnapshotPending ? records.size() : pendingWrites.size();
+            return fullSnapshotPending || fullSnapshotInFlight
+                    ? records.size() : pendingWrites.size();
         }
     }
 
@@ -236,11 +243,10 @@ public final class InstanceRegistry {
                     if (pending == null) {
                         break;
                     }
-                    database.upsert(pending.records());
-                    acknowledge(pending);
+                    persist(pending);
                 }
             }
-        } catch (SQLException exception) {
+        } catch (SQLException | RuntimeException exception) {
             plugin.getLogger().log(Level.SEVERE,
                     "Could not flush PlexonTools SQLite updates; they remain queued", exception);
         } finally {
@@ -257,8 +263,7 @@ public final class InstanceRegistry {
             try {
                 PendingBatch pending;
                 while ((pending = nextBatch()) != null) {
-                    database.upsert(pending.records());
-                    acknowledge(pending);
+                    persist(pending);
                 }
                 database.close();
             } catch (SQLException exception) {
@@ -272,8 +277,7 @@ public final class InstanceRegistry {
         synchronized (databaseLock) {
             PendingBatch pending;
             while ((pending = nextBatch()) != null) {
-                database.upsert(pending.records());
-                acknowledge(pending);
+                persist(pending);
             }
             Path backups = database.file().resolveSibling("backups");
             String baseName = "plexontools-" + BACKUP_TIME.format(Instant.now());
@@ -303,10 +307,14 @@ public final class InstanceRegistry {
     }
 
     private PendingBatch nextBatch() {
-        long fullSnapshotRevision = -1L;
         synchronized (pendingLock) {
             if (fullSnapshotPending) {
-                fullSnapshotRevision = revision.get();
+                // Changes completed before this transition are represented by
+                // the snapshot. Later changes enter pendingWrites as deltas,
+                // preventing a busy server from rewriting the full registry
+                // repeatedly merely because its revision kept advancing.
+                fullSnapshotPending = false;
+                fullSnapshotInFlight = true;
             } else {
                 if (pendingWrites.isEmpty()) {
                     return null;
@@ -327,8 +335,8 @@ public final class InstanceRegistry {
                     pendingWrites.clear();
                     return null;
                 }
-                return new PendingBatch(List.copyOf(batch), Map.copyOf(revisions),
-                        false, 0L);
+                return new PendingBatch(
+                        List.copyOf(batch), Map.copyOf(revisions), false);
             }
         }
         // A full snapshot can be large. Copy it on the asynchronous caller
@@ -336,16 +344,23 @@ public final class InstanceRegistry {
         List<InstanceRecord> snapshot = records.values().stream()
                 .sorted(Comparator.comparing(record -> record.instanceId().toString()))
                 .toList();
-        return new PendingBatch(snapshot, Map.of(), true, fullSnapshotRevision);
+        return new PendingBatch(snapshot, Map.of(), true);
+    }
+
+    private void persist(PendingBatch batch) throws SQLException {
+        try {
+            database.upsert(batch.records());
+            acknowledge(batch);
+        } catch (SQLException | RuntimeException exception) {
+            reject(batch);
+            throw exception;
+        }
     }
 
     private void acknowledge(PendingBatch batch) {
         synchronized (pendingLock) {
             if (batch.fullSnapshot()) {
-                if (revision.get() == batch.snapshotRevision()) {
-                    fullSnapshotPending = false;
-                    pendingWrites.clear();
-                }
+                fullSnapshotInFlight = false;
                 return;
             }
             batch.revisions().forEach((instanceId, batchRevision) -> {
@@ -357,12 +372,26 @@ public final class InstanceRegistry {
         }
     }
 
+    private void reject(PendingBatch batch) {
+        if (!batch.fullSnapshot()) {
+            return;
+        }
+        synchronized (pendingLock) {
+            // A failed full write must be retried in full. Every current value
+            // remains in records, so rebuilding the snapshot loses no state.
+            fullSnapshotInFlight = false;
+            fullSnapshotPending = true;
+            pendingWrites.clear();
+        }
+    }
+
     private void resetPendingState() {
         revision.set(0L);
         saving.set(false);
         synchronized (pendingLock) {
             pendingWrites.clear();
             fullSnapshotPending = false;
+            fullSnapshotInFlight = false;
         }
     }
 
@@ -373,8 +402,7 @@ public final class InstanceRegistry {
     private record PendingBatch(
             List<InstanceRecord> records,
             Map<UUID, Long> revisions,
-            boolean fullSnapshot,
-            long snapshotRevision
+            boolean fullSnapshot
     ) {
     }
 
@@ -408,19 +436,23 @@ public final class InstanceRegistry {
                 throw new IllegalArgumentException("Persistent numeric values cannot be negative.");
             }
             categoryId = categoryId == null ? "" : categoryId;
-            Map<String, Long> normalizedTargets = new LinkedHashMap<>();
-            targetProgress.forEach((rawTarget, amount) -> {
-                String target = LevelRequirement.normalize(rawTarget);
-                if (target.isBlank() || amount == null || amount < 1L) {
-                    throw new IllegalArgumentException(
-                            "Target progress requires a nonblank target and positive amount.");
-                }
-                if (normalizedTargets.putIfAbsent(target, amount) != null) {
-                    throw new IllegalArgumentException(
-                            "Duplicate normalized target progress: " + target);
-                }
-            });
-            targetProgress = Map.copyOf(normalizedTargets);
+            if (targetProgress.isEmpty()) {
+                targetProgress = Map.of();
+            } else {
+                Map<String, Long> normalizedTargets = new LinkedHashMap<>();
+                targetProgress.forEach((rawTarget, amount) -> {
+                    String target = LevelRequirement.normalize(rawTarget);
+                    if (target.isBlank() || amount == null || amount < 1L) {
+                        throw new IllegalArgumentException(
+                                "Target progress requires a nonblank target and positive amount.");
+                    }
+                    if (normalizedTargets.putIfAbsent(target, amount) != null) {
+                        throw new IllegalArgumentException(
+                                "Duplicate normalized target progress: " + target);
+                    }
+                });
+                targetProgress = Map.copyOf(normalizedTargets);
+            }
         }
 
         public ToolState state() {

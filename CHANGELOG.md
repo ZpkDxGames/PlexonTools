@@ -9,9 +9,14 @@
 - Kept gameplay progress authoritative in the in-memory registry on every accepted event while coalescing item PDC, lore, and progress-action-bar refreshes per instance.
 - Added `performance.progress-visual-refresh-ticks` with a default four-tick window and immediate visual flushes for level-ups and lifecycle boundaries.
 - Retained periodic asynchronous SQLite batches and the final synchronous shutdown drain so optimization does not trade away crash safety.
+- Collapsed repeated held-item identity checks into one PDC inspection per event and reused validated block/damage contexts through `MONITOR`, while keeping registry state authoritative over stale item snapshots.
+- Skipped block-drop resolution entirely when no enabled tool defines Auto Smelt or Magnet, stopped terminal levels from generating progress writes, and removed empty-map/visual-marker churn from rapid GENERAL progression.
+- Cached immutable lore placeholder fragments and replaced repeated per-placeholder string scans with a one-pass renderer that preserves MiniMessage tags and tag arguments.
+- Changed overflow protection to write one full SQLite snapshot followed by queued deltas instead of repeating full snapshots under continuous activity; failed snapshots are re-queued in full.
 - Replaced generic GUI arrow items with PlexonTools-specific spectral arrows and added a short guarded transition that rejects external inventory opens triggered by PlexonTools clicks.
-- Enabled ZIP64 release packaging so the bundled cross-platform SQLite natives always produce a complete, verifiable plugin JAR.
-- Added regression coverage for shared-dimension selection, per-level reset behavior, GUI priorities/navigation material, coalesced-refresh configuration, YAML defaults, and SQLite durability.
+- Extended GUI isolation for the lifetime of a PlexonTools inventory and fixed targeted showcase commands so the administrator remains the viewer while the selected player remains the subject.
+- Fixed fat-JAR packaging to use a standard central directory; forced ZIP64 output could truncate the final SQLite native entry while still reporting a successful Gradle task. `check` now fully reads the archive and verifies Linux, macOS, and Windows SQLite natives.
+- Added regression coverage for shared-dimension selection, per-level reset behavior, GUI priorities/session cleanup, coalesced-refresh configuration, one-pass placeholder rendering, YAML defaults, and SQLite durability.
 
 ## 3.6.0 — 2026-08-29
 
