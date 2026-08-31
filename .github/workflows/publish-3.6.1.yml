@@ -1,0 +1,85 @@
+name: Publish PlexonTools 3.6.1
+
+on:
+  push:
+    branches:
+      - release/3.6.1
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: contains(github.event.head_commit.message, '[publish-v3.6.1]')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Build and verify release
+        run: gradle clean check jar --stacktrace
+
+      - name: Verify and prepare every release JAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha='e98ad33b9d9a8a9c5a6b92b88e81043bbd73a10f6e46b9dda4b44cf752b0f31e'
+          canonical_jar='build/libs/PlexonTools-3.6.1.jar'
+          lorefix_jar='build/libs/PlexonTools-3.6.1-lorefix.jar'
+
+          echo "${expected_sha}  ${canonical_jar}" | sha256sum --check --strict
+          cp "${canonical_jar}" "${lorefix_jar}"
+          echo "${expected_sha}  ${lorefix_jar}" | sha256sum --check --strict
+
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          awk '
+            /^## Unreleased$/ { include = 1; next }
+            /^## / { include = 0 }
+            include { print }
+          ' CHANGELOG.md > release-notes.md
+
+          cat >> release-notes.md <<'EOF'
+
+          ### Compatibility
+
+          - Paper 1.21.4
+          - Java 21
+
+          Both attached JAR filenames contain the same verified plugin build.
+          EOF
+
+      - name: Publish GitHub Release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mapfile -t release_jars < <(find build/libs -maxdepth 1 -type f -name '*.jar' -print | sort)
+          test "${#release_jars[@]}" -eq 2
+
+          if gh release view v3.6.1 --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload v3.6.1 "${release_jars[@]}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --clobber
+          else
+            gh release create v3.6.1 "${release_jars[@]}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --target "${GITHUB_SHA}" \
+              --title 'PlexonTools 3.6.1' \
+              --notes-file release-notes.md \
+              --latest
+          fi
