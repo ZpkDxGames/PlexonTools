@@ -33,10 +33,11 @@ messages:
   # level-up placeholders: {tool}, {level}
   level-up: "<#FFD54F>✦</#FFD54F> <gradient:#FFF176:#FF8F00><bold>LEGENDARY UPGRADE</bold></gradient> <dark_gray>•</dark_gray> <white>{tool}</white> <gray>reached</gray> <#FFD54F><bold>Level {level}</bold></#FFD54F><gray>!</gray>"
   # Supports every progress placeholder documented under tool-lore in config.yml.
-  progress-update: "<#FFD54F><bold>Lv. {level}</bold></#FFD54F> <dark_gray>•</dark_gray> {progress_bar} <white>{current}</white><dark_gray>/</dark_gray><#AEEA00>{required}</#AEEA00> <gray>({percentage}%)</gray>"
+  progress-update: "<#FFD54F><bold>Lv. {level}</bold></#FFD54F> <dark_gray>•</dark_gray> {progress_bar} <color:{current_color}>{current}</color><dark_gray>/</dark_gray><#B0BEC5>{required}</#B0BEC5> <color:{percentage_color}>({percentage}%)</color>"
 
   # Configuration and SQLite administration
-  reload-complete: "<green>Reloaded <white>{count}</white> tools in <white>{time}ms</white>.</green>"
+  # If {version} appears literally after reload, an older plugin JAR is still running.
+  reload-complete: "<green>Reloaded <white>{count}</white> tools in <white>{time}ms</white>.</green> <dark_gray>• build {version}</dark_gray>"
   reload-failed: "<red>Reload failed. The last valid runtime configuration remains active; check the console.</red>"
   backup-started: "<gray>Draining pending writes and creating a consistent SQLite backup…</gray>"
   backup-complete: "<green>Database backup created:</green> <white>{file}</white>"

@@ -1,16 +1,42 @@
-# Internal categories organize tools and power the legacy /pt <category> route.
-# IDs are the keys below and may contain lowercase letters, numbers, _ or -.
-#
-# display_name / description: Adventure MiniMessage
-# icon: any Bukkit item Material
-# slot: unique zero-based slot from 0 through 53 in the category inventory
+# Internal categories organize relics and power the legacy /pt <category> route.
+# Slots mirror the player-facing armory order.
 categories:
+  combat:
+    display_name: "<gradient:#FF5252:#B71C1C><bold>Combat Relics</bold></gradient>"
+    icon: NETHERITE_SWORD
+    slot: 10
+    description:
+      - "<dark_gray>Soulbound • Progressive • Unbreakable</dark_gray>"
+      - ""
+      - "<gray>Ancient blades awakened through</gray>"
+      - "<gray>creature hunts and combat mastery.</gray>"
+
   mining:
     display_name: "<gradient:#FFF176:#FF8F00><bold>Mining Relics</bold></gradient>"
     icon: NETHERITE_PICKAXE
-    slot: 13
+    slot: 12
     description:
-      - "<dark_gray>Upgradeable • Bound • Unbreakable</dark_gray>"
+      - "<dark_gray>Soulbound • Progressive • Unbreakable</dark_gray>"
       - ""
-      - "<gray>Progressive pickaxes forged for</gray>"
-      - "<gray>stone, deepslate, and rare-ore mastery.</gray>"
+      - "<gray>Pickaxes forged for stone, ore,</gray>"
+      - "<gray>deepslate, and deep-earth mastery.</gray>"
+
+  foraging:
+    display_name: "<gradient:#A5D6A7:#43A047><bold>Foraging Relics</bold></gradient>"
+    icon: NETHERITE_AXE
+    slot: 14
+    description:
+      - "<dark_gray>Soulbound • Progressive • Unbreakable</dark_gray>"
+      - ""
+      - "<gray>Axes shaped for timber, stems,</gray>"
+      - "<gray>hyphae, and woodland mastery.</gray>"
+
+  excavation:
+    display_name: "<gradient:#D7CCC8:#8D6E63><bold>Excavation Relics</bold></gradient>"
+    icon: NETHERITE_SHOVEL
+    slot: 16
+    description:
+      - "<dark_gray>Soulbound • Progressive • Unbreakable</dark_gray>"
+      - ""
+      - "<gray>Shovels tempered for earth, sand,</gray>"
+      - "<gray>snow, clay, and ancient soil.</gray>"

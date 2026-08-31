@@ -53,10 +53,1637 @@
 # display name and material inherit the most recent preceding override.
 # Legacy unbreakable/hide flags remain readable, but 3.5+ protection is permanent.
 #
-# Bundled example: Legendary Pickaxe, complete levels 1–100.
-# Level 100 is terminal, so its requirements are intentionally empty.
+# Bundled defaults: Legendary Sword, Pickaxe, Axe, and Shovel, each with
+# complete levels 1–100. Level 100 is terminal, so its requirements are empty.
 # Material milestones: 1 Wooden, 10 Stone, 25 Iron, 50 Diamond, 75 Netherite.
+
 tools:
+
+  legendary_sword:
+    enabled: true
+    category: combat
+    display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+    base_material: WOODEN_SWORD
+    allowed_worlds:
+      - Survival_World
+      - Survival_World_nether
+      - Survival_World_the_end
+    progression:
+      scope: PLAYER
+      anchor_world: Survival_World
+    tracking:
+      type: MOBS_KILLED
+      mode: SPECIFIC
+      targets:
+        CHICKEN: 15
+        PIG: 15
+        SHEEP: 15
+        COW: 15
+    levels:
+      1:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHICKEN: 15
+          PIG: 15
+          SHEEP: 15
+          COW: 15
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+        enchantments:
+          SHARPNESS: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      2:
+        requirement_mode: SPECIFIC
+        requirements:
+          PIG: 18
+          SHEEP: 12
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 2</gray>"
+        enchantments:
+          SHARPNESS: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      3:
+        requirement_mode: SPECIFIC
+        requirements:
+          SHEEP: 21
+          RABBIT: 14
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 3</gray>"
+        enchantments:
+          SHARPNESS: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      4:
+        requirement_mode: SPECIFIC
+        requirements:
+          COW: 24
+          SHEEP: 16
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 4</gray>"
+        enchantments:
+          SHARPNESS: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      5:
+        requirement_mode: SPECIFIC
+        requirements:
+          RABBIT: 27
+          CHICKEN: 18
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 5</gray>"
+        enchantments:
+          SHARPNESS: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      6:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHICKEN: 30
+          COW: 20
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 6</gray>"
+        enchantments:
+          SHARPNESS: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      7:
+        requirement_mode: SPECIFIC
+        requirements:
+          PIG: 33
+          SHEEP: 22
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 7</gray>"
+        enchantments:
+          SHARPNESS: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      8:
+        requirement_mode: SPECIFIC
+        requirements:
+          SHEEP: 36
+          RABBIT: 24
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 8</gray>"
+        enchantments:
+          SHARPNESS: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      9:
+        requirement_mode: SPECIFIC
+        requirements:
+          COW: 39
+          SHEEP: 26
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#EF9A9A:#E53935><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 9</gray>"
+        enchantments:
+          SHARPNESS: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      10:
+        requirement_mode: SPECIFIC
+        requirements:
+          DROWNED: 42
+          SKELETON: 28
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 10</gray>"
+        material_upgrade: STONE_SWORD
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      11:
+        requirement_mode: SPECIFIC
+        requirements:
+          ZOMBIE: 45
+          DROWNED: 30
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 11</gray>"
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      12:
+        requirement_mode: SPECIFIC
+        requirements:
+          SKELETON: 48
+          SPIDER: 32
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 12</gray>"
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      13:
+        requirement_mode: SPECIFIC
+        requirements:
+          SPIDER: 51
+          ZOMBIE: 34
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 13</gray>"
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      14:
+        requirement_mode: SPECIFIC
+        requirements:
+          CREEPER: 54
+          DROWNED: 36
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 14</gray>"
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      15:
+        requirement_mode: SPECIFIC
+        requirements:
+          DROWNED: 57
+          SKELETON: 38
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 15</gray>"
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      16:
+        requirement_mode: SPECIFIC
+        requirements:
+          ZOMBIE: 60
+          DROWNED: 40
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 16</gray>"
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      17:
+        requirement_mode: SPECIFIC
+        requirements:
+          SKELETON: 63
+          SPIDER: 42
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 17</gray>"
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      18:
+        requirement_mode: SPECIFIC
+        requirements:
+          SPIDER: 66
+          ZOMBIE: 44
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 18</gray>"
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      19:
+        requirement_mode: SPECIFIC
+        requirements:
+          CREEPER: 69
+          DROWNED: 46
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 19</gray>"
+        enchantments:
+          SHARPNESS: 2
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      20:
+        requirement_mode: SPECIFIC
+        requirements:
+          DROWNED: 72
+          SKELETON: 48
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 20</gray>"
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      21:
+        requirement_mode: SPECIFIC
+        requirements:
+          ZOMBIE: 75
+          DROWNED: 50
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 21</gray>"
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      22:
+        requirement_mode: SPECIFIC
+        requirements:
+          SKELETON: 78
+          SPIDER: 52
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 22</gray>"
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      23:
+        requirement_mode: SPECIFIC
+        requirements:
+          SPIDER: 81
+          ZOMBIE: 54
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 23</gray>"
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      24:
+        requirement_mode: SPECIFIC
+        requirements:
+          CREEPER: 84
+          DROWNED: 56
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#B0BEC5:#78909C><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 24</gray>"
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      25:
+        requirement_mode: SPECIFIC
+        requirements:
+          PILLAGER: 87
+          SLIME: 58
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 25</gray>"
+        material_upgrade: IRON_SWORD
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      26:
+        requirement_mode: SPECIFIC
+        requirements:
+          HUSK: 90
+          STRAY: 60
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 26</gray>"
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      27:
+        requirement_mode: SPECIFIC
+        requirements:
+          STRAY: 93
+          WITCH: 62
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 27</gray>"
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      28:
+        requirement_mode: SPECIFIC
+        requirements:
+          SLIME: 96
+          STRAY: 64
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 28</gray>"
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      29:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITCH: 99
+          PILLAGER: 66
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 29</gray>"
+        enchantments:
+          SHARPNESS: 3
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      30:
+        requirement_mode: SPECIFIC
+        requirements:
+          PILLAGER: 102
+          SLIME: 68
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 30</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      31:
+        requirement_mode: SPECIFIC
+        requirements:
+          HUSK: 105
+          STRAY: 70
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 31</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      32:
+        requirement_mode: SPECIFIC
+        requirements:
+          STRAY: 108
+          WITCH: 72
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 32</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      33:
+        requirement_mode: SPECIFIC
+        requirements:
+          SLIME: 111
+          STRAY: 74
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 33</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      34:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITCH: 114
+          PILLAGER: 76
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 34</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      35:
+        requirement_mode: SPECIFIC
+        requirements:
+          PILLAGER: 117
+          SLIME: 78
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 35</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 2
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      36:
+        requirement_mode: SPECIFIC
+        requirements:
+          HUSK: 120
+          STRAY: 80
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 36</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      37:
+        requirement_mode: SPECIFIC
+        requirements:
+          STRAY: 123
+          WITCH: 82
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 37</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      38:
+        requirement_mode: SPECIFIC
+        requirements:
+          SLIME: 126
+          STRAY: 84
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 38</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      39:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITCH: 129
+          PILLAGER: 86
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 39</gray>"
+        enchantments:
+          SHARPNESS: 4
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      40:
+        requirement_mode: SPECIFIC
+        requirements:
+          PILLAGER: 132
+          SLIME: 88
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 40</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      41:
+        requirement_mode: SPECIFIC
+        requirements:
+          HUSK: 135
+          STRAY: 90
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 41</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      42:
+        requirement_mode: SPECIFIC
+        requirements:
+          STRAY: 138
+          WITCH: 92
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 42</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      43:
+        requirement_mode: SPECIFIC
+        requirements:
+          SLIME: 141
+          STRAY: 94
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 43</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      44:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITCH: 144
+          PILLAGER: 96
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 44</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      45:
+        requirement_mode: SPECIFIC
+        requirements:
+          PILLAGER: 147
+          SLIME: 98
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 45</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      46:
+        requirement_mode: SPECIFIC
+        requirements:
+          HUSK: 150
+          STRAY: 100
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 46</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      47:
+        requirement_mode: SPECIFIC
+        requirements:
+          STRAY: 153
+          WITCH: 102
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 47</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      48:
+        requirement_mode: SPECIFIC
+        requirements:
+          SLIME: 156
+          STRAY: 104
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 48</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      49:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITCH: 159
+          PILLAGER: 106
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 49</gray>"
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          LOOTING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      50:
+        requirement_mode: SPECIFIC
+        requirements:
+          MAGMA_CUBE: 162
+          BLAZE: 108
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 50</gray>"
+        material_upgrade: DIAMOND_SWORD
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 3
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      51:
+        requirement_mode: SPECIFIC
+        requirements:
+          ZOMBIFIED_PIGLIN: 165
+          PIGLIN: 110
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 51</gray>"
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 3
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      52:
+        requirement_mode: SPECIFIC
+        requirements:
+          PIGLIN: 168
+          MAGMA_CUBE: 112
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 52</gray>"
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 3
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      53:
+        requirement_mode: SPECIFIC
+        requirements:
+          HOGLIN: 171
+          BLAZE: 114
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 53</gray>"
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 3
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      54:
+        requirement_mode: SPECIFIC
+        requirements:
+          BLAZE: 174
+          ZOMBIFIED_PIGLIN: 116
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 54</gray>"
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      55:
+        requirement_mode: SPECIFIC
+        requirements:
+          MAGMA_CUBE: 177
+          BLAZE: 118
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 55</gray>"
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      56:
+        requirement_mode: SPECIFIC
+        requirements:
+          ZOMBIFIED_PIGLIN: 180
+          PIGLIN: 120
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 56</gray>"
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      57:
+        requirement_mode: SPECIFIC
+        requirements:
+          PIGLIN: 183
+          MAGMA_CUBE: 122
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 57</gray>"
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      58:
+        requirement_mode: SPECIFIC
+        requirements:
+          HOGLIN: 186
+          BLAZE: 124
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 58</gray>"
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      59:
+        requirement_mode: SPECIFIC
+        requirements:
+          BLAZE: 189
+          ZOMBIFIED_PIGLIN: 126
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 59</gray>"
+        enchantments:
+          SHARPNESS: 6
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+        item:
+          glint: AUTO
+
+      60:
+        requirement_mode: SPECIFIC
+        requirements:
+          MAGMA_CUBE: 192
+          BLAZE: 128
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 60</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      61:
+        requirement_mode: SPECIFIC
+        requirements:
+          ZOMBIFIED_PIGLIN: 195
+          PIGLIN: 130
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 61</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      62:
+        requirement_mode: SPECIFIC
+        requirements:
+          PIGLIN: 198
+          MAGMA_CUBE: 132
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 62</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      63:
+        requirement_mode: SPECIFIC
+        requirements:
+          HOGLIN: 201
+          BLAZE: 134
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 63</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      64:
+        requirement_mode: SPECIFIC
+        requirements:
+          BLAZE: 204
+          ZOMBIFIED_PIGLIN: 136
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 64</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      65:
+        requirement_mode: SPECIFIC
+        requirements:
+          MAGMA_CUBE: 207
+          BLAZE: 138
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 65</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      66:
+        requirement_mode: SPECIFIC
+        requirements:
+          ZOMBIFIED_PIGLIN: 210
+          PIGLIN: 140
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 66</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      67:
+        requirement_mode: SPECIFIC
+        requirements:
+          PIGLIN: 213
+          MAGMA_CUBE: 142
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 67</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      68:
+        requirement_mode: SPECIFIC
+        requirements:
+          HOGLIN: 216
+          BLAZE: 144
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 68</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      69:
+        requirement_mode: SPECIFIC
+        requirements:
+          BLAZE: 219
+          ZOMBIFIED_PIGLIN: 146
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 69</gray>"
+        enchantments:
+          SHARPNESS: 7
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+        item:
+          glint: AUTO
+
+      70:
+        requirement_mode: SPECIFIC
+        requirements:
+          MAGMA_CUBE: 222
+          BLAZE: 148
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 70</gray>"
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      71:
+        requirement_mode: SPECIFIC
+        requirements:
+          ZOMBIFIED_PIGLIN: 225
+          PIGLIN: 150
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 71</gray>"
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 4
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      72:
+        requirement_mode: SPECIFIC
+        requirements:
+          PIGLIN: 228
+          MAGMA_CUBE: 152
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 72</gray>"
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 5
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      73:
+        requirement_mode: SPECIFIC
+        requirements:
+          HOGLIN: 231
+          BLAZE: 154
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 73</gray>"
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 5
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      74:
+        requirement_mode: SPECIFIC
+        requirements:
+          BLAZE: 234
+          ZOMBIFIED_PIGLIN: 156
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#80DEEA:#0288D1><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 74</gray>"
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 5
+          LOOTING: 2
+          FIRE_ASPECT: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      75:
+        requirement_mode: SPECIFIC
+        requirements:
+          RAVAGER: 237
+          ENDERMAN: 158
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 75</gray>"
+        material_upgrade: NETHERITE_SWORD
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      76:
+        requirement_mode: SPECIFIC
+        requirements:
+          ENDERMAN: 240
+          PHANTOM: 160
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 76</gray>"
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      77:
+        requirement_mode: SPECIFIC
+        requirements:
+          SHULKER: 243
+          ENDERMAN: 162
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 77</gray>"
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      78:
+        requirement_mode: SPECIFIC
+        requirements:
+          PHANTOM: 246
+          WITHER_SKELETON: 164
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 78</gray>"
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      79:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITHER_SKELETON: 249
+          SHULKER: 166
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 79</gray>"
+        enchantments:
+          SHARPNESS: 8
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+        item:
+          glint: AUTO
+
+      80:
+        requirement_mode: SPECIFIC
+        requirements:
+          RAVAGER: 252
+          ENDERMAN: 168
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 80</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      81:
+        requirement_mode: SPECIFIC
+        requirements:
+          ENDERMAN: 255
+          PHANTOM: 170
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 81</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      82:
+        requirement_mode: SPECIFIC
+        requirements:
+          SHULKER: 258
+          ENDERMAN: 172
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 82</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      83:
+        requirement_mode: SPECIFIC
+        requirements:
+          PHANTOM: 261
+          WITHER_SKELETON: 174
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 83</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      84:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITHER_SKELETON: 264
+          SHULKER: 176
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 84</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      85:
+        requirement_mode: SPECIFIC
+        requirements:
+          RAVAGER: 267
+          ENDERMAN: 178
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 85</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      86:
+        requirement_mode: SPECIFIC
+        requirements:
+          ENDERMAN: 270
+          PHANTOM: 180
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 86</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      87:
+        requirement_mode: SPECIFIC
+        requirements:
+          SHULKER: 273
+          ENDERMAN: 182
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 87</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      88:
+        requirement_mode: SPECIFIC
+        requirements:
+          PHANTOM: 276
+          WITHER_SKELETON: 184
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 88</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      89:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITHER_SKELETON: 279
+          SHULKER: 186
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 89</gray>"
+        enchantments:
+          SHARPNESS: 9
+          UNBREAKING: 5
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+        item:
+          glint: AUTO
+
+      90:
+        requirement_mode: SPECIFIC
+        requirements:
+          RAVAGER: 282
+          ENDERMAN: 188
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 90</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      91:
+        requirement_mode: SPECIFIC
+        requirements:
+          ENDERMAN: 285
+          PHANTOM: 190
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 91</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      92:
+        requirement_mode: SPECIFIC
+        requirements:
+          SHULKER: 288
+          ENDERMAN: 192
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 92</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      93:
+        requirement_mode: SPECIFIC
+        requirements:
+          PHANTOM: 291
+          WITHER_SKELETON: 194
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 93</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      94:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITHER_SKELETON: 294
+          SHULKER: 196
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 94</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      95:
+        requirement_mode: SPECIFIC
+        requirements:
+          RAVAGER: 297
+          ENDERMAN: 198
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 95</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      96:
+        requirement_mode: SPECIFIC
+        requirements:
+          ENDERMAN: 300
+          PHANTOM: 200
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 96</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      97:
+        requirement_mode: SPECIFIC
+        requirements:
+          SHULKER: 303
+          ENDERMAN: 202
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 97</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      98:
+        requirement_mode: SPECIFIC
+        requirements:
+          PHANTOM: 306
+          WITHER_SKELETON: 204
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 98</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      99:
+        requirement_mode: SPECIFIC
+        requirements:
+          WITHER_SKELETON: 309
+          SHULKER: 206
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 99</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 3
+          FIRE_ASPECT: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+        item:
+          glint: AUTO
+
+      100:
+        requirement_mode: SPECIFIC
+        requirements: {}
+        display_name: "<!italic><#FFD54F>⚔</#FFD54F> <gradient:#CE93D8:#7B1FA2><bold>Legendary Sword</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 100</gray>"
+        enchantments:
+          SHARPNESS: 10
+          UNBREAKING: 6
+          LOOTING: 4
+          FIRE_ASPECT: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 2.00
+        item:
+          glint: AUTO
+
   legendary_pickaxe:
     enabled: true
     category: mining
@@ -103,7 +1730,7 @@ tools:
         requirement_mode: SPECIFIC
         requirements:
           STONE: 400
-          COPPER_ORE: 20
+          GRANITE: 96
         display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 3</gray>"
         enchantments:
           EFFICIENCY: 1
@@ -127,7 +1754,7 @@ tools:
         requirement_mode: SPECIFIC
         requirements:
           STONE: 550
-          COPPER_ORE: 28
+          DIORITE: 112
         display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 5</gray>"
         enchantments:
           EFFICIENCY: 2
@@ -139,7 +1766,7 @@ tools:
         requirement_mode: SPECIFIC
         requirements:
           STONE: 650
-          IRON_ORE: 16
+          ANDESITE: 128
         display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 6</gray>"
         enchantments:
           EFFICIENCY: 2
@@ -163,7 +1790,7 @@ tools:
         requirement_mode: SPECIFIC
         requirements:
           STONE: 875
-          IRON_ORE: 24
+          TUFF: 144
         display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 8</gray>"
         enchantments:
           EFFICIENCY: 2
@@ -175,7 +1802,7 @@ tools:
         requirement_mode: SPECIFIC
         requirements:
           STONE: 1000
-          COPPER_ORE: 48
+          DEEPSLATE: 192
         display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 9</gray>"
         enchantments:
           EFFICIENCY: 2
@@ -325,7 +1952,7 @@ tools:
         requirement_mode: SPECIFIC
         requirements:
           DEEPSLATE: 1750
-          LAPIS_ORE: 20
+          COPPER_ORE: 56
         display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 19</gray>"
         enchantments:
           EFFICIENCY: 4
@@ -385,7 +2012,7 @@ tools:
         requirement_mode: SPECIFIC
         requirements:
           DEEPSLATE: 2350
-          DEEPSLATE_LAPIS_ORE: 28
+          DEEPSLATE_COPPER_ORE: 64
         display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 23</gray>"
         enchantments:
           EFFICIENCY: 5
@@ -400,7 +2027,7 @@ tools:
         requirement_mode: SPECIFIC
         requirements:
           DEEPSLATE: 2500
-          DEEPSLATE_REDSTONE_ORE: 64
+          DEEPSLATE_IRON_ORE: 56
         display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 24</gray>"
         enchantments:
           EFFICIENCY: 5
@@ -1831,3 +3458,3502 @@ tools:
             multiplier: 2.50
         item:
           glint: ON
+
+  legendary_axe:
+    enabled: true
+    category: foraging
+    display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+    base_material: WOODEN_AXE
+    allowed_worlds:
+      - Survival_World
+      - Survival_World_nether
+      - Survival_World_the_end
+    progression:
+      scope: PLAYER
+      anchor_world: Survival_World
+    tracking:
+      type: BLOCKS_BROKEN
+      mode: SPECIFIC
+      targets:
+        OAK_LOG: 160
+        OAK_PLANKS: 64
+    levels:
+      1:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_LOG: 225
+          SPRUCE_LOG: 58
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      2:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_PLANKS: 290
+          BIRCH_LOG: 76
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 2</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      3:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_LOG: 355
+          OAK_PLANKS: 94
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 3</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      4:
+        requirement_mode: SPECIFIC
+        requirements:
+          SPRUCE_LOG: 420
+          OAK_LOG: 112
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 4</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      5:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_LOG: 485
+          SPRUCE_LOG: 130
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 5</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      6:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_PLANKS: 550
+          BIRCH_LOG: 148
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 6</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      7:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_LOG: 615
+          OAK_PLANKS: 166
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 7</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      8:
+        requirement_mode: SPECIFIC
+        requirements:
+          SPRUCE_LOG: 680
+          OAK_LOG: 184
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 8</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      9:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_LOG: 745
+          SPRUCE_LOG: 202
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#A1887F:#6D4C41><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 9</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      10:
+        requirement_mode: SPECIFIC
+        requirements:
+          DARK_OAK_LOG: 810
+          SPRUCE_LOG: 220
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 10</gray>"
+        material_upgrade: STONE_AXE
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      11:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_LOG: 875
+          DARK_OAK_LOG: 238
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 11</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      12:
+        requirement_mode: SPECIFIC
+        requirements:
+          SPRUCE_LOG: 940
+          JUNGLE_LOG: 256
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 12</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      13:
+        requirement_mode: SPECIFIC
+        requirements:
+          JUNGLE_LOG: 1005
+          BIRCH_LOG: 274
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 13</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      14:
+        requirement_mode: SPECIFIC
+        requirements:
+          ACACIA_LOG: 1070
+          DARK_OAK_LOG: 292
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 14</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      15:
+        requirement_mode: SPECIFIC
+        requirements:
+          DARK_OAK_LOG: 1135
+          SPRUCE_LOG: 310
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 15</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      16:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_LOG: 1200
+          DARK_OAK_LOG: 328
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 16</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      17:
+        requirement_mode: SPECIFIC
+        requirements:
+          SPRUCE_LOG: 1265
+          JUNGLE_LOG: 346
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 17</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      18:
+        requirement_mode: SPECIFIC
+        requirements:
+          JUNGLE_LOG: 1330
+          BIRCH_LOG: 364
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 18</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      19:
+        requirement_mode: SPECIFIC
+        requirements:
+          ACACIA_LOG: 1395
+          DARK_OAK_LOG: 382
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 19</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      20:
+        requirement_mode: SPECIFIC
+        requirements:
+          DARK_OAK_LOG: 1460
+          SPRUCE_LOG: 400
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 20</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      21:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_LOG: 1525
+          DARK_OAK_LOG: 418
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 21</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      22:
+        requirement_mode: SPECIFIC
+        requirements:
+          SPRUCE_LOG: 1590
+          JUNGLE_LOG: 436
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 22</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      23:
+        requirement_mode: SPECIFIC
+        requirements:
+          JUNGLE_LOG: 1655
+          BIRCH_LOG: 454
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 23</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      24:
+        requirement_mode: SPECIFIC
+        requirements:
+          ACACIA_LOG: 1720
+          DARK_OAK_LOG: 472
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 24</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      25:
+        requirement_mode: SPECIFIC
+        requirements:
+          JUNGLE_WOOD: 1785
+          OAK_WOOD: 490
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 25</gray>"
+        material_upgrade: IRON_AXE
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      26:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_LOG: 1850
+          CHERRY_LOG: 508
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 26</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      27:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_LOG: 1915
+          BIRCH_WOOD: 526
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 27</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      28:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_WOOD: 1980
+          CHERRY_LOG: 544
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 28</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      29:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_WOOD: 2045
+          JUNGLE_WOOD: 562
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 29</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      30:
+        requirement_mode: SPECIFIC
+        requirements:
+          JUNGLE_WOOD: 2110
+          OAK_WOOD: 580
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 30</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      31:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_LOG: 2175
+          CHERRY_LOG: 598
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 31</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      32:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_LOG: 2240
+          BIRCH_WOOD: 616
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 32</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      33:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_WOOD: 2305
+          CHERRY_LOG: 634
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 33</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      34:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_WOOD: 2370
+          JUNGLE_WOOD: 652
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 34</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      35:
+        requirement_mode: SPECIFIC
+        requirements:
+          JUNGLE_WOOD: 2435
+          OAK_WOOD: 670
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 35</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      36:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_LOG: 2500
+          CHERRY_LOG: 688
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 36</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      37:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_LOG: 2565
+          BIRCH_WOOD: 706
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 37</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      38:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_WOOD: 2630
+          CHERRY_LOG: 724
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 38</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      39:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_WOOD: 2695
+          JUNGLE_WOOD: 742
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 39</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      40:
+        requirement_mode: SPECIFIC
+        requirements:
+          JUNGLE_WOOD: 2760
+          OAK_WOOD: 760
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 40</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      41:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_LOG: 2825
+          CHERRY_LOG: 778
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 41</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      42:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_LOG: 2890
+          BIRCH_WOOD: 796
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 42</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      43:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_WOOD: 2955
+          CHERRY_LOG: 814
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 43</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      44:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_WOOD: 3020
+          JUNGLE_WOOD: 832
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 44</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      45:
+        requirement_mode: SPECIFIC
+        requirements:
+          JUNGLE_WOOD: 3085
+          OAK_WOOD: 850
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 45</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      46:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_LOG: 3150
+          CHERRY_LOG: 868
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 46</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      47:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_LOG: 3215
+          BIRCH_WOOD: 886
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 47</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      48:
+        requirement_mode: SPECIFIC
+        requirements:
+          OAK_WOOD: 3280
+          CHERRY_LOG: 904
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 48</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      49:
+        requirement_mode: SPECIFIC
+        requirements:
+          BIRCH_WOOD: 3345
+          JUNGLE_WOOD: 922
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 49</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      50:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 3410
+          CRIMSON_HYPHAE: 940
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 50</gray>"
+        material_upgrade: DIAMOND_AXE
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      51:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_HYPHAE: 3475
+          CRIMSON_STEM: 958
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 51</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      52:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_HYPHAE: 3540
+          CRIMSON_STEM: 976
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 52</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      53:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 3605
+          CRIMSON_HYPHAE: 994
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 53</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      54:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 3670
+          CRIMSON_HYPHAE: 1012
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 54</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      55:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_HYPHAE: 3735
+          CRIMSON_STEM: 1030
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 55</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      56:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_HYPHAE: 3800
+          CRIMSON_STEM: 1048
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 56</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      57:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 3865
+          CRIMSON_HYPHAE: 1066
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 57</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      58:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 3930
+          CRIMSON_HYPHAE: 1084
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 58</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      59:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_HYPHAE: 3995
+          CRIMSON_STEM: 1102
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 59</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      60:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_HYPHAE: 4060
+          CRIMSON_STEM: 1120
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 60</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      61:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 4125
+          CRIMSON_HYPHAE: 1138
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 61</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      62:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 4190
+          CRIMSON_HYPHAE: 1156
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 62</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      63:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_HYPHAE: 4255
+          CRIMSON_STEM: 1174
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 63</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      64:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_HYPHAE: 4320
+          CRIMSON_STEM: 1192
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 64</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      65:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 4385
+          CRIMSON_HYPHAE: 1210
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 65</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      66:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 4450
+          CRIMSON_HYPHAE: 1228
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 66</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      67:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_HYPHAE: 4515
+          CRIMSON_STEM: 1246
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 67</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      68:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_HYPHAE: 4580
+          CRIMSON_STEM: 1264
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 68</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      69:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 4645
+          CRIMSON_HYPHAE: 1282
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 69</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      70:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 4710
+          CRIMSON_HYPHAE: 1300
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 70</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      71:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_HYPHAE: 4775
+          CRIMSON_STEM: 1318
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 71</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      72:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_HYPHAE: 4840
+          CRIMSON_STEM: 1336
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 72</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      73:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 4905
+          CRIMSON_HYPHAE: 1354
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 73</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      74:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 4970
+          CRIMSON_HYPHAE: 1372
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#80CBC4:#00897B><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 74</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 2
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      75:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 5035
+          DARK_OAK_WOOD: 1390
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 75</gray>"
+        material_upgrade: NETHERITE_AXE
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      76:
+        requirement_mode: SPECIFIC
+        requirements:
+          DARK_OAK_WOOD: 5100
+          CHERRY_WOOD: 1408
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 76</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      77:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_WOOD: 5165
+          DARK_OAK_WOOD: 1426
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 77</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      78:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_WOOD: 5230
+          CRIMSON_STEM: 1444
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 78</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      79:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 5295
+          MANGROVE_WOOD: 1462
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 79</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      80:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 5360
+          DARK_OAK_WOOD: 1480
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 80</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      81:
+        requirement_mode: SPECIFIC
+        requirements:
+          DARK_OAK_WOOD: 5425
+          CHERRY_WOOD: 1498
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 81</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      82:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_WOOD: 5490
+          DARK_OAK_WOOD: 1516
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 82</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      83:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_WOOD: 5555
+          CRIMSON_STEM: 1534
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 83</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      84:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 5620
+          MANGROVE_WOOD: 1552
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 84</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      85:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 5685
+          DARK_OAK_WOOD: 1570
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 85</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      86:
+        requirement_mode: SPECIFIC
+        requirements:
+          DARK_OAK_WOOD: 5750
+          CHERRY_WOOD: 1588
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 86</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      87:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_WOOD: 5815
+          DARK_OAK_WOOD: 1606
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 87</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      88:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_WOOD: 5880
+          CRIMSON_STEM: 1624
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 88</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      89:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 5945
+          MANGROVE_WOOD: 1642
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 89</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      90:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 6010
+          DARK_OAK_WOOD: 1660
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 90</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      91:
+        requirement_mode: SPECIFIC
+        requirements:
+          DARK_OAK_WOOD: 6075
+          CHERRY_WOOD: 1678
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 91</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      92:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_WOOD: 6140
+          DARK_OAK_WOOD: 1696
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 92</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      93:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_WOOD: 6205
+          CRIMSON_STEM: 1714
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 93</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      94:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 6270
+          MANGROVE_WOOD: 1732
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 94</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      95:
+        requirement_mode: SPECIFIC
+        requirements:
+          WARPED_STEM: 6335
+          DARK_OAK_WOOD: 1750
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 95</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      96:
+        requirement_mode: SPECIFIC
+        requirements:
+          DARK_OAK_WOOD: 6400
+          CHERRY_WOOD: 1768
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 96</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      97:
+        requirement_mode: SPECIFIC
+        requirements:
+          MANGROVE_WOOD: 6465
+          DARK_OAK_WOOD: 1786
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 97</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      98:
+        requirement_mode: SPECIFIC
+        requirements:
+          CHERRY_WOOD: 6530
+          CRIMSON_STEM: 1804
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 98</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      99:
+        requirement_mode: SPECIFIC
+        requirements:
+          CRIMSON_STEM: 6595
+          MANGROVE_WOOD: 1822
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 99</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      100:
+        requirement_mode: SPECIFIC
+        requirements: {}
+        display_name: "<!italic><#FFD54F>🪓</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Axe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 100</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 4
+          SHARPNESS: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 2.00
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+  legendary_shovel:
+    enabled: true
+    category: excavation
+    display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+    base_material: WOODEN_SHOVEL
+    allowed_worlds:
+      - Survival_World
+      - Survival_World_nether
+      - Survival_World_the_end
+    progression:
+      scope: PLAYER
+      anchor_world: Survival_World
+    tracking:
+      type: BLOCKS_BROKEN
+      mode: SPECIFIC
+      targets:
+        DIRT: 200
+        SAND: 64
+    levels:
+      1:
+        requirement_mode: SPECIFIC
+        requirements:
+          DIRT: 275
+          CLAY: 68
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      2:
+        requirement_mode: SPECIFIC
+        requirements:
+          SAND: 350
+          GRAVEL: 88
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 2</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      3:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 425
+          SAND: 108
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 3</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      4:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 500
+          DIRT: 128
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 4</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      5:
+        requirement_mode: SPECIFIC
+        requirements:
+          DIRT: 575
+          CLAY: 148
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 5</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      6:
+        requirement_mode: SPECIFIC
+        requirements:
+          SAND: 650
+          GRAVEL: 168
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 6</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      7:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 725
+          SAND: 188
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 7</gray>"
+        enchantments:
+          EFFICIENCY: 1
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      8:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 800
+          DIRT: 208
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 8</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      9:
+        requirement_mode: SPECIFIC
+        requirements:
+          DIRT: 875
+          CLAY: 228
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BCAAA4:#795548><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 9</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        item:
+          glint: AUTO
+
+      10:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 950
+          ROOTED_DIRT: 248
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 10</gray>"
+        material_upgrade: STONE_SHOVEL
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      11:
+        requirement_mode: SPECIFIC
+        requirements:
+          COARSE_DIRT: 1025
+          GRAVEL: 268
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 11</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      12:
+        requirement_mode: SPECIFIC
+        requirements:
+          ROOTED_DIRT: 1100
+          SAND: 288
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 12</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      13:
+        requirement_mode: SPECIFIC
+        requirements:
+          SAND: 1175
+          COARSE_DIRT: 308
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 13</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      14:
+        requirement_mode: SPECIFIC
+        requirements:
+          RED_SAND: 1250
+          GRAVEL: 328
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 14</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      15:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 1325
+          ROOTED_DIRT: 348
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 15</gray>"
+        enchantments:
+          EFFICIENCY: 2
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      16:
+        requirement_mode: SPECIFIC
+        requirements:
+          COARSE_DIRT: 1400
+          GRAVEL: 368
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 16</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      17:
+        requirement_mode: SPECIFIC
+        requirements:
+          ROOTED_DIRT: 1475
+          SAND: 388
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 17</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      18:
+        requirement_mode: SPECIFIC
+        requirements:
+          SAND: 1550
+          COARSE_DIRT: 408
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 18</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      19:
+        requirement_mode: SPECIFIC
+        requirements:
+          RED_SAND: 1625
+          GRAVEL: 428
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 19</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.10
+        item:
+          glint: AUTO
+
+      20:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 1700
+          ROOTED_DIRT: 448
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 20</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      21:
+        requirement_mode: SPECIFIC
+        requirements:
+          COARSE_DIRT: 1775
+          GRAVEL: 468
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 21</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      22:
+        requirement_mode: SPECIFIC
+        requirements:
+          ROOTED_DIRT: 1850
+          SAND: 488
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 22</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      23:
+        requirement_mode: SPECIFIC
+        requirements:
+          SAND: 1925
+          COARSE_DIRT: 508
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 23</gray>"
+        enchantments:
+          EFFICIENCY: 3
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      24:
+        requirement_mode: SPECIFIC
+        requirements:
+          RED_SAND: 2000
+          GRAVEL: 528
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#BDBDBD:#757575><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 24</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      25:
+        requirement_mode: SPECIFIC
+        requirements:
+          MYCELIUM: 2075
+          SNOW_BLOCK: 548
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 25</gray>"
+        material_upgrade: IRON_SHOVEL
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      26:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 2150
+          MUD: 568
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 26</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      27:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 2225
+          PODZOL: 588
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 27</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      28:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 2300
+          MUD: 608
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 28</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      29:
+        requirement_mode: SPECIFIC
+        requirements:
+          PODZOL: 2375
+          MYCELIUM: 628
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 29</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.20
+        item:
+          glint: AUTO
+
+      30:
+        requirement_mode: SPECIFIC
+        requirements:
+          MYCELIUM: 2450
+          SNOW_BLOCK: 648
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 30</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      31:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 2525
+          MUD: 668
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 31</gray>"
+        enchantments:
+          EFFICIENCY: 4
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      32:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 2600
+          PODZOL: 688
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 32</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      33:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 2675
+          MUD: 708
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 33</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      34:
+        requirement_mode: SPECIFIC
+        requirements:
+          PODZOL: 2750
+          MYCELIUM: 728
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 34</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      35:
+        requirement_mode: SPECIFIC
+        requirements:
+          MYCELIUM: 2825
+          SNOW_BLOCK: 748
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 35</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 2
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      36:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 2900
+          MUD: 768
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 36</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      37:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 2975
+          PODZOL: 788
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 37</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      38:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 3050
+          MUD: 808
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 38</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      39:
+        requirement_mode: SPECIFIC
+        requirements:
+          PODZOL: 3125
+          MYCELIUM: 828
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 39</gray>"
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.30
+        item:
+          glint: AUTO
+
+      40:
+        requirement_mode: SPECIFIC
+        requirements:
+          MYCELIUM: 3200
+          SNOW_BLOCK: 848
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 40</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      41:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 3275
+          MUD: 868
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 41</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      42:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 3350
+          PODZOL: 888
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 42</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      43:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 3425
+          MUD: 908
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 43</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      44:
+        requirement_mode: SPECIFIC
+        requirements:
+          PODZOL: 3500
+          MYCELIUM: 928
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 44</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      45:
+        requirement_mode: SPECIFIC
+        requirements:
+          MYCELIUM: 3575
+          SNOW_BLOCK: 948
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 45</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      46:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 3650
+          MUD: 968
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 46</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      47:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 3725
+          PODZOL: 988
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 47</gray>"
+        enchantments:
+          EFFICIENCY: 6
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      48:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 3800
+          MUD: 1008
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 48</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      49:
+        requirement_mode: SPECIFIC
+        requirements:
+          PODZOL: 3875
+          MYCELIUM: 1028
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#ECEFF1:#90A4AE><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 49</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 1
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.40
+        item:
+          glint: AUTO
+
+      50:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 3950
+          MUD: 1048
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 50</gray>"
+        material_upgrade: DIAMOND_SHOVEL
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      51:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 4025
+          SOUL_SOIL: 1068
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 51</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      52:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 4100
+          CLAY: 1088
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 52</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      53:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 4175
+          MUD: 1108
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 53</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 3
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      54:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 4250
+          SOUL_SAND: 1128
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 54</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      55:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 4325
+          MUD: 1148
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 55</gray>"
+        enchantments:
+          EFFICIENCY: 7
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      56:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 4400
+          SOUL_SOIL: 1168
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 56</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      57:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 4475
+          CLAY: 1188
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 57</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      58:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 4550
+          MUD: 1208
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 58</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      59:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 4625
+          SOUL_SAND: 1228
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 59</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.50
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      60:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 4700
+          MUD: 1248
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 60</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      61:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 4775
+          SOUL_SOIL: 1268
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 61</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      62:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 4850
+          CLAY: 1288
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 62</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      63:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 4925
+          MUD: 1308
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 63</gray>"
+        enchantments:
+          EFFICIENCY: 8
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      64:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 5000
+          SOUL_SAND: 1328
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 64</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      65:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 5075
+          MUD: 1348
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 65</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      66:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 5150
+          SOUL_SOIL: 1368
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 66</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      67:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 5225
+          CLAY: 1388
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 67</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      68:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 5300
+          MUD: 1408
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 68</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      69:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 5375
+          SOUL_SAND: 1428
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 69</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.60
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      70:
+        requirement_mode: SPECIFIC
+        requirements:
+          CLAY: 5450
+          MUD: 1448
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 70</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      71:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 5525
+          SOUL_SOIL: 1468
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 71</gray>"
+        enchantments:
+          EFFICIENCY: 9
+          UNBREAKING: 4
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      72:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 5600
+          CLAY: 1488
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 72</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      73:
+        requirement_mode: SPECIFIC
+        requirements:
+          GRAVEL: 5675
+          MUD: 1508
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 73</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      74:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 5750
+          SOUL_SAND: 1528
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#81D4FA:#0288D1><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 74</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 2
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+        item:
+          glint: AUTO
+
+      75:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 5825
+          SNOW_BLOCK: 1548
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 75</gray>"
+        material_upgrade: NETHERITE_SHOVEL
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      76:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 5900
+          SOUL_SOIL: 1568
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 76</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      77:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 5975
+          SNOW_BLOCK: 1588
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 77</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      78:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 6050
+          RED_SAND: 1608
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 78</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      79:
+        requirement_mode: SPECIFIC
+        requirements:
+          RED_SAND: 6125
+          SOUL_SAND: 1628
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 79</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.70
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      80:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 6200
+          SNOW_BLOCK: 1648
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 80</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      81:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 6275
+          SOUL_SOIL: 1668
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 81</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      82:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 6350
+          SNOW_BLOCK: 1688
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 82</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      83:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 6425
+          RED_SAND: 1708
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 83</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      84:
+        requirement_mode: SPECIFIC
+        requirements:
+          RED_SAND: 6500
+          SOUL_SAND: 1728
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 84</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      85:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 6575
+          SNOW_BLOCK: 1748
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 85</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      86:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 6650
+          SOUL_SOIL: 1768
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 86</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      87:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 6725
+          SNOW_BLOCK: 1788
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 87</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      88:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 6800
+          RED_SAND: 1808
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 88</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      89:
+        requirement_mode: SPECIFIC
+        requirements:
+          RED_SAND: 6875
+          SOUL_SAND: 1828
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 89</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 5
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.80
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      90:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 6950
+          SNOW_BLOCK: 1848
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 90</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      91:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 7025
+          SOUL_SOIL: 1868
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 91</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      92:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 7100
+          SNOW_BLOCK: 1888
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 92</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      93:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 7175
+          RED_SAND: 1908
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 93</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      94:
+        requirement_mode: SPECIFIC
+        requirements:
+          RED_SAND: 7250
+          SOUL_SAND: 1928
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 94</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      95:
+        requirement_mode: SPECIFIC
+        requirements:
+          MUD: 7325
+          SNOW_BLOCK: 1948
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 95</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      96:
+        requirement_mode: SPECIFIC
+        requirements:
+          SNOW_BLOCK: 7400
+          SOUL_SOIL: 1968
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 96</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      97:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SAND: 7475
+          SNOW_BLOCK: 1988
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 97</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      98:
+        requirement_mode: SPECIFIC
+        requirements:
+          SOUL_SOIL: 7550
+          RED_SAND: 2008
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 98</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      99:
+        requirement_mode: SPECIFIC
+        requirements:
+          RED_SAND: 7625
+          SOUL_SAND: 2028
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 99</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 3
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 1.90
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO
+
+      100:
+        requirement_mode: SPECIFIC
+        requirements: {}
+        display_name: "<!italic><#FFD54F>♠</#FFD54F> <gradient:#B39DDB:#673AB7><bold>Legendary Shovel</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 100</gray>"
+        enchantments:
+          EFFICIENCY: 10
+          UNBREAKING: 6
+          FORTUNE: 4
+        abilities:
+          EXP_BOOSTER:
+            multiplier: 2.00
+          MAGNET:
+            enabled: true
+          AREA_MINE_3X3:
+            enabled: true
+        item:
+          glint: AUTO

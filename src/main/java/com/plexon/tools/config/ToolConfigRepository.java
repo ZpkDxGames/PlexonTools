@@ -750,6 +750,7 @@ public final class ToolConfigRepository {
             if (materialOverride) {
                 inheritedMaterial = parseItemMaterial(materialName, "level " + level + " material", id);
             }
+            validateMaterialCompatibility(id, level, trackingType, inheritedMaterial, requirement);
 
             Map<Enchantment, Integer> enchantments = parseEnchantments(config, levelRoot, level);
             List<String> lore = lore(config, levelRoot + ".lore", rootLore, id);
@@ -770,6 +771,30 @@ public final class ToolConfigRepository {
                     hideEnchantments, hideAttributes, customModelData, abilities));
         }
         return levels;
+    }
+
+    private static void validateMaterialCompatibility(
+            String toolId,
+            int level,
+            TrackingType trackingType,
+            Material toolMaterial,
+            LevelRequirement requirement
+    ) {
+        if (trackingType != TrackingType.BLOCKS_BROKEN
+                || requirement.mode() != RequirementMode.SPECIFIC) {
+            return;
+        }
+        for (String target : requirement.targets().keySet()) {
+            Material block = Material.matchMaterial(target);
+            if (block == null) {
+                continue;
+            }
+            ToolMaterialCompatibility.incompatibilityReason(toolMaterial, block)
+                    .ifPresent(reason -> {
+                        throw new IllegalArgumentException("level " + level + " of " + toolId
+                                + " has an unreachable block objective: " + reason);
+                    });
+        }
     }
 
     private static Map<Enchantment, Integer> parseEnchantments(

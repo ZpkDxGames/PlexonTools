@@ -1,28 +1,61 @@
-# Player-facing /pt world layouts.
+# Player-facing /pt relic armory layouts.
 #
-# World IDs are normalized lowercase keys; the title's {world} placeholder uses
-# the live Bukkit world name. Rows are clamped from 3 through 6. Tool slots are
-# zero-based inner content slots (borders/navigation are reserved).
-# Each world may omit title, rows, or filler fields to inherit `defaults`.
-#
-# With config.yml world-menu.auto-show-allowed-tools: true, entries under tools
-# only pin exact positions. Unlisted allowed tools are placed automatically.
-# Set it false when this file should also act as a strict membership list.
+# World IDs are normalized lowercase keys. With auto-show-allowed-tools enabled,
+# these entries pin exact card positions while allowed_worlds controls access.
+# Card order is Sword → Pickaxe → Axe → Shovel. Their toggle panels are placed
+# automatically one row below at slots 19, 21, 23, and 25.
 defaults:
-  title: "<gradient:#FFF176:#FF8F00><bold>Mining Loadout</bold></gradient> <dark_gray>• {world}</dark_gray>"
+  title: "<gradient:#FFF176:#FF8F00><bold>✦ Relic Armory ✦</bold></gradient> <dark_gray>• {world}</dark_gray>"
   rows: 3
   filler:
     material: BLACK_STAINED_GLASS_PANE
     name: ' '
+
 worlds:
-  # This key matches the bundled tool's allowed world Survival_World.
   survival_world:
-    title: "<gradient:#FFF176:#FF8F00><bold>Mining Loadout</bold></gradient> <dark_gray>• {world}</dark_gray>"
+    title: "<gradient:#FFF176:#FF8F00><bold>✦ Relic Armory ✦</bold></gradient> <dark_gray>• {world}</dark_gray>"
     rows: 3
     filler:
       material: BLACK_STAINED_GLASS_PANE
       name: ' '
     tools:
-      # Remove this entry to let automatic placement choose a free slot.
+      legendary_sword:
+        slot: 10
       legendary_pickaxe:
-        slot: 13
+        slot: 12
+      legendary_axe:
+        slot: 14
+      legendary_shovel:
+        slot: 16
+
+  survival_world_nether:
+    title: "<gradient:#FF8A65:#D84315><bold>✦ Nether Armory ✦</bold></gradient> <dark_gray>• {world}</dark_gray>"
+    rows: 3
+    filler:
+      material: RED_STAINED_GLASS_PANE
+      name: ' '
+    tools:
+      legendary_sword:
+        slot: 10
+      legendary_pickaxe:
+        slot: 12
+      legendary_axe:
+        slot: 14
+      legendary_shovel:
+        slot: 16
+
+  survival_world_the_end:
+    title: "<gradient:#CE93D8:#7E57C2><bold>✦ End Armory ✦</bold></gradient> <dark_gray>• {world}</dark_gray>"
+    rows: 3
+    filler:
+      material: PURPLE_STAINED_GLASS_PANE
+      name: ' '
+    tools:
+      legendary_sword:
+        slot: 10
+      legendary_pickaxe:
+        slot: 12
+      legendary_axe:
+        slot: 14
+      legendary_shovel:
+        slot: 16

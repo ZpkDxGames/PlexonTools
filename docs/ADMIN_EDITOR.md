@@ -50,6 +50,8 @@ Counters start at zero whenever a player enters a level. No aggregate or per-tar
 
 The target selector is paginated and searchable. Material tracking shows valid blocks, crops, or fish; entity tracking shows living types. Left-click adds/edits a quota, right-click removes it, and the amount screen supports both step and exact controls.
 
+On save or reload, SPECIFIC block objectives are validated against the material resolved for that level. A pickaxe, axe, shovel, or hoe objective must use a compatible block family and sufficient harvest tier; invalid candidates are rejected without replacing the live configuration.
+
 ## Level profiles
 
 Administrators can add, duplicate, reorder, or delete levels while retaining at least one contiguous profile. The add action clones the last profile and doubles its GENERAL total or each SPECIFIC quota with overflow protection.
@@ -91,6 +93,8 @@ The GUI intentionally keeps persistence tuning and the full physical-item lore t
 - `performance.progress-visual-refresh-ticks`: coalesced item-lore/PDC/action-bar refresh window from 1 through 20 ticks.
 - `tool-lore.template`: the freely ordered global physical-tool layout.
 - `tool-lore.requirements`: independent GENERAL, SPECIFIC, and maximum-level rows.
+- `tool-lore.enchantments`: active-enchantment and empty-state row formats used by `{enchantment_lines}`.
+- `progress-value-colors`: start, middle, and complete colors for dynamic current-value and percentage placeholders.
 - `tools.yml` `progression.scope` and `progression.anchor_world`: shared-player or separate-world progression.
 
 Every editable YAML includes an inline schema guide. On startup, PlexonTools also refreshes clean reference copies under `plugins/PlexonTools/examples`; compare or copy from them without replacing a customized live file wholesale. Use `/pt reload` after visual or definition edits. Restart Paper after changing storage startup options.

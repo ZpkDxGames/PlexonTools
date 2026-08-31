@@ -20,6 +20,7 @@ PlexonTools is a Paper-native progression engine for unique, world-activated cus
 - A tool can share one player-owned progression record across Overworld, Nether, and End variants, or keep intentional per-world progression.
 - Bound tools are always unbreakable, owner-only, non-droppable, retained on death, and blocked from external inventories.
 - SPECIFIC objectives render one requirement per lore line; enchantments, attributes, unbreakable text, and additional vanilla details are hidden.
+- Block objectives are validated against every level's resolved tool family and harvest tier, so a material upgrade cannot leave an impossible quota behind.
 - Six tracking types: blocks broken, mobs killed, items farmed, fish caught, damage dealt, and blocks placed.
 - GENERAL shared totals and SPECIFIC per-target quotas reset at each level boundary; excess activity never counts toward the next level.
 - A configurable action bar shows current progress; item lore/PDC and action-bar rendering coalesce per instance while authoritative progress updates immediately.
@@ -35,7 +36,7 @@ PlexonTools is a Paper-native progression engine for unique, world-activated cus
 - `<!italic>` normalization for every MiniMessage deserialization, including names, lore, messages, and GUIs.
 - Item PDC mutations and progression calculations stay in memory; changed registry records persist asynchronously in coalesced SQLite transactions.
 - Backward-compatible loading for 2.0 definitions, issued items, list filters, and legacy `data.yml` records.
-- Bundled defaults provide a gold-themed, 100-level `legendary_pickaxe` shared across `Survival_World` and its Nether/End variants.
+- Bundled defaults provide four complete 100-level relics—Sword, Pickaxe, Axe, and Shovel—shared across `Survival_World` and its Nether/End variants. `/pt` pins them in that exact order at slots 10, 12, 14, and 16.
 
 ## Installation
 
@@ -93,6 +94,8 @@ tracking:
 
 Levels can override root requirements with `requirement_mode`, `requirement`, or `requirements`.
 
+For SPECIFIC `BLOCKS_BROKEN` profiles, reload also checks the resolved material at every level. Vanilla pickaxes, axes, shovels, and hoes must match the block's mineable tag and required harvest tier; an invalid level is rejected while the last valid runtime configuration remains active.
+
 Progress is strictly per level. When a level completes, both its aggregate counter and SPECIFIC target counters reset to zero. For example, two consecutive levels that each require `STONE: 500` require 500 new Stone breaks at each level. The event that completes one level cannot contribute overflow to the next.
 
 Accepted requirement activity updates authoritative state immediately. The item lore/PDC and live action bar refresh together in a short configurable window (`performance.progress-visual-refresh-ticks`, default `4`) to reduce block-event work. Toggle the action bar with `effects.progress-action-bar` and customize `messages.progress-update`.
@@ -149,14 +152,15 @@ The 3×3 ability operates only on pickaxe, shovel, and axe material families. It
 Both `{placeholder}` and `<placeholder>` forms are accepted.
 
 - Identity: `tool`, `tool_id`, `level_name`, `uuid`, `category`, `category_name`
-- Progress: `level`, `max_level`, `next_level`, `current`, `required`, `remaining`, `percentage`, `total`, `progress_bar`
+- Progress: `level`, `max_level`, `next_level`, `current`, `required`, `remaining`, `percentage`, `total`, `progress_bar`, `current_color`, `percentage_color`
 - Requirement: `requirement_mode`, `goal_type_description`, `target_progress`, `tracking`, `targets`
-- Requirement rows: `requirement_action`, `requirement_target`, `requirement_goal`, `requirement_current`, `requirement_required`, `requirement_remaining`, `requirement_percentage`
+- Requirement rows: `requirement_action`, `requirement_target`, `requirement_goal`, `requirement_current`, `requirement_required`, `requirement_remaining`, `requirement_percentage`, `requirement_current_color`
+- Enchantment rows: `enchantment_key`, `enchantment_name`, `enchantment_level`, `enchantment_level_roman`
 - Binding: `bound_world`, `owner_name`, `owner_uuid`
-- Profile: `material`, `enchantments`
+- Profile: `material`, `material_name`, `enchantments`, `enchantment_count`
 - Player menu state: `world`, `status`, `state`, `state_symbol`, `toggle_action`, `toggle_hint`
 
-The freely ordered default layout lives under `tool-lore.template` in `config.yml`. The special `{requirement_lines}` row expands to one line per SPECIFIC target and one summarized line for GENERAL requirements. `tool-lore.requirements` gives GENERAL, SPECIFIC, and maximum-level rows independent formats. A root or per-level `lore` list in `tools.yml` can override the global template; `lore: []` intentionally removes it.
+The freely ordered compact default layout lives under `tool-lore.template` in `config.yml`. `{enchantment_lines}` expands the active profile into readable enchantment rows, while `{requirement_lines}` expands to one line per SPECIFIC target or one summarized GENERAL row. `progress-value-colors` drives the current value from red through amber to green; templates keep the required value fixed. A root or per-level `lore` list in `tools.yml` can override the global template; `lore: []` intentionally removes it.
 
 ## Persistence
 

@@ -20,7 +20,7 @@ public final class MessageService {
             "activation-unavailable", "<red>That tool cannot be activated in this world.</red>",
             "tool-activated", "<#9CCC65>✔ Equipped <white>{tool}</white> for <white>{world}</white>.</#9CCC65>",
             "tool-deactivated", "<#FFD54F>◆ Safely stored <white>{tool}</white> for <white>{world}</white>.</#FFD54F>",
-            "progress-update", "<#FFD54F><bold>Lv. {level}</bold></#FFD54F> <dark_gray>•</dark_gray> {progress_bar} <white>{current}</white><dark_gray>/</dark_gray><#AEEA00>{required}</#AEEA00> <gray>({percentage}%)</gray>",
+            "progress-update", "<#FFD54F><bold>Lv. {level}</bold></#FFD54F> <dark_gray>•</dark_gray> {progress_bar} <color:{current_color}>{current}</color><dark_gray>/</dark_gray><#B0BEC5>{required}</#B0BEC5> <color:{percentage_color}>({percentage}%)</color>",
             "backup-started", "<gray>Draining pending writes and creating a consistent SQLite backup…</gray>",
             "backup-complete", "<green>Database backup created:</green> <white>{file}</white>",
             "backup-failed", "<red>The database backup failed. Check the console; the live database remains active.</red>"

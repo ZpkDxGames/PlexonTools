@@ -1,5 +1,6 @@
 package com.plexon.tools.config;
 
+import com.plexon.tools.util.ProgressColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -26,6 +27,9 @@ public final class PluginSettings {
     private String progressEmptySymbol;
     private String progressFilledFormat;
     private String progressEmptyFormat;
+    private String progressValueStartColor;
+    private String progressValueMiddleColor;
+    private String progressValueCompleteColor;
     private String showcaseTitle;
     private String categoryTitle;
     private boolean showLockedTools;
@@ -38,6 +42,8 @@ public final class PluginSettings {
     private String generalRequirementLine;
     private String specificRequirementLine;
     private String maximumRequirementLine;
+    private String enchantmentLine;
+    private String emptyEnchantmentLine;
     private boolean worldMenuAutoShowAllowedTools;
     private boolean worldMenuTogglePanelEnabled;
     private boolean worldMenuToolCardActiveGlint;
@@ -74,6 +80,12 @@ public final class PluginSettings {
         progressFilledFormat = config.getString("progress-bar.filled-format",
                 "<!italic><gradient:#FFF59D:#FFB300:#FF6F00>");
         progressEmptyFormat = config.getString("progress-bar.empty-format", "<!italic><#303030>");
+        progressValueStartColor = config.getString(
+                "progress-value-colors.start", ProgressColor.DEFAULT_START);
+        progressValueMiddleColor = config.getString(
+                "progress-value-colors.middle", ProgressColor.DEFAULT_MIDDLE);
+        progressValueCompleteColor = config.getString(
+                "progress-value-colors.complete", ProgressColor.DEFAULT_COMPLETE);
 
         showcaseTitle = config.getString("showcase.title",
                 "<gradient:#FFF176:#FF8F00><bold>Tool Armory</bold></gradient>");
@@ -94,13 +106,15 @@ public final class PluginSettings {
                 "world-menu.tool-card.glint-when-active", true);
         worldMenuToolCard = menuItem(config, "world-menu.tool-card", "TOOL", true,
                 "{tool}", List.of(
-                        "<dark_gray>Bound mining relic</dark_gray>",
+                        "<dark_gray>Ancient soulbound relic</dark_gray>",
                         "",
-                        "<#FFB300>⛏</#FFB300>  <gray>Level</gray>  <white><bold>{level}</bold></white><dark_gray> / {max_level}</dark_gray>",
-                        "<#FF8F00>◆</#FF8F00>  <gray>Objective</gray>  <white>{tracking}</white>",
-                        "<#FFD54F>⚡</#FFD54F>  <gray>Progress</gray>  <white>{current}</white><dark_gray> / </dark_gray><#8BC34A>{required}</#8BC34A>",
+                        "<#FFD740>✥</#FFD740> <gray>Rank</gray> <white>{level_name}</white>",
+                        "<#90CAF9>⚒</#90CAF9> <gray>Form</gray> <white>{material_name}</white>",
+                        "<#FFB300>◆</#FFB300> <gray>Objective</gray> <white>{tracking}</white>",
+                        "<#FFD54F>⚡</#FFD54F> <gray>Progress</gray> <color:{current_color}>{current}</color><dark_gray>/</dark_gray><#B0BEC5>{required}</#B0BEC5>",
+                        "<#66BB6A>▰</#66BB6A> <gray>Mastery</gray> <color:{percentage_color}>{percentage}%</color>",
                         "",
-                        "<gray>Status</gray>  {status}",
+                        "<gray>Status</gray> {status}",
                         "{toggle_hint}"
                 ));
         worldMenuActivePanel = menuItem(config, "world-menu.toggle-panel.active",
@@ -122,6 +136,8 @@ public final class PluginSettings {
         generalRequirementLine = lore.generalRequirementLine();
         specificRequirementLine = lore.specificRequirementLine();
         maximumRequirementLine = lore.maximumRequirementLine();
+        enchantmentLine = lore.enchantmentLine();
+        emptyEnchantmentLine = lore.emptyEnchantmentLine();
     }
 
     public boolean enforceBoundWorld() { return enforceBoundWorld; }
@@ -143,6 +159,9 @@ public final class PluginSettings {
     public String progressEmptySymbol() { return progressEmptySymbol; }
     public String progressFilledFormat() { return progressFilledFormat; }
     public String progressEmptyFormat() { return progressEmptyFormat; }
+    public String progressValueStartColor() { return progressValueStartColor; }
+    public String progressValueMiddleColor() { return progressValueMiddleColor; }
+    public String progressValueCompleteColor() { return progressValueCompleteColor; }
     public String showcaseTitle() { return showcaseTitle; }
     public String categoryTitle() { return categoryTitle; }
     public boolean showLockedTools() { return showLockedTools; }
@@ -155,6 +174,8 @@ public final class PluginSettings {
     public String generalRequirementLine() { return generalRequirementLine; }
     public String specificRequirementLine() { return specificRequirementLine; }
     public String maximumRequirementLine() { return maximumRequirementLine; }
+    public String enchantmentLine() { return enchantmentLine; }
+    public String emptyEnchantmentLine() { return emptyEnchantmentLine; }
     public boolean worldMenuAutoShowAllowedTools() { return worldMenuAutoShowAllowedTools; }
     public boolean worldMenuTogglePanelEnabled() { return worldMenuTogglePanelEnabled; }
     public boolean worldMenuToolCardActiveGlint() { return worldMenuToolCardActiveGlint; }
@@ -198,6 +219,12 @@ public final class PluginSettings {
                         "<!italic><dark_gray>│</dark_gray>  <#AEEA00>✦</#AEEA00>  "
                                 + "<gradient:#8BC34A:#DCEDC8><bold>"
                                 + "FULLY MASTERED</bold></gradient>"));
+        String enchantmentLine = config.getString("tool-lore.enchantments.line",
+                "<!italic><dark_gray>│</dark_gray> <#AB47BC>✦</#AB47BC> "
+                        + "<gray>{enchantment_name}</gray> "
+                        + "<#E1BEE7>{enchantment_level_roman}</#E1BEE7>");
+        String emptyEnchantmentLine = config.getString("tool-lore.enchantments.empty-line",
+                "<!italic><dark_gray>│</dark_gray> <dark_gray>No enchantments awakened</dark_gray>");
 
         boolean enabled = config.getBoolean("tool-lore.enabled", true);
         boolean templateConfigured = config.contains("tool-lore.template");
@@ -217,18 +244,22 @@ public final class PluginSettings {
         }
         if (enabled && template.isEmpty()) {
             template = List.of(
-                    "<!italic><gradient:#FFF59D:#FFB300><bold>✦  LEGENDARY MINING RELIC  ✦</bold></gradient>",
-                    "<!italic><dark_gray>┌</dark_gray><gradient:#FFF59D:#FF8F00>──────────────────────</gradient><dark_gray>┐</dark_gray>",
-                    "<!italic><dark_gray>│</dark_gray>  <#FFB300>⛏</#FFB300>  <gray>LEVEL</gray>  <white><bold>{level}</bold></white><dark_gray>/</dark_gray><gray>{max_level}</gray>",
-                    "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>UPGRADE OBJECTIVES</bold></gradient>",
+                    "<!italic><gradient:#FFF176:#FFB300><bold>✦ ANCIENT RELIC ✦</bold></gradient>",
+                    "<!italic><dark_gray>┌──────────────────────────────┐</dark_gray>",
+                    "<!italic><dark_gray>│</dark_gray> <#FFD740>✥</#FFD740> <gray>Rank</gray> <white><bold>Level {level}</bold></white><dark_gray> / {max_level}</dark_gray>",
+                    "<!italic><dark_gray>│</dark_gray> <#90CAF9>⚒</#90CAF9> <gray>Form</gray> <white>{material_name}</white>",
+                    "<!italic><dark_gray>├─</dark_gray> <gradient:#CE93D8:#AB47BC><bold>✧ ENCHANTMENTS</bold></gradient>",
+                    "{enchantment_lines}",
+                    "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>🎯 OBJECTIVES</bold></gradient>",
                     "{requirement_lines}",
-                    "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>LEVEL MASTERY</bold></gradient>  <dark_gray>•</dark_gray>  <white>{percentage}%</white>",
-                    "<!italic><dark_gray>│</dark_gray>  {progress_bar}",
-                    "<!italic><dark_gray>└</dark_gray><gradient:#FF8F00:#FFF59D>──────────────────────</gradient><dark_gray>┘</dark_gray>",
-                    "<!italic><#FFD54F>👤</#FFD54F>  <dark_gray>SOULBOUND</dark_gray>  <#FFB300>•</#FFB300>  <white>{owner_name}</white>"
+                    "<!italic><dark_gray>├─</dark_gray> <#66BB6A><bold>▰ MASTERY</bold></#66BB6A> <color:{percentage_color}>{percentage}%</color>",
+                    "<!italic><dark_gray>│</dark_gray> {progress_bar}",
+                    "<!italic><dark_gray>└──────────────────────────────┘</dark_gray>",
+                    "<!italic><#FFD54F>♟</#FFD54F> <dark_gray>Soulbound</dark_gray> <#FFB300>•</#FFB300> <white>{owner_name}</white>"
             );
         }
-        return new LoreSettings(List.copyOf(template), generalLine, specificLine, maximumLine);
+        return new LoreSettings(List.copyOf(template), generalLine, specificLine, maximumLine,
+                enchantmentLine, emptyEnchantmentLine);
     }
 
     static long progressVisualRefreshTicks(FileConfiguration config) {
@@ -255,7 +286,9 @@ public final class PluginSettings {
             List<String> template,
             String generalRequirementLine,
             String specificRequirementLine,
-            String maximumRequirementLine
+            String maximumRequirementLine,
+            String enchantmentLine,
+            String emptyEnchantmentLine
     ) {
     }
 

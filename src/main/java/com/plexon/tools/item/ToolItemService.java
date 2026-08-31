@@ -8,6 +8,7 @@ import com.plexon.tools.model.RequirementMode;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.ToolLevel;
 import com.plexon.tools.util.ProgressBar;
+import com.plexon.tools.util.ProgressColor;
 import com.plexon.tools.util.ProgressionMath;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -263,7 +264,10 @@ public final class ToolItemService {
                 .sorted(Comparator.comparing(entry -> entry.getKey().getKey().toString()))
                 .map(entry -> entry.getKey().getKey() + "=" + entry.getValue())
                 .collect(Collectors.joining(","));
-        return Objects.hash("3.5-clean-tooltip", level.displayName(), level.material(), enchantments, level.lore(),
+        // Bump whenever the global lore renderer gains new structural placeholders.
+        // This invalidates profile hashes written by pre-dynamic-lore builds and
+        // forces a complete metadata application during reconciliation.
+        return Objects.hash("3.6.1-dynamic-lore-v2", level.displayName(), level.material(), enchantments, level.lore(),
                 level.requirement(),
                 level.unbreakable(), level.glint(), level.hideEnchantments(),
                 level.hideAttributes(), level.customModelData(), level.abilities());
@@ -292,6 +296,9 @@ public final class ToolItemService {
         long total = ProgressionMath.saturatingAdd(completed, rawProgress);
         long remaining = maximum ? 0L : requirement.remaining(state.progress(), state.targetProgress());
         int percent = maximum ? 100 : requirement.percentage(state.progress(), state.targetProgress());
+        String valueColor = ProgressColor.forProgress(credited, maximum ? 0L : required,
+                settings.progressValueStartColor(), settings.progressValueMiddleColor(),
+                settings.progressValueCompleteColor());
         String bar = ProgressBar.render(settings.progressBarWidth(), credited, maximum ? 0L : required,
                 settings.progressFilledSymbol(), settings.progressEmptySymbol(),
                 settings.progressFilledFormat(), settings.progressEmptyFormat());
@@ -307,6 +314,8 @@ public final class ToolItemService {
         values.put("remaining", Long.toString(remaining));
         values.put("percent", Integer.toString(percent));
         values.put("percentage", Integer.toString(percent));
+        values.put("current_color", valueColor);
+        values.put("percentage_color", valueColor);
         values.put("total", Long.toString(total));
         values.put("next_level", maximum ? "MAX" : Integer.toString(nextLevel));
         values.put("bar", bar);
@@ -375,10 +384,14 @@ public final class ToolItemService {
                 values.put("targets", messages.plain(requirement.targets().isEmpty()
                         ? "All" : String.join(", ", requirement.targets().keySet())));
                 values.put("material", currentLevel.material().name());
+                values.put("material_name", messages.plain(humanizeTarget(
+                        currentLevel.material().name())));
+                values.put("enchantment_count", Integer.toString(
+                        currentLevel.enchantments().size()));
                 values.put("enchantments", messages.plain(currentLevel.enchantments().entrySet().stream()
                         .sorted(Comparator.comparing(entry -> entry.getKey().getKey().toString()))
-                        .map(entry -> entry.getKey().getKey().getKey()
-                                .toUpperCase(java.util.Locale.ROOT) + " " + entry.getValue())
+                        .map(entry -> humanizeTarget(entry.getKey().getKey().getKey())
+                                + " " + toRoman(entry.getValue()))
                         .collect(Collectors.joining(", "))));
                 return Map.copyOf(values);
             });
@@ -393,7 +406,9 @@ public final class ToolItemService {
     ) {
         List<Component> rendered = new ArrayList<>();
         for (String line : template) {
-            if (line.contains("{requirement_lines}") || line.contains("<requirement_lines>")) {
+            if (line.contains("{enchantment_lines}") || line.contains("<enchantment_lines>")) {
+                rendered.addAll(enchantmentLines(definition, state, placeholders));
+            } else if (line.contains("{requirement_lines}") || line.contains("<requirement_lines>")) {
                 rendered.addAll(requirementLines(definition, state, placeholders));
             } else if ((line.contains("{goal_type_description}")
                     || line.contains("<goal_type_description>"))
@@ -420,6 +435,29 @@ public final class ToolItemService {
             }
         }
         return List.copyOf(rendered);
+    }
+
+    private List<Component> enchantmentLines(
+            ToolDefinition definition,
+            ToolState state,
+            Map<String, String> base
+    ) {
+        ToolLevel level = definition.level(state.level()).orElse(definition.firstLevel());
+        if (level.enchantments().isEmpty()) {
+            return List.of(messages.parse(settings.emptyEnchantmentLine(), base));
+        }
+        return level.enchantments().entrySet().stream()
+                .sorted(Comparator.comparing(entry -> entry.getKey().getKey().toString()))
+                .map(entry -> {
+                    Map<String, String> values = new HashMap<>(base);
+                    String key = entry.getKey().getKey().getKey();
+                    values.put("enchantment_key", messages.plain(key));
+                    values.put("enchantment_name", messages.plain(humanizeTarget(key)));
+                    values.put("enchantment_level", Integer.toString(entry.getValue()));
+                    values.put("enchantment_level_roman", toRoman(entry.getValue()));
+                    return messages.parse(settings.enchantmentLine(), values);
+                })
+                .toList();
     }
 
     private List<Component> requirementLines(
@@ -479,6 +517,9 @@ public final class ToolItemService {
         values.put("requirement_goal", messages.plain(goal));
         values.put("requirement_current", Long.toString(Math.max(0L, current)));
         values.put("requirement_required", Long.toString(Math.max(0L, required)));
+        values.put("requirement_current_color", ProgressColor.forProgress(current, required,
+                settings.progressValueStartColor(), settings.progressValueMiddleColor(),
+                settings.progressValueCompleteColor()));
         values.put("requirement_remaining", Long.toString(Math.max(0L, required - current)));
         values.put("requirement_percentage", Integer.toString(required <= 0L
                 ? 100 : (int) Math.min(100.0D, current * 100.0D / required)));
@@ -562,6 +603,20 @@ public final class ToolItemService {
                 .filter(word -> !word.isBlank())
                 .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
                 .collect(Collectors.joining(" "));
+    }
+
+    private static String toRoman(int value) {
+        int remaining = Math.max(1, value);
+        int[] amounts = {100, 90, 50, 40, 10, 9, 5, 4, 1};
+        String[] numerals = {"C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
+        StringBuilder result = new StringBuilder();
+        for (int index = 0; index < amounts.length; index++) {
+            while (remaining >= amounts[index]) {
+                result.append(numerals[index]);
+                remaining -= amounts[index];
+            }
+        }
+        return result.toString();
     }
 
     private static String encodeBreakdown(Map<String, Long> breakdown) {

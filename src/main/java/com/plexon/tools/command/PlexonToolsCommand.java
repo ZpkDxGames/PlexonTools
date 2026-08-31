@@ -182,7 +182,8 @@ public final class PlexonToolsCommand implements TabExecutor {
             long millis = (System.nanoTime() - started) / 1_000_000L;
             messages.send(sender, "reload-complete", Map.of(
                     "count", Integer.toString(tools.size()),
-                    "time", Long.toString(millis)
+                    "time", Long.toString(millis),
+                    "version", messages.plain(messages.plugin().getPluginMeta().getVersion())
             ));
         } catch (Exception exception) {
             messages.plugin().getLogger().log(java.util.logging.Level.SEVERE, "Reload failed", exception);

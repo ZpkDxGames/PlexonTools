@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Forced a complete item-profile refresh for tools previously rendered by a JAR that did not understand the dynamic lore placeholders, and exposed the active build in `/pt reload` feedback to make stale binaries immediately visible.
+- Reworked the default physical lore into a narrower ancient-relic layout, replaced Realm Binding with configurable Enchantments, and shortened the heading to Objectives.
+- Added dynamic `current_color`, `percentage_color`, and `requirement_current_color` placeholders with a configurable red → amber → green progression while required totals keep a fixed template color.
+- Added full 100-level Legendary Sword, Axe, and Shovel defaults alongside the existing 100-level Pickaxe, all sharing player progression across the survival Overworld, Nether, and End.
+- Reordered the default `/pt` armory to Sword, Pickaxe, Axe, and Shovel, with paired activation panels and themed dimension layouts.
+- Added transactional block-objective validation against the resolved vanilla tool family and harvest tier, plus corrected early wooden/stone Pickaxe goals that were unreachable with their current material.
+
 ## 3.6.1 — 2026-08-30
 
 - Added configurable `PLAYER` and `WORLD` progression scopes. `PLAYER` uses one owner/tool record across every allowed dimension, while `WORLD` retains independent records.

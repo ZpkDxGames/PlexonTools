@@ -62,17 +62,25 @@ performance:
 # Shared progress bar renderer used by physical tool lore, menu cards, and the
 # progress action bar. Width is clamped between 5 and 50 characters.
 progress-bar:
-  width: 20
+  width: 16
   filled-symbol: "■"
   empty-symbol: "■"
-  filled-format: "<!italic><gradient:#FFF59D:#FFB300:#FF6F00>"
-  empty-format: "<!italic><#303030>"
+  filled-format: "<!italic><gradient:#66BB6A:#AEEA00>"
+  empty-format: "<!italic><#263238>"
+
+# The current X value in X/Y moves through this red → amber → green palette.
+# The required Y value keeps its fixed color in the templates below.
+progress-value-colors:
+  start: "#FF5252"
+  middle: "#FFD740"
+  complete: "#76FF03"
 
 # Default player-facing /pt card and separate ON/OFF panel.
 #
 # Card material may be TOOL (the saved level's material) or any Bukkit item.
 # Card/panel placeholders:
-#   {tool} {tool_id} {level} {max_level} {current} {required}
+#   {tool} {tool_id} {level} {max_level} {level_name} {material_name}
+#   {current} {required} {current_color} {percentage_color}
 #   {percentage} {progress_bar} {tracking} {world} {status} {state}
 #   {state_symbol} {toggle_action} {toggle_hint} {owner_name}
 world-menu:
@@ -85,13 +93,15 @@ world-menu:
     display-name: "{tool}"
     glint-when-active: true
     lore:
-      - "<dark_gray>Bound mining relic</dark_gray>"
+      - "<dark_gray>Ancient soulbound relic</dark_gray>"
       - ""
-      - "<#FFB300>⛏</#FFB300>  <gray>Level</gray>  <white><bold>{level}</bold></white><dark_gray> / {max_level}</dark_gray>"
-      - "<#FF8F00>◆</#FF8F00>  <gray>Objective</gray>  <white>{tracking}</white>"
-      - "<#FFD54F>⚡</#FFD54F>  <gray>Progress</gray>  <white>{current}</white><dark_gray> / </dark_gray><#8BC34A>{required}</#8BC34A>"
+      - "<#FFD740>✥</#FFD740> <gray>Rank</gray> <white>{level_name}</white>"
+      - "<#90CAF9>⚒</#90CAF9> <gray>Form</gray> <white>{material_name}</white>"
+      - "<#FFB300>◆</#FFB300> <gray>Objective</gray> <white>{tracking}</white>"
+      - "<#FFD54F>⚡</#FFD54F> <gray>Progress</gray> <color:{current_color}>{current}</color><dark_gray>/</dark_gray><#B0BEC5>{required}</#B0BEC5>"
+      - "<#66BB6A>▰</#66BB6A> <gray>Mastery</gray> <color:{percentage_color}>{percentage}%</color>"
       - ""
-      - "<gray>Status</gray>  {status}"
+      - "<gray>Status</gray> {status}"
       - "{toggle_hint}"
 
   toggle-panel:
@@ -118,35 +128,48 @@ world-menu:
 # global lore from levels that do not define an override.
 #
 # Identity placeholders:
-#   {tool} {tool_id} {level_name} {uuid} {material} {enchantments}
+#   {tool} {tool_id} {level_name} {uuid} {material} {material_name}
+#   {enchantments} {enchantment_count}
 #   {category} {category_name} {owner_name} {owner_uuid} {bound_world}
 # Progress placeholders:
 #   {level} {max_level} {next_level} {current} {required} {remaining}
 #   {percentage} {total} {progress_bar} {tracking} {target_progress}
+#   {current_color} {percentage_color}
 # Requirement placeholders (inside requirement rows):
 #   {requirement_action} {requirement_target} {requirement_goal}
 #   {requirement_current} {requirement_required} {requirement_remaining}
-#   {requirement_percentage}
+#   {requirement_percentage} {requirement_current_color}
+# Enchantment placeholders (inside enchantment rows):
+#   {enchantment_key} {enchantment_name} {enchantment_level}
+#   {enchantment_level_roman}
 #
 # {requirement_lines} is special: GENERAL expands to one row, SPECIFIC expands
 # once per target, and a maximum-level profile uses maximum-line.
+# {enchantment_lines} expands to one compact row per active enchantment.
 tool-lore:
   enabled: true
   template:
-    - "<!italic><gradient:#FFF59D:#FFB300><bold>✦  LEGENDARY MINING RELIC  ✦</bold></gradient>"
-    - "<!italic><dark_gray>┌</dark_gray><gradient:#FFF59D:#FF8F00>──────────────────────</gradient><dark_gray>┐</dark_gray>"
-    - "<!italic><dark_gray>│</dark_gray>  <#FFB300>⛏</#FFB300>  <gray>LEVEL</gray>  <white><bold>{level}</bold></white><dark_gray>/</dark_gray><gray>{max_level}</gray>"
-    - "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>UPGRADE OBJECTIVES</bold></gradient>"
+    - "<!italic><gradient:#FFF176:#FFB300><bold>✦ ANCIENT RELIC ✦</bold></gradient>"
+    - "<!italic><dark_gray>┌──────────────────────────────┐</dark_gray>"
+    - "<!italic><dark_gray>│</dark_gray> <#FFD740>✥</#FFD740> <gray>Rank</gray> <white><bold>Level {level}</bold></white><dark_gray> / {max_level}</dark_gray>"
+    - "<!italic><dark_gray>│</dark_gray> <#90CAF9>⚒</#90CAF9> <gray>Form</gray> <white>{material_name}</white>"
+    - "<!italic><dark_gray>├─</dark_gray> <gradient:#CE93D8:#AB47BC><bold>✧ ENCHANTMENTS</bold></gradient>"
+    - "{enchantment_lines}"
+    - "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>🎯 OBJECTIVES</bold></gradient>"
     - "{requirement_lines}"
-    - "<!italic><dark_gray>├─</dark_gray> <gradient:#FFE082:#FFB300><bold>LEVEL MASTERY</bold></gradient>  <dark_gray>•</dark_gray>  <white>{percentage}%</white>"
-    - "<!italic><dark_gray>│</dark_gray>  {progress_bar}"
-    - "<!italic><dark_gray>└</dark_gray><gradient:#FF8F00:#FFF59D>──────────────────────</gradient><dark_gray>┘</dark_gray>"
-    - "<!italic><#FFD54F>👤</#FFD54F>  <dark_gray>SOULBOUND</dark_gray>  <#FFB300>•</#FFB300>  <white>{owner_name}</white>"
+    - "<!italic><dark_gray>├─</dark_gray> <#66BB6A><bold>▰ MASTERY</bold></#66BB6A> <color:{percentage_color}>{percentage}%</color>"
+    - "<!italic><dark_gray>│</dark_gray> {progress_bar}"
+    - "<!italic><dark_gray>└──────────────────────────────┘</dark_gray>"
+    - "<!italic><#FFD54F>♟</#FFD54F> <dark_gray>Soulbound</dark_gray> <#FFB300>•</#FFB300> <white>{owner_name}</white>"
+
+  enchantments:
+    line: "<!italic><dark_gray>│</dark_gray> <#AB47BC>✦</#AB47BC> <gray>{enchantment_name}</gray> <#E1BEE7>{enchantment_level_roman}</#E1BEE7>"
+    empty-line: "<!italic><dark_gray>│</dark_gray> <dark_gray>No enchantments awakened</dark_gray>"
 
   requirements:
-    general-line: "<!italic><dark_gray>│</dark_gray>  <#FFB300>◆</#FFB300>  <gray>{requirement_goal}</gray>  <dark_gray>•</dark_gray>  <white>{requirement_current}</white><dark_gray>/</dark_gray><#AEEA00>{requirement_required}</#AEEA00>"
-    specific-line: "<!italic><dark_gray>│</dark_gray>  <#FFB300>◆</#FFB300>  <gray>{requirement_target}</gray>  <dark_gray>•</dark_gray>  <white>{requirement_current}</white><dark_gray>/</dark_gray><#AEEA00>{requirement_required}</#AEEA00> <dark_gray>({requirement_percentage}%)</dark_gray>"
-    maximum-line: "<!italic><dark_gray>│</dark_gray>  <#AEEA00>✦</#AEEA00>  <gradient:#8BC34A:#DCEDC8><bold>FULLY MASTERED</bold></gradient>"
+    general-line: "<!italic><dark_gray>│</dark_gray> <#FFB300>◆</#FFB300> <gray>{requirement_goal}</gray> <color:{requirement_current_color}>{requirement_current}</color><dark_gray>/</dark_gray><#B0BEC5>{requirement_required}</#B0BEC5>"
+    specific-line: "<!italic><dark_gray>│</dark_gray> <#FFB300>◆</#FFB300> <gray>{requirement_target}</gray> <color:{requirement_current_color}>{requirement_current}</color><dark_gray>/</dark_gray><#B0BEC5>{requirement_required}</#B0BEC5> <color:{requirement_current_color}>({requirement_percentage}%)</color>"
+    maximum-line: "<!italic><dark_gray>│</dark_gray> <#AEEA00>✦</#AEEA00> <gradient:#8BC34A:#DCEDC8><bold>FULLY MASTERED</bold></gradient>"
 
 # Legacy category showcase routes: /pt <category> and /pt all.
 showcase:

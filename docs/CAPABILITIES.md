@@ -86,6 +86,8 @@ levels:
     requirement: 1500
 ```
 
+SPECIFIC block requirements are checked against the resolved material at every level. Vanilla pickaxe, axe, shovel, and hoe profiles must match both the block's mineable family and its stone/iron/diamond harvest requirement. Invalid edits fail transactionally instead of producing an unreachable objective.
+
 An empty SPECIFIC map intentionally cannot complete. GUI mode changes preserve the combined total when moving to GENERAL and start an empty target picker when moving to SPECIFIC.
 
 ## World activation menus
@@ -104,6 +106,8 @@ worlds:
 ```
 
 World menus accept three to six rows. Pinned tool slots must be unique inner content slots. A tool is available only when its definition is enabled and the same world appears in its `allowed_worlds` list.
+
+The bundled three-row survival layouts place Legendary Sword, Pickaxe, Axe, and Shovel at slots 10, 12, 14, and 16. Their ON/OFF panels occupy 19, 21, 23, and 25 when enabled.
 
 By default, enabled definitions appear automatically when the current world is in `allowed_worlds`; `menus.yml` entries only pin exact card positions. `world-menu.auto-show-allowed-tools: false` enables strict membership. Automatic placement reserves the slot beneath each card for its ON/OFF panel when possible, and a blocked card remains directly clickable.
 
@@ -127,7 +131,7 @@ IDs use lowercase letters, numbers, underscores, or hyphens. Names and descripti
 
 Names and materials inherit from the most recent earlier override. Enchantments, lore, glint, model data, and abilities are complete states for their level. `material_upgrade` remains an alias for `material`. Legacy unbreakable/hidden flag values remain readable but 3.5 always applies unbreakable and clean-tooltip protection.
 
-The global `tool-lore.template` is a freely ordered list exposing identity, category, progress, quota detail, owner, world, material, and enchantment placeholders. `{requirement_lines}` produces one independently formatted row per SPECIFIC quota or one GENERAL row, using `requirement_goal`, `requirement_target`, `requirement_current`, `requirement_required`, `requirement_remaining`, and `requirement_percentage`. At maximum level, its separate maximum row is used and `required` and `next_level` render as `MAX`.
+The global `tool-lore.template` is a freely ordered list exposing identity, category, progress, quota detail, owner, world, material, and enchantment placeholders. `{enchantment_lines}` renders the active enchantments with configurable names and Roman levels. `{requirement_lines}` produces one independently formatted row per SPECIFIC quota or one GENERAL row. `current_color`, `percentage_color`, and `requirement_current_color` follow the configurable red-to-green progress palette while the template controls the fixed required-value color. At maximum level, the separate maximum row is used and `required` and `next_level` render as `MAX`.
 
 A root `lore` list in a tool definition overrides the global template; an individual level list overrides both. An explicit empty list removes lore at that scope. Older `default_lore_format` values remain fallback-compatible.
 

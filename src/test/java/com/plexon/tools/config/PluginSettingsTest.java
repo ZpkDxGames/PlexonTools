@@ -21,6 +21,8 @@ final class PluginSettingsTest {
         config.set("tool-lore.requirements.general-line", "GENERAL {requirement_current}");
         config.set("tool-lore.requirements.specific-line", "SPECIFIC {requirement_target}");
         config.set("tool-lore.requirements.maximum-line", "MAXIMUM");
+        config.set("tool-lore.enchantments.line", "ENCHANT {enchantment_name}");
+        config.set("tool-lore.enchantments.empty-line", "NO ENCHANTMENTS");
 
         PluginSettings.LoreSettings settings = PluginSettings.loreSettings(config);
 
@@ -31,6 +33,8 @@ final class PluginSettingsTest {
         assertEquals("GENERAL {requirement_current}", settings.generalRequirementLine());
         assertEquals("SPECIFIC {requirement_target}", settings.specificRequirementLine());
         assertEquals("MAXIMUM", settings.maximumRequirementLine());
+        assertEquals("ENCHANT {enchantment_name}", settings.enchantmentLine());
+        assertEquals("NO ENCHANTMENTS", settings.emptyEnchantmentLine());
     }
 
     @Test

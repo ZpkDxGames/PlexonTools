@@ -22,7 +22,7 @@ import java.util.logging.Level;
 public final class WorldMenuRepository {
     private static final String ID_PATTERN = "[a-z0-9_-]+";
     private static final String DEFAULT_TITLE =
-            "<gradient:#FFF176:#FF8F00><bold>Mining Loadout</bold></gradient> <dark_gray>• {world}</dark_gray>";
+            "<gradient:#FFF176:#FF8F00><bold>✦ Relic Armory ✦</bold></gradient> <dark_gray>• {world}</dark_gray>";
 
     private final JavaPlugin plugin;
     private final File file;
