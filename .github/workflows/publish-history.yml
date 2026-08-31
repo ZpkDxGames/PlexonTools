@@ -1,0 +1,199 @@
+name: Publish PlexonTools release history
+
+on:
+  push:
+    branches:
+      - release/3.6.1
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish-history:
+    if: contains(github.event.head_commit.message, '[publish-history]')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release metadata
+        uses: actions/checkout@v4
+
+      - name: Restore and validate original release JARs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p historical-jars release-notes restored-artifacts
+
+          restore_release() {
+            local version="$1"
+            local run_id="$2"
+            local artifact_name="$3"
+            local destination="restored-artifacts/${version}"
+            local canonical_jar="${destination}/PlexonTools-${version}.jar"
+
+            mkdir -p "${destination}"
+            gh run download "${run_id}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --name "${artifact_name}" \
+              --dir "${destination}"
+
+            test -f "${canonical_jar}"
+            unzip -tqq "${canonical_jar}"
+
+            local embedded_version
+            embedded_version="$({ unzip -p "${canonical_jar}" plugin.yml || true; } \
+              | sed -n 's/^version:[[:space:]]*//p' \
+              | head -n 1 \
+              | tr -d " '\"\r")"
+            test "${embedded_version}" = "${version}"
+
+            cp "${canonical_jar}" "historical-jars/PlexonTools-${version}.jar"
+            sha256sum "historical-jars/PlexonTools-${version}.jar" \
+              >> historical-jars/SHA256SUMS
+          }
+
+          restore_release \
+            '1.0.0-beta.1' \
+            '33197580824' \
+            'PlexonTools-f5ff67ef75dfc39b4edff254261eb4298a5b9d10'
+          restore_release \
+            '1.0.0-beta.2' \
+            '33200964414' \
+            'PlexonTools-83a01892f01a64a51caf6048d5731d83cff169a0'
+          restore_release \
+            '2.0.0' \
+            '33228941220' \
+            'PlexonTools-bae5478bcd5aa8affc33e4e99fd31ab93ad25a33'
+          restore_release \
+            '3.0.0' \
+            '33263679058' \
+            'PlexonTools-84941378bc872d8c93b9d4812b5fba69941e171d'
+          restore_release \
+            '3.5.0' \
+            '33264196596' \
+            'PlexonTools-a441c2cdf09f53e51dfc59993dc4d0c04aafdd2a'
+          restore_release \
+            '3.5.1' \
+            '33273093402' \
+            'PlexonTools-739d7de5db21369d27134acbdd66cd058f99646e'
+          restore_release \
+            '3.6.0' \
+            '33288486487' \
+            'PlexonTools-6466ccb7de725c76efe5e4e3b4e4a6a046c79576'
+
+          test "$(find historical-jars -maxdepth 1 -type f -name '*.jar' | wc -l)" -eq 7
+          sha256sum --check historical-jars/SHA256SUMS
+
+      - name: Prepare historical release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          prepare_notes() {
+            local version="$1"
+            local run_id="$2"
+            local jar="historical-jars/PlexonTools-${version}.jar"
+            local checksum
+            checksum="$(sha256sum "${jar}" | awk '{print $1}')"
+
+            awk -v version="${version}" '
+              /^## / {
+                if (include) {
+                  exit
+                }
+                include = index($0, "## " version " ") == 1 || $0 == "## " version
+                next
+              }
+              include { print }
+            ' CHANGELOG.md > "release-notes/${version}.md"
+
+            cat >> "release-notes/${version}.md" <<EOF
+
+          ### Preserved build
+
+          This is the original canonical plugin JAR from successful GitHub Actions run ${run_id}.
+
+          **SHA-256:** \`${checksum}\`
+          EOF
+          }
+
+          prepare_notes '1.0.0-beta.1' '33197580824'
+          prepare_notes '1.0.0-beta.2' '33200964414'
+          prepare_notes '2.0.0' '33228941220'
+          prepare_notes '3.0.0' '33263679058'
+          prepare_notes '3.5.0' '33264196596'
+          prepare_notes '3.5.1' '33273093402'
+          prepare_notes '3.6.0' '33288486487'
+
+      - name: Publish historical GitHub Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          publish_release() {
+            local version="$1"
+            local target_sha="$2"
+            local prerelease="$3"
+            local tag="v${version}"
+            local jar="historical-jars/PlexonTools-${version}.jar"
+            local notes="release-notes/${version}.md"
+
+            if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              gh release upload "${tag}" "${jar}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --clobber
+              gh release edit "${tag}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --title "PlexonTools ${version}" \
+                --notes-file "${notes}"
+            else
+              local release_args=(
+                release create "${tag}" "${jar}"
+                --repo "${GITHUB_REPOSITORY}"
+                --target "${target_sha}"
+                --title "PlexonTools ${version}"
+                --notes-file "${notes}"
+              )
+              if [ "${prerelease}" = 'true' ]; then
+                release_args+=(--prerelease)
+              fi
+              gh "${release_args[@]}"
+            fi
+          }
+
+          publish_release \
+            '1.0.0-beta.1' \
+            'f5ff67ef75dfc39b4edff254261eb4298a5b9d10' \
+            'true'
+          publish_release \
+            '1.0.0-beta.2' \
+            'ee2f744d1bc53fb47051604eafdb289c4bba08c9' \
+            'true'
+          publish_release \
+            '2.0.0' \
+            '82148690396ac9af2373653863c86cfd22934356' \
+            'false'
+          publish_release \
+            '3.0.0' \
+            '84941378bc872d8c93b9d4812b5fba69941e171d' \
+            'false'
+          publish_release \
+            '3.5.0' \
+            'a441c2cdf09f53e51dfc59993dc4d0c04aafdd2a' \
+            'false'
+          publish_release \
+            '3.5.1' \
+            '739d7de5db21369d27134acbdd66cd058f99646e' \
+            'false'
+          publish_release \
+            '3.6.0' \
+            '6466ccb7de725c76efe5e4e3b4e4a6a046c79576' \
+            'false'
+
+          gh release edit v3.6.1 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --latest
