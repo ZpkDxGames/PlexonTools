@@ -48,6 +48,19 @@ jobs:
           git apply /tmp/plexontools-4.1.patch
           # Java 25 requires Gradle 9.1.0 or newer. Persist this correction into the release source.
           sed -i "s/gradle-version: '8.14.3'/gradle-version: '9.1.0'/g" .github/workflows/build.yml .github/workflows/release.yml
+          # Gradle 9 requires the JUnit Platform launcher explicitly on the test runtime classpath.
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('build.gradle.kts')
+          text = path.read_text()
+          needle = '    testImplementation("org.junit.jupiter:junit-jupiter")\n'
+          addition = '    testRuntimeOnly("org.junit.platform:junit-platform-launcher")\n'
+          if addition not in text:
+              if needle not in text:
+                  raise SystemExit('Could not locate JUnit Jupiter dependency for launcher insertion')
+              text = text.replace(needle, needle + addition, 1)
+          path.write_text(text)
+          PY
           git diff --check
 
       - name: Verify migration contract
@@ -58,6 +71,7 @@ jobs:
           grep -q 'JavaLanguageVersion.of(25)' build.gradle.kts
           grep -q 'paper-api:26.2' build.gradle.kts
           grep -q 'PlexonCore:1.0.0' build.gradle.kts
+          grep -q 'junit-platform-launcher' build.gradle.kts
           grep -q 'PlexonCore' src/main/resources/plugin.yml
           grep -q "gradle-version: '9.1.0'" .github/workflows/build.yml
           grep -q "gradle-version: '9.1.0'" .github/workflows/release.yml
