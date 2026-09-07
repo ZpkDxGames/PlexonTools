@@ -1,0 +1,103 @@
+name: Apply PlexonTools 4.1 Migration
+
+on:
+  push:
+    branches:
+      - release/4.1.0
+    paths:
+      - '.github/workflows/apply-4.1.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v5
+        with:
+          ref: release/4.1.0
+          fetch-depth: 0
+
+      - name: Reassemble and apply 4.1 delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .migration/patchpart-*.txt | base64 --decode | gzip -dc > /tmp/plexontools-4.1.patch
+          git apply --check /tmp/plexontools-4.1.patch
+          git apply /tmp/plexontools-4.1.patch
+          git diff --check
+
+      - name: Verify migration contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'version = "4.1.0"' build.gradle.kts
+          grep -q 'JavaLanguageVersion.of(25)' build.gradle.kts
+          grep -q 'paper-api:26.2' build.gradle.kts
+          grep -q 'PlexonCore:1.0.0' build.gradle.kts
+          grep -q 'PlexonCore' src/main/resources/plugin.yml
+          test -f src/main/java/com/plexon/tools/api/PlexonToolsAPI.java
+          test -f src/main/java/com/plexon/tools/event/PlexonToolProgressEvent.java
+          test -f src/main/java/com/plexon/tools/event/PlexonToolLevelUpEvent.java
+          test -f src/main/java/com/plexon/tools/integration/core/PlexonCoreBridge.java
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Provision PlexonCore 1.0.0 API
+        shell: bash
+        run: |
+          set -euo pipefail
+          core_jar="${RUNNER_TEMP}/PlexonCore-1.0.0.jar"
+          curl --fail --location --silent --show-error \
+            --output "${core_jar}" \
+            'https://github.com/ZpkDxGames/PlexonCore/releases/download/v1.0.0/PlexonCore-1.0.0.jar'
+          echo "4abce6de93293e21b31cb874734430d5bdc77de17a4c3b98fd6a9006e1f13018  ${core_jar}" | sha256sum --check
+          mvn -B -ntp org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
+            -Dfile="${core_jar}" \
+            -DgroupId=com.zpkdxgames \
+            -DartifactId=PlexonCore \
+            -Dversion=1.0.0 \
+            -Dpackaging=jar \
+            -DgeneratePom=true
+
+      - name: Test and build migrated plugin
+        run: gradle clean check build --stacktrace
+
+      - name: Verify migrated JAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar_path='build/libs/PlexonTools-4.1.0.jar'
+          test -s "${jar_path}"
+          jar tf "${jar_path}" > build/jar-contents.txt
+          grep -qx 'com/plexon/tools/api/PlexonToolsAPI.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/event/PlexonToolProgressEvent.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/event/PlexonToolLevelUpEvent.class' build/jar-contents.txt
+          if grep -q '^com/zpkdxgames/plexoncore/' build/jar-contents.txt; then
+            echo 'PlexonCore runtime classes must not be shaded into PlexonTools' >&2
+            exit 1
+          fi
+          javap -verbose -classpath "${jar_path}" com.plexon.tools.PlexonTools | grep -q 'major version: 69'
+
+      - name: Commit verified 4.1 migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .migration
+          rm -f .github/workflows/apply-4.1.yml
+          git config user.name 'Tonim'
+          git config user.email '99552287+ZpkDxGames@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: migrate PlexonTools 4.1.0 to PlexonCore'
+          git push origin HEAD:release/4.1.0
