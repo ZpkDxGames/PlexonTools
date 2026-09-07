@@ -1,0 +1,35 @@
+name: Recovery Source Snapshot
+
+on:
+  push:
+    branches:
+      - 'release/recovery-4.0.0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload exact source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: plexontools-recovery-source-${{ github.sha }}
+          path: |
+            .github
+            src
+            scripts
+            build.gradle.kts
+            settings.gradle.kts
+            gradle.properties
+            README.md
+            CHANGELOG.md
+            RELEASE_NOTES.md
+            docs
+          include-hidden-files: true
+          if-no-files-found: error
