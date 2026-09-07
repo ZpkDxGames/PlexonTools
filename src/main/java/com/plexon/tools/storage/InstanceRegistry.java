@@ -15,10 +15,12 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -30,8 +32,6 @@ public final class InstanceRegistry {
     private static final DateTimeFormatter BACKUP_TIME = DateTimeFormatter
             .ofPattern("uuuuMMdd-HHmmss-SSS'Z'")
             .withZone(ZoneOffset.UTC);
-    private static final int MAX_BATCHES_PER_ASYNC_FLUSH = 8;
-
     private final JavaPlugin plugin;
     private final PluginSettings settings;
     private final Path legacyFile;
@@ -39,9 +39,11 @@ public final class InstanceRegistry {
     private final ConcurrentMap<UUID, InstanceRecord> records = new ConcurrentHashMap<>();
     private final AtomicLong revision = new AtomicLong();
     private final AtomicBoolean saving = new AtomicBoolean();
+    private final AtomicBoolean pressureFlushQueued = new AtomicBoolean();
     private final Object pendingLock = new Object();
     private final Object databaseLock = new Object();
     private final LinkedHashMap<UUID, Long> pendingWrites = new LinkedHashMap<>();
+    private final LinkedHashMap<PlacedBlockPosition, PendingPlacedWrite> pendingPlacedBlockWrites = new LinkedHashMap<>();
     private boolean fullSnapshotPending;
     private boolean fullSnapshotInFlight;
 
@@ -70,6 +72,11 @@ public final class InstanceRegistry {
 
         synchronized (databaseLock) {
             database.open();
+            Path schemaBackup = database.schemaMigrationBackup();
+            if (schemaBackup != null) {
+                plugin.getLogger().info("Backed up the pre-4.0 SQLite schema as "
+                        + schemaBackup.getFileName() + ".");
+            }
             if (!"wal".equals(database.journalMode())) {
                 plugin.getLogger().warning("SQLite WAL mode is unavailable; using journal mode "
                         + database.journalMode() + ". Runtime writes remain asynchronous.");
@@ -223,8 +230,40 @@ public final class InstanceRegistry {
 
     public int pendingWriteCount() {
         synchronized (pendingLock) {
-            return fullSnapshotPending || fullSnapshotInFlight
+            int toolWrites = fullSnapshotPending || fullSnapshotInFlight
                     ? records.size() : pendingWrites.size();
+            return toolWrites + pendingPlacedBlockWrites.size();
+        }
+    }
+
+    public int pendingPlacedBlockWriteCount() {
+        synchronized (pendingLock) {
+            return pendingPlacedBlockWrites.size();
+        }
+    }
+
+    public void queuePlacedBlock(PlacedBlockPosition position, boolean placed) {
+        long currentRevision = revision.incrementAndGet();
+        int pending;
+        synchronized (pendingLock) {
+            pendingPlacedBlockWrites.put(position, new PendingPlacedWrite(placed, currentRevision));
+            pending = pendingWrites.size() + pendingPlacedBlockWrites.size();
+        }
+        requestPressureFlush(pending);
+    }
+
+    public Map<PlacedBlockPosition.ChunkKey, List<PlacedBlockPosition>> loadPlacedBlocks(
+            java.util.Collection<PlacedBlockPosition.ChunkKey> chunks
+    ) throws SQLException {
+        if (chunks.isEmpty()) return Map.of();
+        Set<PlacedBlockPosition.ChunkKey> requested = Set.copyOf(new HashSet<>(chunks));
+        long barrierRevision = revision.get();
+        synchronized (databaseLock) {
+            PlacedBlockBatch pending;
+            while ((pending = nextPlacedBlockBatch(requested, barrierRevision)) != null) {
+                persist(pending);
+            }
+            return database.loadPlacedBlocks(requested);
         }
     }
 
@@ -238,12 +277,12 @@ public final class InstanceRegistry {
         }
         try {
             synchronized (databaseLock) {
-                for (int batch = 0; batch < MAX_BATCHES_PER_ASYNC_FLUSH; batch++) {
+                for (int batch = 0; batch < settings.databaseMaxBatchesPerFlush(); batch++) {
                     PendingBatch pending = nextBatch();
-                    if (pending == null) {
-                        break;
-                    }
-                    persist(pending);
+                    PlacedBlockBatch placed = nextPlacedBlockBatch(null, Long.MAX_VALUE);
+                    if (pending == null && placed == null) break;
+                    if (pending != null) persist(pending);
+                    if (placed != null) persist(placed);
                 }
             }
         } catch (SQLException | RuntimeException exception) {
@@ -261,9 +300,12 @@ public final class InstanceRegistry {
     public void shutdown() {
         synchronized (databaseLock) {
             try {
-                PendingBatch pending;
-                while ((pending = nextBatch()) != null) {
-                    persist(pending);
+                while (true) {
+                    PendingBatch pending = nextBatch();
+                    PlacedBlockBatch placed = nextPlacedBlockBatch(null, Long.MAX_VALUE);
+                    if (pending == null && placed == null) break;
+                    if (pending != null) persist(pending);
+                    if (placed != null) persist(placed);
                 }
                 database.close();
             } catch (SQLException exception) {
@@ -275,9 +317,12 @@ public final class InstanceRegistry {
 
     public Path createBackup() throws IOException, SQLException {
         synchronized (databaseLock) {
-            PendingBatch pending;
-            while ((pending = nextBatch()) != null) {
-                persist(pending);
+            while (true) {
+                PendingBatch pending = nextBatch();
+                PlacedBlockBatch placed = nextPlacedBlockBatch(null, Long.MAX_VALUE);
+                if (pending == null && placed == null) break;
+                if (pending != null) persist(pending);
+                if (placed != null) persist(placed);
             }
             Path backups = database.file().resolveSibling("backups");
             String baseName = "plexontools-" + BACKUP_TIME.format(Instant.now());
@@ -292,18 +337,36 @@ public final class InstanceRegistry {
 
     private void markDirty(UUID instanceId) {
         long currentRevision = revision.incrementAndGet();
+        int pending;
         synchronized (pendingLock) {
             if (fullSnapshotPending) {
-                return;
-            }
-            if (!pendingWrites.containsKey(instanceId)
+                pending = records.size() + pendingPlacedBlockWrites.size();
+            } else if (!pendingWrites.containsKey(instanceId)
                     && pendingWrites.size() >= settings.databaseMaxPendingWrites()) {
                 pendingWrites.clear();
                 fullSnapshotPending = true;
-                return;
+                pending = records.size() + pendingPlacedBlockWrites.size();
+            } else {
+                pendingWrites.put(instanceId, currentRevision);
+                pending = pendingWrites.size() + pendingPlacedBlockWrites.size();
             }
-            pendingWrites.put(instanceId, currentRevision);
         }
+        requestPressureFlush(pending);
+    }
+
+    private void requestPressureFlush(int pendingCount) {
+        if (pendingCount < settings.databasePressureFlushThreshold()
+                || !plugin.isEnabled()
+                || !pressureFlushQueued.compareAndSet(false, true)) {
+            return;
+        }
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                flushAsync();
+            } finally {
+                pressureFlushQueued.set(false);
+            }
+        });
     }
 
     private PendingBatch nextBatch() {
@@ -357,6 +420,39 @@ public final class InstanceRegistry {
         }
     }
 
+    private PlacedBlockBatch nextPlacedBlockBatch(
+            Set<PlacedBlockPosition.ChunkKey> chunks, long maxRevision
+    ) {
+        synchronized (pendingLock) {
+            if (pendingPlacedBlockWrites.isEmpty()) return null;
+            Map<PlacedBlockPosition, Boolean> changes = new LinkedHashMap<>();
+            Map<PlacedBlockPosition, Long> revisions = new LinkedHashMap<>();
+            for (Map.Entry<PlacedBlockPosition, PendingPlacedWrite> entry
+                    : pendingPlacedBlockWrites.entrySet()) {
+                PendingPlacedWrite write = entry.getValue();
+                if (write.revision() > maxRevision) continue;
+                if (chunks != null && !chunks.contains(entry.getKey().chunk())) continue;
+                changes.put(entry.getKey(), write.placed());
+                revisions.put(entry.getKey(), write.revision());
+                if (changes.size() >= settings.databaseWriteBatchSize()) break;
+            }
+            return changes.isEmpty() ? null
+                    : new PlacedBlockBatch(Map.copyOf(changes), Map.copyOf(revisions));
+        }
+    }
+
+    private void persist(PlacedBlockBatch batch) throws SQLException {
+        database.applyPlacedBlockChanges(batch.changes());
+        synchronized (pendingLock) {
+            batch.revisions().forEach((position, batchRevision) -> {
+                PendingPlacedWrite current = pendingPlacedBlockWrites.get(position);
+                if (current != null && current.revision() == batchRevision) {
+                    pendingPlacedBlockWrites.remove(position);
+                }
+            });
+        }
+    }
+
     private void acknowledge(PendingBatch batch) {
         synchronized (pendingLock) {
             if (batch.fullSnapshot()) {
@@ -388,8 +484,10 @@ public final class InstanceRegistry {
     private void resetPendingState() {
         revision.set(0L);
         saving.set(false);
+        pressureFlushQueued.set(false);
         synchronized (pendingLock) {
             pendingWrites.clear();
+            pendingPlacedBlockWrites.clear();
             fullSnapshotPending = false;
             fullSnapshotInFlight = false;
         }
@@ -405,6 +503,13 @@ public final class InstanceRegistry {
             boolean fullSnapshot
     ) {
     }
+
+    private record PendingPlacedWrite(boolean placed, long revision) {}
+
+    private record PlacedBlockBatch(
+            Map<PlacedBlockPosition, Boolean> changes,
+            Map<PlacedBlockPosition, Long> revisions
+    ) {}
 
     public record InstanceRecord(
             UUID instanceId,

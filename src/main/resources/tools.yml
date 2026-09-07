@@ -1687,7 +1687,7 @@ tools:
   legendary_pickaxe:
     enabled: true
     category: mining
-    display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+    display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
     base_material: WOODEN_PICKAXE
     allowed_worlds:
       - Survival_World
@@ -1707,7 +1707,7 @@ tools:
         requirement_mode: SPECIFIC
         requirements:
           STONE: 250
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 1</gray>"
         enchantments:
           EFFICIENCY: 1
           UNBREAKING: 1
@@ -1719,7 +1719,7 @@ tools:
         requirements:
           STONE: 325
           COAL_ORE: 16
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 2</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 2</gray>"
         enchantments:
           EFFICIENCY: 1
           UNBREAKING: 1
@@ -1731,7 +1731,7 @@ tools:
         requirements:
           STONE: 400
           GRANITE: 96
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 3</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 3</gray>"
         enchantments:
           EFFICIENCY: 1
           UNBREAKING: 1
@@ -1743,7 +1743,7 @@ tools:
         requirements:
           STONE: 475
           COAL_ORE: 24
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 4</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 4</gray>"
         enchantments:
           EFFICIENCY: 1
           UNBREAKING: 1
@@ -1755,7 +1755,7 @@ tools:
         requirements:
           STONE: 550
           DIORITE: 112
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 5</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 5</gray>"
         enchantments:
           EFFICIENCY: 2
           UNBREAKING: 1
@@ -1767,7 +1767,7 @@ tools:
         requirements:
           STONE: 650
           ANDESITE: 128
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 6</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 6</gray>"
         enchantments:
           EFFICIENCY: 2
           UNBREAKING: 1
@@ -1779,7 +1779,7 @@ tools:
         requirements:
           STONE: 750
           COAL_ORE: 32
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 7</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 7</gray>"
         enchantments:
           EFFICIENCY: 2
           UNBREAKING: 1
@@ -1791,7 +1791,7 @@ tools:
         requirements:
           STONE: 875
           TUFF: 144
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 8</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 8</gray>"
         enchantments:
           EFFICIENCY: 2
           UNBREAKING: 1
@@ -1803,7 +1803,7 @@ tools:
         requirements:
           STONE: 1000
           DEEPSLATE: 192
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 9</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#8D8D8D:#D6D6D6><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 9</gray>"
         enchantments:
           EFFICIENCY: 2
           UNBREAKING: 1
@@ -1817,7 +1817,7 @@ tools:
         requirements:
           STONE: 1000
           COAL_ORE: 40
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 10</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 10</gray>"
         material_upgrade: STONE_PICKAXE
         enchantments:
           EFFICIENCY: 3
@@ -1833,7 +1833,7 @@ tools:
         requirements:
           STONE: 1100
           COPPER_ORE: 48
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 11</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 11</gray>"
         enchantments:
           EFFICIENCY: 3
           UNBREAKING: 2
@@ -1848,7 +1848,7 @@ tools:
         requirements:
           STONE: 1200
           IRON_ORE: 32
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 12</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 12</gray>"
         enchantments:
           EFFICIENCY: 3
           UNBREAKING: 2
@@ -1863,7 +1863,7 @@ tools:
         requirements:
           STONE: 1300
           COAL_ORE: 56
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 13</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 13</gray>"
         enchantments:
           EFFICIENCY: 3
           UNBREAKING: 2
@@ -1878,7 +1878,7 @@ tools:
         requirements:
           STONE: 1400
           COPPER_ORE: 64
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 14</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 14</gray>"
         enchantments:
           EFFICIENCY: 3
           UNBREAKING: 2
@@ -1893,7 +1893,7 @@ tools:
         requirements:
           DEEPSLATE: 1250
           DEEPSLATE_COAL_ORE: 24
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 15</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 15</gray>"
         enchantments:
           EFFICIENCY: 4
           UNBREAKING: 2
@@ -1908,7 +1908,7 @@ tools:
         requirements:
           DEEPSLATE: 1400
           DEEPSLATE_COPPER_ORE: 32
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 16</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 16</gray>"
         enchantments:
           EFFICIENCY: 4
           UNBREAKING: 2
@@ -1923,7 +1923,7 @@ tools:
         requirements:
           DEEPSLATE: 1550
           DEEPSLATE_IRON_ORE: 28
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 17</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 17</gray>"
         enchantments:
           EFFICIENCY: 4
           UNBREAKING: 2
@@ -1938,7 +1938,7 @@ tools:
         requirements:
           STONE: 1800
           IRON_ORE: 48
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 18</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 18</gray>"
         enchantments:
           EFFICIENCY: 4
           UNBREAKING: 2
@@ -1953,7 +1953,7 @@ tools:
         requirements:
           DEEPSLATE: 1750
           COPPER_ORE: 56
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 19</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 19</gray>"
         enchantments:
           EFFICIENCY: 4
           UNBREAKING: 2
@@ -1968,7 +1968,7 @@ tools:
         requirements:
           DEEPSLATE: 1900
           DEEPSLATE_COAL_ORE: 40
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 20</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 20</gray>"
         enchantments:
           EFFICIENCY: 5
           UNBREAKING: 2
@@ -1983,7 +1983,7 @@ tools:
         requirements:
           DEEPSLATE: 2050
           DEEPSLATE_COPPER_ORE: 48
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 21</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 21</gray>"
         enchantments:
           EFFICIENCY: 5
           UNBREAKING: 2
@@ -1998,7 +1998,7 @@ tools:
         requirements:
           DEEPSLATE: 2200
           DEEPSLATE_IRON_ORE: 40
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 22</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 22</gray>"
         enchantments:
           EFFICIENCY: 5
           UNBREAKING: 2
@@ -2013,7 +2013,7 @@ tools:
         requirements:
           DEEPSLATE: 2350
           DEEPSLATE_COPPER_ORE: 64
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 23</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 23</gray>"
         enchantments:
           EFFICIENCY: 5
           UNBREAKING: 2
@@ -2028,7 +2028,7 @@ tools:
         requirements:
           DEEPSLATE: 2500
           DEEPSLATE_IRON_ORE: 56
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 24</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#757575:#BDBDBD><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 24</gray>"
         enchantments:
           EFFICIENCY: 5
           UNBREAKING: 2
@@ -2045,7 +2045,7 @@ tools:
         requirements:
           DEEPSLATE: 2500
           IRON_ORE: 64
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 25</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 25</gray>"
         material_upgrade: IRON_PICKAXE
         enchantments:
           EFFICIENCY: 6
@@ -2062,7 +2062,7 @@ tools:
         requirements:
           DEEPSLATE: 2650
           DEEPSLATE_IRON_ORE: 56
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 26</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 26</gray>"
         enchantments:
           EFFICIENCY: 6
           UNBREAKING: 3
@@ -2078,7 +2078,7 @@ tools:
         requirements:
           DEEPSLATE: 2800
           LAPIS_ORE: 40
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 27</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 27</gray>"
         enchantments:
           EFFICIENCY: 6
           UNBREAKING: 3
@@ -2094,7 +2094,7 @@ tools:
         requirements:
           DEEPSLATE: 2950
           GOLD_ORE: 32
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 28</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 28</gray>"
         enchantments:
           EFFICIENCY: 6
           UNBREAKING: 3
@@ -2110,7 +2110,7 @@ tools:
         requirements:
           DEEPSLATE: 3100
           REDSTONE_ORE: 96
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 29</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 29</gray>"
         enchantments:
           EFFICIENCY: 6
           UNBREAKING: 3
@@ -2126,7 +2126,7 @@ tools:
         requirements:
           DEEPSLATE: 3250
           DEEPSLATE_LAPIS_ORE: 48
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 30</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 30</gray>"
         enchantments:
           EFFICIENCY: 6
           UNBREAKING: 3
@@ -2142,7 +2142,7 @@ tools:
         requirements:
           DEEPSLATE: 3400
           DEEPSLATE_GOLD_ORE: 40
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 31</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 31</gray>"
         enchantments:
           EFFICIENCY: 6
           UNBREAKING: 3
@@ -2158,7 +2158,7 @@ tools:
         requirements:
           DEEPSLATE: 3550
           DEEPSLATE_REDSTONE_ORE: 120
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 32</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 32</gray>"
         enchantments:
           EFFICIENCY: 6
           UNBREAKING: 3
@@ -2174,7 +2174,7 @@ tools:
         requirements:
           DEEPSLATE: 3700
           DIAMOND_ORE: 12
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 33</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 33</gray>"
         enchantments:
           EFFICIENCY: 6
           UNBREAKING: 3
@@ -2190,7 +2190,7 @@ tools:
         requirements:
           DEEPSLATE: 3850
           EMERALD_ORE: 6
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 34</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 34</gray>"
         enchantments:
           EFFICIENCY: 6
           UNBREAKING: 3
@@ -2206,7 +2206,7 @@ tools:
         requirements:
           DEEPSLATE: 4000
           DEEPSLATE_IRON_ORE: 80
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 35</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 35</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 3
@@ -2222,7 +2222,7 @@ tools:
         requirements:
           DEEPSLATE: 4200
           DEEPSLATE_LAPIS_ORE: 64
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 36</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 36</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 3
@@ -2238,7 +2238,7 @@ tools:
         requirements:
           DEEPSLATE: 4400
           DEEPSLATE_GOLD_ORE: 56
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 37</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 37</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 3
@@ -2254,7 +2254,7 @@ tools:
         requirements:
           DEEPSLATE: 4600
           DEEPSLATE_REDSTONE_ORE: 160
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 38</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 38</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 3
@@ -2270,7 +2270,7 @@ tools:
         requirements:
           DEEPSLATE: 4800
           DEEPSLATE_DIAMOND_ORE: 16
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 39</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 39</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 3
@@ -2287,14 +2287,14 @@ tools:
         requirements:
           DEEPSLATE: 5000
           DEEPSLATE_EMERALD_ORE: 8
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 40</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 40</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2305,14 +2305,14 @@ tools:
         requirements:
           DEEPSLATE: 5250
           DEEPSLATE_IRON_ORE: 96
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 41</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 41</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2323,14 +2323,14 @@ tools:
         requirements:
           DEEPSLATE: 5500
           DEEPSLATE_LAPIS_ORE: 80
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 42</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 42</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2341,14 +2341,14 @@ tools:
         requirements:
           DEEPSLATE: 5750
           DEEPSLATE_GOLD_ORE: 72
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 43</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 43</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2359,14 +2359,14 @@ tools:
         requirements:
           DEEPSLATE: 6000
           DEEPSLATE_REDSTONE_ORE: 200
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 44</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 44</gray>"
         enchantments:
           EFFICIENCY: 7
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2377,14 +2377,14 @@ tools:
         requirements:
           DEEPSLATE: 6250
           DEEPSLATE_DIAMOND_ORE: 20
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 45</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 45</gray>"
         enchantments:
           EFFICIENCY: 8
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2395,14 +2395,14 @@ tools:
         requirements:
           DEEPSLATE: 6500
           DIAMOND_ORE: 24
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 46</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 46</gray>"
         enchantments:
           EFFICIENCY: 8
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2413,14 +2413,14 @@ tools:
         requirements:
           DEEPSLATE: 6750
           DEEPSLATE_EMERALD_ORE: 10
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 47</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 47</gray>"
         enchantments:
           EFFICIENCY: 8
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2431,14 +2431,14 @@ tools:
         requirements:
           DEEPSLATE: 7000
           AMETHYST_CLUSTER: 48
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 48</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 48</gray>"
         enchantments:
           EFFICIENCY: 8
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2450,14 +2450,14 @@ tools:
           DEEPSLATE: 7500
           DEEPSLATE_DIAMOND_ORE: 28
           DEEPSLATE_EMERALD_ORE: 12
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 49</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#90A4AE:#ECEFF1><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 49</gray>"
         enchantments:
           EFFICIENCY: 8
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.40
         item:
@@ -2470,7 +2470,7 @@ tools:
         requirements:
           DEEPSLATE: 7500
           DEEPSLATE_DIAMOND_ORE: 32
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 50</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 50</gray>"
         material_upgrade: DIAMOND_PICKAXE
         enchantments:
           EFFICIENCY: 8
@@ -2478,7 +2478,7 @@ tools:
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2489,14 +2489,14 @@ tools:
         requirements:
           DEEPSLATE: 7800
           DEEPSLATE_REDSTONE_ORE: 240
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 51</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 51</gray>"
         enchantments:
           EFFICIENCY: 8
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2507,14 +2507,14 @@ tools:
         requirements:
           DEEPSLATE: 8100
           DEEPSLATE_GOLD_ORE: 96
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 52</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 52</gray>"
         enchantments:
           EFFICIENCY: 8
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2525,14 +2525,14 @@ tools:
         requirements:
           DEEPSLATE: 8400
           DEEPSLATE_DIAMOND_ORE: 36
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 53</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 53</gray>"
         enchantments:
           EFFICIENCY: 8
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2543,14 +2543,14 @@ tools:
         requirements:
           DEEPSLATE: 8700
           DEEPSLATE_EMERALD_ORE: 14
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 54</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 54</gray>"
         enchantments:
           EFFICIENCY: 8
           UNBREAKING: 4
           FORTUNE: 2
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2561,14 +2561,14 @@ tools:
         requirements:
           DEEPSLATE: 9000
           AMETHYST_CLUSTER: 64
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 55</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 55</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2579,14 +2579,14 @@ tools:
         requirements:
           DEEPSLATE: 9300
           DEEPSLATE_DIAMOND_ORE: 40
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 56</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 56</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2597,14 +2597,14 @@ tools:
         requirements:
           DEEPSLATE: 9600
           DEEPSLATE_EMERALD_ORE: 16
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 57</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 57</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2616,14 +2616,14 @@ tools:
           DEEPSLATE: 9900
           DEEPSLATE_DIAMOND_ORE: 44
           DEEPSLATE_REDSTONE_ORE: 280
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 58</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 58</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2635,14 +2635,14 @@ tools:
           DEEPSLATE: 10250
           DEEPSLATE_DIAMOND_ORE: 48
           DEEPSLATE_EMERALD_ORE: 20
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 59</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 59</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.50
         item:
@@ -2654,14 +2654,14 @@ tools:
         requirements:
           TUFF: 6000
           DEEPSLATE_IRON_ORE: 128
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 60</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 60</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2672,14 +2672,14 @@ tools:
         requirements:
           DEEPSLATE: 10500
           DEEPSLATE_REDSTONE_ORE: 320
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 61</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 61</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2690,14 +2690,14 @@ tools:
         requirements:
           TUFF: 6500
           DEEPSLATE_LAPIS_ORE: 96
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 62</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 62</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2708,14 +2708,14 @@ tools:
         requirements:
           DEEPSLATE: 11000
           DEEPSLATE_GOLD_ORE: 112
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 63</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 63</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2726,14 +2726,14 @@ tools:
         requirements:
           TUFF: 7000
           DEEPSLATE_DIAMOND_ORE: 48
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 64</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 64</gray>"
         enchantments:
           EFFICIENCY: 9
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2744,14 +2744,14 @@ tools:
         requirements:
           DEEPSLATE: 11500
           DEEPSLATE_IRON_ORE: 160
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 65</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 65</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2762,14 +2762,14 @@ tools:
         requirements:
           TUFF: 7500
           DEEPSLATE_REDSTONE_ORE: 384
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 66</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 66</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2780,14 +2780,14 @@ tools:
         requirements:
           DEEPSLATE: 12000
           DEEPSLATE_EMERALD_ORE: 18
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 67</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 67</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2798,14 +2798,14 @@ tools:
         requirements:
           TUFF: 8000
           DEEPSLATE_DIAMOND_ORE: 52
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 68</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 68</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2816,14 +2816,14 @@ tools:
         requirements:
           DEEPSLATE: 12500
           AMETHYST_CLUSTER: 96
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 69</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 69</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 5
           FORTUNE: 3
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.60
         item:
@@ -2835,14 +2835,14 @@ tools:
           TUFF: 8500
           DEEPSLATE_GOLD_ORE: 160
           DEEPSLATE_DIAMOND_ORE: 56
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 70</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 70</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.70
         item:
@@ -2853,14 +2853,14 @@ tools:
         requirements:
           DEEPSLATE: 13000
           DEEPSLATE_REDSTONE_ORE: 448
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 71</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 71</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.70
         item:
@@ -2871,14 +2871,14 @@ tools:
         requirements:
           TUFF: 9000
           DEEPSLATE_LAPIS_ORE: 128
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 72</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 72</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.70
         item:
@@ -2889,14 +2889,14 @@ tools:
         requirements:
           DEEPSLATE: 13500
           DEEPSLATE_DIAMOND_ORE: 60
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 73</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 73</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.70
         item:
@@ -2908,14 +2908,14 @@ tools:
           TUFF: 9500
           DEEPSLATE_EMERALD_ORE: 20
           AMETHYST_CLUSTER: 128
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 74</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#00BCD4:#80DEEA><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 74</gray>"
         enchantments:
           EFFICIENCY: 10
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.70
         item:
@@ -2928,7 +2928,7 @@ tools:
         requirements:
           DEEPSLATE: 14000
           DEEPSLATE_DIAMOND_ORE: 64
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 75</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 75</gray>"
         material_upgrade: NETHERITE_PICKAXE
         enchantments:
           EFFICIENCY: 11
@@ -2936,9 +2936,9 @@ tools:
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.75
         item:
@@ -2949,16 +2949,16 @@ tools:
         requirements:
           TUFF: 10000
           DEEPSLATE_IRON_ORE: 192
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 76</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 76</gray>"
         enchantments:
           EFFICIENCY: 11
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.75
         item:
@@ -2969,16 +2969,16 @@ tools:
         requirements:
           DEEPSLATE: 14500
           DEEPSLATE_REDSTONE_ORE: 512
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 77</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 77</gray>"
         enchantments:
           EFFICIENCY: 11
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.75
         item:
@@ -2989,16 +2989,16 @@ tools:
         requirements:
           TUFF: 10500
           DEEPSLATE_GOLD_ORE: 192
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 78</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 78</gray>"
         enchantments:
           EFFICIENCY: 11
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.75
         item:
@@ -3009,16 +3009,16 @@ tools:
         requirements:
           DEEPSLATE: 15000
           DEEPSLATE_DIAMOND_ORE: 68
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 79</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 79</gray>"
         enchantments:
           EFFICIENCY: 11
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.75
         item:
@@ -3029,16 +3029,16 @@ tools:
         requirements:
           TUFF: 11000
           DEEPSLATE_EMERALD_ORE: 22
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 80</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 80</gray>"
         enchantments:
           EFFICIENCY: 11
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.80
         item:
@@ -3049,16 +3049,16 @@ tools:
         requirements:
           DEEPSLATE: 15500
           DEEPSLATE_LAPIS_ORE: 160
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 81</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 81</gray>"
         enchantments:
           EFFICIENCY: 11
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.80
         item:
@@ -3069,16 +3069,16 @@ tools:
         requirements:
           TUFF: 11500
           AMETHYST_CLUSTER: 160
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 82</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 82</gray>"
         enchantments:
           EFFICIENCY: 11
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.80
         item:
@@ -3089,16 +3089,16 @@ tools:
         requirements:
           DEEPSLATE: 16000
           DEEPSLATE_DIAMOND_ORE: 72
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 83</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 83</gray>"
         enchantments:
           EFFICIENCY: 11
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.80
         item:
@@ -3110,16 +3110,16 @@ tools:
           TUFF: 12000
           OBSIDIAN: 32
           DEEPSLATE_EMERALD_ORE: 24
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 84</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 84</gray>"
         enchantments:
           EFFICIENCY: 11
           UNBREAKING: 6
           FORTUNE: 4
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.80
         item:
@@ -3132,16 +3132,16 @@ tools:
           DEEPSLATE: 16500
           DEEPSLATE_REDSTONE_ORE: 576
           DEEPSLATE_DIAMOND_ORE: 76
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 85</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 85</gray>"
         enchantments:
           EFFICIENCY: 12
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.90
         item:
@@ -3153,16 +3153,16 @@ tools:
           TUFF: 12500
           DEEPSLATE_GOLD_ORE: 224
           AMETHYST_CLUSTER: 192
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 86</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 86</gray>"
         enchantments:
           EFFICIENCY: 12
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.90
         item:
@@ -3173,16 +3173,16 @@ tools:
         requirements:
           DEEPSLATE: 17000
           DEEPSLATE_DIAMOND_ORE: 80
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 87</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 87</gray>"
         enchantments:
           EFFICIENCY: 12
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.90
         item:
@@ -3194,16 +3194,16 @@ tools:
           TUFF: 13000
           DEEPSLATE_EMERALD_ORE: 26
           OBSIDIAN: 40
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 88</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 88</gray>"
         enchantments:
           EFFICIENCY: 12
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.90
         item:
@@ -3215,16 +3215,16 @@ tools:
           DEEPSLATE: 17500
           DEEPSLATE_DIAMOND_ORE: 84
           AMETHYST_CLUSTER: 224
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 89</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#5E4B66:#B39DDB><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 89</gray>"
         enchantments:
           EFFICIENCY: 12
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 1.90
         item:
@@ -3237,16 +3237,16 @@ tools:
           TUFF: 14000
           DEEPSLATE_DIAMOND_ORE: 88
           DEEPSLATE_EMERALD_ORE: 28
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 90</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 90</gray>"
         enchantments:
           EFFICIENCY: 13
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.00
         item:
@@ -3257,16 +3257,16 @@ tools:
         requirements:
           DEEPSLATE: 18000
           DEEPSLATE_REDSTONE_ORE: 640
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 91</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 91</gray>"
         enchantments:
           EFFICIENCY: 13
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.00
         item:
@@ -3278,16 +3278,16 @@ tools:
           TUFF: 15000
           DEEPSLATE_GOLD_ORE: 256
           OBSIDIAN: 48
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 92</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 92</gray>"
         enchantments:
           EFFICIENCY: 13
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.00
         item:
@@ -3299,16 +3299,16 @@ tools:
           DEEPSLATE: 19000
           DEEPSLATE_DIAMOND_ORE: 96
           DEEPSLATE_EMERALD_ORE: 30
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 93</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 93</gray>"
         enchantments:
           EFFICIENCY: 13
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.00
         item:
@@ -3320,16 +3320,16 @@ tools:
           TUFF: 16000
           AMETHYST_CLUSTER: 256
           DEEPSLATE_LAPIS_ORE: 192
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 94</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 94</gray>"
         enchantments:
           EFFICIENCY: 13
           UNBREAKING: 7
           FORTUNE: 5
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.00
         item:
@@ -3341,16 +3341,16 @@ tools:
           DEEPSLATE: 20000
           DEEPSLATE_DIAMOND_ORE: 104
           OBSIDIAN: 56
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 95</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 95</gray>"
         enchantments:
           EFFICIENCY: 14
           UNBREAKING: 8
           FORTUNE: 6
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.25
         item:
@@ -3362,16 +3362,16 @@ tools:
           TUFF: 17500
           DEEPSLATE_EMERALD_ORE: 32
           DEEPSLATE_GOLD_ORE: 288
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 96</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 96</gray>"
         enchantments:
           EFFICIENCY: 14
           UNBREAKING: 8
           FORTUNE: 6
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.25
         item:
@@ -3383,16 +3383,16 @@ tools:
           DEEPSLATE: 22000
           DEEPSLATE_DIAMOND_ORE: 112
           DEEPSLATE_REDSTONE_ORE: 768
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 97</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 97</gray>"
         enchantments:
           EFFICIENCY: 14
           UNBREAKING: 8
           FORTUNE: 6
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.25
         item:
@@ -3404,16 +3404,16 @@ tools:
           TUFF: 20000
           DEEPSLATE_DIAMOND_ORE: 120
           OBSIDIAN: 64
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 98</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 98</gray>"
         enchantments:
           EFFICIENCY: 14
           UNBREAKING: 8
           FORTUNE: 6
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.25
         item:
@@ -3425,16 +3425,16 @@ tools:
           DEEPSLATE: 25000
           TUFF: 25000
           DEEPSLATE_DIAMOND_ORE: 128
-        display_name: "<!italic><#FFD54F>✦</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 99</gray>"
+        display_name: "<!italic><#FFD54F>⛏</#FFD54F> <gradient:#FF8F00:#FFD54F><bold>Legendary Pickaxe</bold></gradient> <dark_gray>•</dark_gray> <gray>Lv. 99</gray>"
         enchantments:
           EFFICIENCY: 14
           UNBREAKING: 8
           FORTUNE: 6
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.25
         item:
@@ -3444,16 +3444,16 @@ tools:
       100:
         requirement_mode: SPECIFIC
         requirements: {}
-        display_name: "<!italic><gradient:#FFF176:#FFB300:#FF6F00><bold>✦ LEGENDARY PICKAXE ✦</bold></gradient> <gold>[MAX]</gold>"
+        display_name: "<!italic><gradient:#FFF176:#FFB300:#FF6F00><bold>⛏ LEGENDARY PICKAXE ⛏</bold></gradient> <gold>[MAX]</gold>"
         enchantments:
           EFFICIENCY: 15
           UNBREAKING: 10
           FORTUNE: 6
         abilities:
           AUTO_SMELT:
-            enabled: true
+            enabled: false
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
           EXP_BOOSTER:
             multiplier: 2.50
         item:
@@ -4707,7 +4707,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4728,7 +4728,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4749,7 +4749,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4770,7 +4770,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4791,7 +4791,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4812,7 +4812,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4833,7 +4833,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4854,7 +4854,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4875,7 +4875,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4896,7 +4896,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4917,7 +4917,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4938,7 +4938,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4959,7 +4959,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -4980,7 +4980,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5001,7 +5001,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5022,7 +5022,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5043,7 +5043,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5064,7 +5064,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5085,7 +5085,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5106,7 +5106,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5127,7 +5127,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5148,7 +5148,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5169,7 +5169,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5190,7 +5190,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5211,7 +5211,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -5230,7 +5230,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6456,7 +6456,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6476,7 +6476,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6496,7 +6496,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6516,7 +6516,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6536,7 +6536,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6556,7 +6556,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6576,7 +6576,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6596,7 +6596,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6616,7 +6616,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6636,7 +6636,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6656,7 +6656,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6676,7 +6676,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6696,7 +6696,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6716,7 +6716,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6736,7 +6736,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6756,7 +6756,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6776,7 +6776,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6796,7 +6796,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6816,7 +6816,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6836,7 +6836,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6856,7 +6856,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6876,7 +6876,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6896,7 +6896,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6916,7 +6916,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6936,7 +6936,7 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO
 
@@ -6954,6 +6954,6 @@ tools:
           MAGNET:
             enabled: true
           AREA_MINE_3X3:
-            enabled: true
+            enabled: false
         item:
           glint: AUTO

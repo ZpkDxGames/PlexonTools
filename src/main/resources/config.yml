@@ -1,5 +1,5 @@
 # ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-# ┃                    PlexonTools 3.6.1 configuration                ┃
+# ┃                    PlexonTools 4.0.0 configuration                ┃
 # ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 #
 # Text supports Adventure MiniMessage:
@@ -7,7 +7,7 @@
 # Reload visual/gameplay changes with /pt reload. The storage filename, busy
 # timeout, WAL, and integrity options apply at startup and require a restart.
 
-config-version: 1
+config-version: 2
 
 # Core ownership and protection behavior.
 settings:
@@ -38,6 +38,12 @@ storage:
   write-batch-size: 256
   # Maximum distinct queued UUIDs before falling back to one safe full snapshot.
   max-pending-writes: 8192
+  # Maximum paired drain rounds handled by one async flush pass. Each round can
+  # commit one tool-state batch and one provenance batch; a later pass continues.
+  max-batches-per-flush: 8
+  # Busy bursts request an early async flush at this many coalesced mutations,
+  # instead of waiting for the normal interval. Clamped to the queue limits.
+  pressure-flush-threshold: 2048
 
   # SQLite waits this long for another connection before reporting a locked DB.
   # Requires a restart to change.
@@ -58,6 +64,21 @@ performance:
   # Level-ups, quit/death/world transitions, reload, and shutdown flush at once.
   # Use 1 for nearly immediate visuals; higher values reduce metadata/packet work.
   progress-visual-refresh-ticks: 4
+
+# Upgrade credit for BLOCKS_BROKEN and block-based farming objectives is
+# restricted to natural blocks. Player placements are indexed on placement,
+# kept as sparse per-chunk bitmaps while loaded, and saved to SQLite through the
+# same coalesced async writer used by tool progression. A block-break event does
+# only an in-memory map/bit lookup; it never queries YAML or SQLite.
+natural-block-progression:
+  enabled: true
+  # Chunks loaded from an existing world warm their provenance cache off-thread.
+  # true prevents the short loading window (or a DB error) becoming a bypass.
+  fail-closed-while-loading: true
+  # Number of loaded chunks read per serialized async database request.
+  chunk-load-batch-size: 32
+  # Retry delay if a provenance chunk batch cannot be read. 100 ticks = 5 sec.
+  chunk-load-retry-ticks: 100
 
 # Shared progress bar renderer used by physical tool lore, menu cards, and the
 # progress action bar. Width is clamped between 5 and 50 characters.
@@ -150,7 +171,7 @@ tool-lore:
   enabled: true
   template:
     - "<!italic><gradient:#FFF176:#FFB300><bold>✦ ANCIENT RELIC ✦</bold></gradient>"
-    - "<!italic><dark_gray>┌──────────────────────────────┐</dark_gray>"
+    - "<!italic><dark_gray>┌──────────────────┐</dark_gray>"
     - "<!italic><dark_gray>│</dark_gray> <#FFD740>✥</#FFD740> <gray>Rank</gray> <white><bold>Level {level}</bold></white><dark_gray> / {max_level}</dark_gray>"
     - "<!italic><dark_gray>│</dark_gray> <#90CAF9>⚒</#90CAF9> <gray>Form</gray> <white>{material_name}</white>"
     - "<!italic><dark_gray>├─</dark_gray> <gradient:#CE93D8:#AB47BC><bold>✧ ENCHANTMENTS</bold></gradient>"
@@ -159,7 +180,7 @@ tool-lore:
     - "{requirement_lines}"
     - "<!italic><dark_gray>├─</dark_gray> <#66BB6A><bold>▰ MASTERY</bold></#66BB6A> <color:{percentage_color}>{percentage}%</color>"
     - "<!italic><dark_gray>│</dark_gray> {progress_bar}"
-    - "<!italic><dark_gray>└──────────────────────────────┘</dark_gray>"
+    - "<!italic><dark_gray>└──────────────────┘</dark_gray>"
     - "<!italic><#FFD54F>♟</#FFD54F> <dark_gray>Soulbound</dark_gray> <#FFB300>•</#FFB300> <white>{owner_name}</white>"
 
   enchantments:

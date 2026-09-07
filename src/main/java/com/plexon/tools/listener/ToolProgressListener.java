@@ -7,6 +7,7 @@ import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.TrackingType;
 import com.plexon.tools.service.AbilityService;
 import com.plexon.tools.service.ProgressionService;
+import com.plexon.tools.service.NaturalBlockTracker;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
@@ -55,6 +56,7 @@ public final class ToolProgressListener implements Listener {
     private final ToolConfigRepository tools;
     private final ProgressionService progression;
     private final AbilityService abilities;
+    private final NaturalBlockTracker naturalBlocks;
     private final PluginSettings settings;
     private final IdentityHashMap<BlockBreakEvent, ToolUse> blockBreakContexts =
             new IdentityHashMap<>();
@@ -65,11 +67,13 @@ public final class ToolProgressListener implements Listener {
             ToolConfigRepository tools,
             ProgressionService progression,
             AbilityService abilities,
+            NaturalBlockTracker naturalBlocks,
             PluginSettings settings
     ) {
         this.tools = tools;
         this.progression = progression;
         this.abilities = abilities;
+        this.naturalBlocks = naturalBlocks;
         this.settings = settings;
     }
 
@@ -99,7 +103,8 @@ public final class ToolProgressListener implements Listener {
         ToolState latest = progression.latestState(context.state());
         String target = blockTrackingTarget(
                 context.definition().trackingType(), event.getBlock());
-        if (target != null && context.definition().tracks(target, latest.level())) {
+        if (target != null && context.definition().tracks(target, latest.level())
+                && naturalBlocks.allowsProgress(event.getBlock())) {
             latest = progression.addResolvedProgress(
                     player, EquipmentSlot.HAND, context.definition(), latest, target, 1L);
         }
@@ -232,7 +237,8 @@ public final class ToolProgressListener implements Listener {
             return;
         }
         String target = harvestedType.name();
-        if (context.definition().tracks(target, context.state().level())) {
+        if (context.definition().tracks(target, context.state().level())
+                && naturalBlocks.isNatural(event.getHarvestedBlock())) {
             progression.addResolvedProgress(event.getPlayer(), hand,
                     context.definition(), context.state(), target, 1L);
         }

@@ -72,4 +72,23 @@ final class PluginSettingsTest {
         assertEquals(4L, PluginSettings.progressVisualRefreshTicks(
                 new YamlConfiguration()));
     }
+    @Test
+    void clampsRecoveredStorageAndNaturalBlockSettings() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("storage.max-batches-per-flush", 500);
+        config.set("storage.pressure-flush-threshold", 1);
+        config.set("natural-block-progression.enabled", false);
+        config.set("natural-block-progression.fail-closed-while-loading", false);
+        config.set("natural-block-progression.chunk-load-batch-size", 999);
+        config.set("natural-block-progression.chunk-load-retry-ticks", 1L);
+
+        assertEquals(64, PluginSettings.maxBatchesPerFlush(config));
+        assertEquals(256, PluginSettings.pressureFlushThreshold(config, 256, 8192));
+        PluginSettings.NaturalBlockSettings natural = PluginSettings.naturalBlockSettings(config);
+        assertEquals(false, natural.enabled());
+        assertEquals(false, natural.failClosed());
+        assertEquals(256, natural.chunkLoadBatchSize());
+        assertEquals(20L, natural.chunkLoadRetryTicks());
+    }
+
 }

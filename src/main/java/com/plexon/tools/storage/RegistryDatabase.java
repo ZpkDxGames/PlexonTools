@@ -11,6 +11,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -20,7 +22,11 @@ import java.util.Map;
 import java.util.UUID;
 
 final class RegistryDatabase implements AutoCloseable {
-    static final int SCHEMA_VERSION = 1;
+    static final int SCHEMA_VERSION = 2;
+
+    private static final DateTimeFormatter BACKUP_TIME = DateTimeFormatter
+            .ofPattern("uuuuMMdd-HHmmss-SSS'Z'")
+            .withZone(ZoneOffset.UTC);
 
     private static final String UPSERT_PLAYER = """
             INSERT INTO players(player_uuid, cached_name, first_seen_at, updated_at)
@@ -58,12 +64,26 @@ final class RegistryDatabase implements AutoCloseable {
             VALUES (?, ?, ?)
             """;
 
+    private static final String UPSERT_PLACED_BLOCK = """
+            INSERT INTO placed_blocks(
+                world_uuid, chunk_x, chunk_z, block_x, block_y, block_z, placed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(world_uuid, chunk_x, chunk_z, block_x, block_y, block_z)
+            DO UPDATE SET placed_at = excluded.placed_at
+            """;
+    private static final String DELETE_PLACED_BLOCK = """
+            DELETE FROM placed_blocks
+            WHERE world_uuid = ? AND chunk_x = ? AND chunk_z = ?
+              AND block_x = ? AND block_y = ? AND block_z = ?
+            """;
+
     private final Path file;
     private final int busyTimeoutMillis;
     private final int walAutoCheckpointPages;
     private final boolean integrityCheck;
     private Connection connection;
     private String journalMode = "unknown";
+    private Path schemaMigrationBackup;
 
     RegistryDatabase(
             Path file,
@@ -91,14 +111,23 @@ final class RegistryDatabase implements AutoCloseable {
             throw new SQLException("The bundled SQLite JDBC driver could not be loaded.", exception);
         }
 
+        schemaMigrationBackup = null;
         connection = DriverManager.getConnection("jdbc:sqlite:" + file);
         try {
             configureConnection();
+            int currentVersion = queryInt("PRAGMA user_version");
+            if (currentVersion > SCHEMA_VERSION) {
+                throw new SQLException("Database schema " + currentVersion
+                        + " is newer than supported schema " + SCHEMA_VERSION + ".");
+            }
+            if (currentVersion > 0 && currentVersion < SCHEMA_VERSION) {
+                schemaMigrationBackup = backupBeforeSchemaMigration(currentVersion);
+            }
             initializeSchema();
             if (integrityCheck) {
                 verifyIntegrity();
             }
-        } catch (SQLException | RuntimeException exception) {
+        } catch (SQLException | IOException | RuntimeException exception) {
             try {
                 connection.close();
             } catch (SQLException closeException) {
@@ -199,6 +228,72 @@ final class RegistryDatabase implements AutoCloseable {
         }
     }
 
+    synchronized void applyPlacedBlockChanges(Map<PlacedBlockPosition, Boolean> changes)
+            throws SQLException {
+        requireOpen();
+        if (changes.isEmpty()) return;
+        boolean previousAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try (PreparedStatement upsert = connection.prepareStatement(UPSERT_PLACED_BLOCK);
+             PreparedStatement delete = connection.prepareStatement(DELETE_PLACED_BLOCK)) {
+            long now = Instant.now().toEpochMilli();
+            for (Map.Entry<PlacedBlockPosition, Boolean> entry : changes.entrySet()) {
+                PreparedStatement statement = entry.getValue() ? upsert : delete;
+                bindPosition(statement, entry.getKey());
+                if (entry.getValue()) statement.setLong(7, now);
+                statement.addBatch();
+            }
+            upsert.executeBatch();
+            delete.executeBatch();
+            putMetadata("last_provenance_flush_at", Long.toString(now));
+            connection.commit();
+        } catch (SQLException | RuntimeException exception) {
+            rollback(exception);
+            throw exception;
+        } finally {
+            connection.setAutoCommit(previousAutoCommit);
+        }
+    }
+
+    synchronized Map<PlacedBlockPosition.ChunkKey, List<PlacedBlockPosition>> loadPlacedBlocks(
+            Collection<PlacedBlockPosition.ChunkKey> chunks
+    ) throws SQLException {
+        requireOpen();
+        Map<PlacedBlockPosition.ChunkKey, List<PlacedBlockPosition>> mutable = new LinkedHashMap<>();
+        for (PlacedBlockPosition.ChunkKey chunk : chunks) {
+            mutable.putIfAbsent(chunk, new ArrayList<>());
+        }
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT block_x, block_y, block_z
+                FROM placed_blocks
+                WHERE world_uuid = ? AND chunk_x = ? AND chunk_z = ?
+                ORDER BY block_x, block_y, block_z
+                """)) {
+            for (Map.Entry<PlacedBlockPosition.ChunkKey, List<PlacedBlockPosition>> entry : mutable.entrySet()) {
+                PlacedBlockPosition.ChunkKey chunk = entry.getKey();
+                statement.setString(1, chunk.worldId().toString());
+                statement.setInt(2, chunk.x());
+                statement.setInt(3, chunk.z());
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        PlacedBlockPosition position = new PlacedBlockPosition(
+                                chunk.worldId(),
+                                result.getInt("block_x"),
+                                result.getInt("block_y"),
+                                result.getInt("block_z"));
+                        if (!position.chunk().equals(chunk)) {
+                            throw new SQLException("Placed-block row has inconsistent chunk coordinates: " + position);
+                        }
+                        entry.getValue().add(position);
+                    }
+                }
+            }
+        }
+        Map<PlacedBlockPosition.ChunkKey, List<PlacedBlockPosition>> immutable = new LinkedHashMap<>();
+        mutable.forEach((key, values) -> immutable.put(key, List.copyOf(values)));
+        return Map.copyOf(immutable);
+    }
+
     synchronized boolean importLegacy(
             Collection<InstanceRegistry.InstanceRecord> records,
             int sourceSchemaVersion,
@@ -261,6 +356,14 @@ final class RegistryDatabase implements AutoCloseable {
         }
     }
 
+    synchronized long placedBlockCount() throws SQLException {
+        requireOpen();
+        try (Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM placed_blocks")) {
+            return result.next() ? result.getLong(1) : 0L;
+        }
+    }
+
     synchronized boolean migrationComplete() throws SQLException {
         return "true".equalsIgnoreCase(metadata("legacy_data_yml_migrated"));
     }
@@ -297,6 +400,10 @@ final class RegistryDatabase implements AutoCloseable {
     synchronized int schemaVersion() throws SQLException {
         requireOpen();
         return queryInt("PRAGMA user_version");
+    }
+
+    synchronized Path schemaMigrationBackup() {
+        return schemaMigrationBackup;
     }
 
     @Override
@@ -346,11 +453,6 @@ final class RegistryDatabase implements AutoCloseable {
     }
 
     private void initializeSchema() throws SQLException {
-        int currentVersion = queryInt("PRAGMA user_version");
-        if (currentVersion > SCHEMA_VERSION) {
-            throw new SQLException("Database schema " + currentVersion
-                    + " is newer than supported schema " + SCHEMA_VERSION + ".");
-        }
         boolean previousAutoCommit = connection.getAutoCommit();
         connection.setAutoCommit(false);
         try (Statement statement = connection.createStatement()) {
@@ -397,6 +499,22 @@ final class RegistryDatabase implements AutoCloseable {
                     )
                     """);
             statement.execute("""
+                    CREATE TABLE IF NOT EXISTS placed_blocks (
+                        world_uuid TEXT NOT NULL,
+                        chunk_x INTEGER NOT NULL,
+                        chunk_z INTEGER NOT NULL,
+                        block_x INTEGER NOT NULL,
+                        block_y INTEGER NOT NULL,
+                        block_z INTEGER NOT NULL,
+                        placed_at INTEGER NOT NULL CHECK(placed_at >= 0),
+                        CHECK(chunk_x = (block_x >> 4)),
+                        CHECK(chunk_z = (block_z >> 4)),
+                        PRIMARY KEY(
+                            world_uuid, chunk_x, chunk_z, block_x, block_y, block_z
+                        )
+                    ) WITHOUT ROWID
+                    """);
+            statement.execute("""
                     CREATE INDEX IF NOT EXISTS idx_instances_owner
                     ON tool_instances(owner_uuid)
                     """);
@@ -424,6 +542,23 @@ final class RegistryDatabase implements AutoCloseable {
         } finally {
             connection.setAutoCommit(previousAutoCommit);
         }
+    }
+
+    private Path backupBeforeSchemaMigration(int currentVersion) throws SQLException, IOException {
+        checkpoint(true);
+        Path backups = file.resolveSibling("backups");
+        Files.createDirectories(backups);
+        String fileName = file.getFileName().toString();
+        String stem = fileName.toLowerCase(Locale.ROOT).endsWith(".db")
+                ? fileName.substring(0, fileName.length() - 3) : fileName;
+        String baseName = stem + "-pre-schema-2-from-" + currentVersion + "-"
+                + BACKUP_TIME.format(Instant.now());
+        Path destination = backups.resolve(baseName + ".db");
+        int collision = 1;
+        while (Files.exists(destination)) {
+            destination = backups.resolve(baseName + "-" + collision++ + ".db");
+        }
+        return Files.copy(file, destination, StandardCopyOption.COPY_ATTRIBUTES);
     }
 
     private void verifyIntegrity() throws SQLException {
@@ -498,6 +633,16 @@ final class RegistryDatabase implements AutoCloseable {
             }
             insertTargets.executeBatch();
         }
+    }
+
+    private static void bindPosition(PreparedStatement statement, PlacedBlockPosition position)
+            throws SQLException {
+        statement.setString(1, position.worldId().toString());
+        statement.setInt(2, position.chunk().x());
+        statement.setInt(3, position.chunk().z());
+        statement.setInt(4, position.x());
+        statement.setInt(5, position.y());
+        statement.setInt(6, position.z());
     }
 
     private String metadata(String key) throws SQLException {

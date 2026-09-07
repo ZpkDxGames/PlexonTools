@@ -18,9 +18,15 @@ public final class PluginSettings {
     private long databaseFlushIntervalTicks;
     private int databaseWriteBatchSize;
     private int databaseMaxPendingWrites;
+    private int databaseMaxBatchesPerFlush;
+    private int databasePressureFlushThreshold;
     private int databaseBusyTimeoutMillis;
     private int databaseWalAutoCheckpointPages;
     private boolean databaseIntegrityCheck;
+    private boolean naturalBlockProgressionEnabled;
+    private boolean naturalBlockFailClosed;
+    private int naturalBlockChunkLoadBatchSize;
+    private long naturalBlockChunkLoadRetryTicks;
     private long progressVisualRefreshTicks;
     private int progressBarWidth;
     private String progressFilledSymbol;
@@ -67,11 +73,19 @@ public final class PluginSettings {
                 config.getInt("storage.write-batch-size", 256)));
         databaseMaxPendingWrites = Math.max(databaseWriteBatchSize, Math.min(100000,
                 config.getInt("storage.max-pending-writes", 8192)));
+        databaseMaxBatchesPerFlush = maxBatchesPerFlush(config);
+        databasePressureFlushThreshold = pressureFlushThreshold(
+                config, databaseWriteBatchSize, databaseMaxPendingWrites);
         databaseBusyTimeoutMillis = Math.max(250, Math.min(60000,
                 config.getInt("storage.busy-timeout-ms", 5000)));
         databaseWalAutoCheckpointPages = Math.max(1, Math.min(100000,
                 config.getInt("storage.wal-autocheckpoint-pages", 1000)));
         databaseIntegrityCheck = config.getBoolean("storage.integrity-check-on-startup", true);
+        NaturalBlockSettings natural = naturalBlockSettings(config);
+        naturalBlockProgressionEnabled = natural.enabled();
+        naturalBlockFailClosed = natural.failClosed();
+        naturalBlockChunkLoadBatchSize = natural.chunkLoadBatchSize();
+        naturalBlockChunkLoadRetryTicks = natural.chunkLoadRetryTicks();
         progressVisualRefreshTicks = progressVisualRefreshTicks(config);
 
         progressBarWidth = Math.max(5, Math.min(50, config.getInt("progress-bar.width", 20)));
@@ -150,9 +164,15 @@ public final class PluginSettings {
     public long databaseFlushIntervalTicks() { return databaseFlushIntervalTicks; }
     public int databaseWriteBatchSize() { return databaseWriteBatchSize; }
     public int databaseMaxPendingWrites() { return databaseMaxPendingWrites; }
+    public int databaseMaxBatchesPerFlush() { return databaseMaxBatchesPerFlush; }
+    public int databasePressureFlushThreshold() { return databasePressureFlushThreshold; }
     public int databaseBusyTimeoutMillis() { return databaseBusyTimeoutMillis; }
     public int databaseWalAutoCheckpointPages() { return databaseWalAutoCheckpointPages; }
     public boolean databaseIntegrityCheck() { return databaseIntegrityCheck; }
+    public boolean naturalBlockProgressionEnabled() { return naturalBlockProgressionEnabled; }
+    public boolean naturalBlockFailClosed() { return naturalBlockFailClosed; }
+    public int naturalBlockChunkLoadBatchSize() { return naturalBlockChunkLoadBatchSize; }
+    public long naturalBlockChunkLoadRetryTicks() { return naturalBlockChunkLoadRetryTicks; }
     public long progressVisualRefreshTicks() { return progressVisualRefreshTicks; }
     public int progressBarWidth() { return progressBarWidth; }
     public String progressFilledSymbol() { return progressFilledSymbol; }
@@ -245,7 +265,7 @@ public final class PluginSettings {
         if (enabled && template.isEmpty()) {
             template = List.of(
                     "<!italic><gradient:#FFF176:#FFB300><bold>✦ ANCIENT RELIC ✦</bold></gradient>",
-                    "<!italic><dark_gray>┌──────────────────────────────┐</dark_gray>",
+                    "<!italic><dark_gray>┌──────────────────┐</dark_gray>",
                     "<!italic><dark_gray>│</dark_gray> <#FFD740>✥</#FFD740> <gray>Rank</gray> <white><bold>Level {level}</bold></white><dark_gray> / {max_level}</dark_gray>",
                     "<!italic><dark_gray>│</dark_gray> <#90CAF9>⚒</#90CAF9> <gray>Form</gray> <white>{material_name}</white>",
                     "<!italic><dark_gray>├─</dark_gray> <gradient:#CE93D8:#AB47BC><bold>✧ ENCHANTMENTS</bold></gradient>",
@@ -254,13 +274,43 @@ public final class PluginSettings {
                     "{requirement_lines}",
                     "<!italic><dark_gray>├─</dark_gray> <#66BB6A><bold>▰ MASTERY</bold></#66BB6A> <color:{percentage_color}>{percentage}%</color>",
                     "<!italic><dark_gray>│</dark_gray> {progress_bar}",
-                    "<!italic><dark_gray>└──────────────────────────────┘</dark_gray>",
+                    "<!italic><dark_gray>└──────────────────┘</dark_gray>",
                     "<!italic><#FFD54F>♟</#FFD54F> <dark_gray>Soulbound</dark_gray> <#FFB300>•</#FFB300> <white>{owner_name}</white>"
             );
         }
         return new LoreSettings(List.copyOf(template), generalLine, specificLine, maximumLine,
                 enchantmentLine, emptyEnchantmentLine);
     }
+
+    static int maxBatchesPerFlush(FileConfiguration config) {
+        return Math.max(1, Math.min(64,
+                config.getInt("storage.max-batches-per-flush", 8)));
+    }
+
+    static int pressureFlushThreshold(
+            FileConfiguration config, int writeBatchSize, int maxPendingWrites
+    ) {
+        return Math.max(writeBatchSize, Math.min(maxPendingWrites,
+                config.getInt("storage.pressure-flush-threshold", 2048)));
+    }
+
+    static NaturalBlockSettings naturalBlockSettings(FileConfiguration config) {
+        return new NaturalBlockSettings(
+                config.getBoolean("natural-block-progression.enabled", true),
+                config.getBoolean("natural-block-progression.fail-closed-while-loading", true),
+                Math.max(1, Math.min(256,
+                        config.getInt("natural-block-progression.chunk-load-batch-size", 32))),
+                Math.max(20L, Math.min(1200L,
+                        config.getLong("natural-block-progression.chunk-load-retry-ticks", 100L)))
+        );
+    }
+
+    record NaturalBlockSettings(
+            boolean enabled,
+            boolean failClosed,
+            int chunkLoadBatchSize,
+            long chunkLoadRetryTicks
+    ) {}
 
     static long progressVisualRefreshTicks(FileConfiguration config) {
         return Math.max(1L, Math.min(20L,

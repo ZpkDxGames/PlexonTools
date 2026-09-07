@@ -257,6 +257,38 @@ final class RegistryDatabaseTest {
         }
     }
 
+    @Test
+    void persistsPlacedBlockProvenanceAndMigratesSchemaOneWithBackup() throws Exception {
+        Path file = temporaryDirectory.resolve("provenance.db");
+        Class.forName("org.sqlite.JDBC");
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE schema_metadata (metadata_key TEXT PRIMARY KEY, metadata_value TEXT NOT NULL)");
+            statement.execute("PRAGMA user_version = 1");
+        }
+
+        UUID world = UUID.randomUUID();
+        PlacedBlockPosition first = new PlacedBlockPosition(world, 1, 64, 2);
+        PlacedBlockPosition second = new PlacedBlockPosition(world, 17, -4, 34);
+        try (RegistryDatabase database = database(file)) {
+            database.open();
+            assertEquals(2, database.schemaVersion());
+            assertNotNull(database.schemaMigrationBackup());
+            assertTrue(Files.exists(database.schemaMigrationBackup()));
+
+            database.applyPlacedBlockChanges(Map.of(first, true, second, true));
+            assertEquals(2L, database.placedBlockCount());
+            Map<PlacedBlockPosition.ChunkKey, List<PlacedBlockPosition>> loaded =
+                    database.loadPlacedBlocks(List.of(first.chunk(), second.chunk()));
+            assertEquals(List.of(first), loaded.get(first.chunk()));
+            assertEquals(List.of(second), loaded.get(second.chunk()));
+
+            database.applyPlacedBlockChanges(Map.of(first, false));
+            assertEquals(1L, database.placedBlockCount());
+            assertTrue(database.loadPlacedBlocks(List.of(first.chunk())).get(first.chunk()).isEmpty());
+        }
+    }
+
     private static RegistryDatabase database(Path file) {
         return new RegistryDatabase(file, 5000, 1000, true);
     }

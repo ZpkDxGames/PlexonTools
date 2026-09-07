@@ -113,7 +113,9 @@ def append_abilities(lines: list[str], level: int, block_tool: bool) -> None:
     if block_tool and level >= 50:
         lines.extend(["          MAGNET:", "            enabled: true"])
     if block_tool and level >= 75:
-        lines.extend(["          AREA_MINE_3X3:", "            enabled: true"])
+        # 4.0 keeps area mining opt-in; the bundled progression profile must not
+        # silently enable a destructive ability at level 75.
+        lines.extend(["          AREA_MINE_3X3:", "            enabled: false"])
 
 
 def append_level(lines: list[str], kind: str, level: int,
@@ -242,7 +244,21 @@ def fixed_pickaxe(source: str) -> str:
             profile = profile.replace(old, new, 1)
         elif new not in profile:
             raise RuntimeError(f"Expected pickaxe profile fragment was not found: {old!r}")
-    return profile
+
+    profile = profile.replace("<#FFD54F>✦</#FFD54F>", "<#FFD54F>⛏</#FFD54F>")
+    profile = profile.replace("✦ LEGENDARY PICKAXE ✦", "⛏ LEGENDARY PICKAXE ⛏")
+    lines = profile.splitlines()
+    current_level = 0
+    for index, line in enumerate(lines):
+        if line.startswith("      ") and line.endswith(":") and line.strip()[:-1].isdigit():
+            current_level = int(line.strip()[:-1])
+        if (current_level >= 40 and line == "            enabled: true"
+                and index > 0 and lines[index - 1].strip() == "AUTO_SMELT:"):
+            lines[index] = "            enabled: false"
+        if (current_level >= 75 and line == "            enabled: true"
+                and index > 0 and lines[index - 1].strip() == "AREA_MINE_3X3:"):
+            lines[index] = "            enabled: false"
+    return "\n".join(lines)
 
 
 def main() -> None:

@@ -13,6 +13,7 @@ import com.plexon.tools.message.MessageService;
 import com.plexon.tools.service.ChatPromptService;
 import com.plexon.tools.service.AbilityService;
 import com.plexon.tools.service.ProgressionService;
+import com.plexon.tools.service.NaturalBlockTracker;
 import com.plexon.tools.service.ToolGrantService;
 import com.plexon.tools.service.ToolActivationService;
 import com.plexon.tools.storage.InstanceRegistry;
@@ -42,6 +43,7 @@ public final class PlexonTools extends JavaPlugin {
     private ChatPromptService prompts;
     private AbilityService abilities;
     private ProgressionService progression;
+    private NaturalBlockTracker naturalBlocks;
     private ToolActivationService activations;
     private BukkitTask registrySaveTask;
 
@@ -66,6 +68,7 @@ public final class PlexonTools extends JavaPlugin {
             worldMenus.reload();
             instanceRegistry = new InstanceRegistry(this, settings);
             instanceRegistry.load();
+            naturalBlocks = new NaturalBlockTracker(this, settings, instanceRegistry);
 
             itemService = new ToolItemService(this, messages, settings, categories);
             progression = new ProgressionService(
@@ -79,13 +82,14 @@ public final class PlexonTools extends JavaPlugin {
                     activations, grants, prompts, settings, messages);
 
             getServer().getPluginManager().registerEvents(
-                    new ToolProgressListener(tools, progression, abilities, settings), this);
+                    new ToolProgressListener(tools, progression, abilities, naturalBlocks, settings), this);
             getServer().getPluginManager().registerEvents(progression, this);
             getServer().getPluginManager().registerEvents(abilities, this);
             getServer().getPluginManager().registerEvents(
                     new ToolProtectionListener(this, itemService, activations), this);
             getServer().getPluginManager().registerEvents(prompts, this);
             getServer().getPluginManager().registerEvents(gui, this);
+            getServer().getPluginManager().registerEvents(naturalBlocks, this);
 
             PluginCommand command = Objects.requireNonNull(getCommand("plexontools"),
                     "plexontools command is missing from plugin.yml");
@@ -96,6 +100,7 @@ public final class PlexonTools extends JavaPlugin {
             command.setTabCompleter(executor);
 
             scheduleRegistrySave();
+            naturalBlocks.start();
             progression.start();
             abilities.start();
             getServer().getScheduler().runTask(this,
@@ -107,6 +112,8 @@ public final class PlexonTools extends JavaPlugin {
             getLogger().info("Loaded world menus: " + worldMenus.size());
             getLogger().info("Tracked instances: " + instanceRegistry.size());
             getLogger().info("Runtime database: " + instanceRegistry.databaseFile().getFileName());
+            getLogger().info("Natural-block progression: "
+                    + (settings.naturalBlockProgressionEnabled() ? "enabled" : "disabled"));
             getLogger().info("Creator: Tonim (ZpkDxGames)");
             getLogger().info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         } catch (Exception exception) {
@@ -125,6 +132,9 @@ public final class PlexonTools extends JavaPlugin {
         }
         if (progression != null) {
             progression.shutdown();
+        }
+        if (naturalBlocks != null) {
+            naturalBlocks.stop();
         }
         if (registrySaveTask != null) {
             registrySaveTask.cancel();
@@ -150,6 +160,7 @@ public final class PlexonTools extends JavaPlugin {
             itemService.clearDefinitionCaches();
             progression.clearDefinitionCaches();
             worldMenus.reload();
+            naturalBlocks.start();
             getServer().getOnlinePlayers().forEach(activations::reconcile);
             scheduleRegistrySave();
         } finally {
