@@ -1,0 +1,64 @@
+name: Apply Recovered 4.0 Baseline
+
+on:
+  push:
+    branches:
+      - release/recovery-4.0.0
+    paths:
+      - '.github/workflows/apply-recovery-4.0.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout recovery branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/recovery-4.0.0
+          fetch-depth: 0
+
+      - name: Reassemble maintained-source recovery patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .recovery/patchpart-*.txt | base64 --decode | gzip -dc > /tmp/recovery.patch
+          git apply --check /tmp/recovery.patch
+          git apply /tmp/recovery.patch
+
+      - name: Verify production 4.0 resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(sha256sum src/main/resources/config.yml | cut -d' ' -f1)" = "ac075e7dea73b34ffb41f974dba20110fe3e1aeb866fadde3bce74ac8caeedb7"
+          test "$(sha256sum src/main/resources/tools.yml | cut -d' ' -f1)" = "72e10e8191fe1510ebcdd5595d2127c864ae6cad9bbc7ba2d7047024dd03c04d"
+          grep -q 'version = "4.0.0"' build.gradle.kts
+          git diff --check
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Build and test recovered baseline
+        run: gradle clean check --stacktrace
+
+      - name: Commit recovered production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .recovery
+          rm -f .github/workflows/apply-recovery-4.0.yml
+          git config user.name "Tonim"
+          git config user.email "99552287+ZpkDxGames@users.noreply.github.com"
+          git add -A
+          git commit -m "recovery: restore production PlexonTools 4.0.0 baseline"
+          git push origin HEAD:release/recovery-4.0.0
