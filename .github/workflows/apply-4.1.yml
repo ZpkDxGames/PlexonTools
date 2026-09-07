@@ -46,6 +46,8 @@ jobs:
           cat .migration/patchpart-*.txt | base64 --decode | gzip -dc > /tmp/plexontools-4.1.patch
           git apply --check /tmp/plexontools-4.1.patch
           git apply /tmp/plexontools-4.1.patch
+          # Java 25 requires Gradle 9.1.0 or newer. Persist this correction into the release source.
+          sed -i "s/gradle-version: '8.14.3'/gradle-version: '9.1.0'/g" .github/workflows/build.yml .github/workflows/release.yml
           git diff --check
 
       - name: Verify migration contract
@@ -57,6 +59,8 @@ jobs:
           grep -q 'paper-api:26.2' build.gradle.kts
           grep -q 'PlexonCore:1.0.0' build.gradle.kts
           grep -q 'PlexonCore' src/main/resources/plugin.yml
+          grep -q "gradle-version: '9.1.0'" .github/workflows/build.yml
+          grep -q "gradle-version: '9.1.0'" .github/workflows/release.yml
           test -f src/main/java/com/plexon/tools/api/PlexonToolsAPI.java
           test -f src/main/java/com/plexon/tools/event/PlexonToolProgressEvent.java
           test -f src/main/java/com/plexon/tools/event/PlexonToolLevelUpEvent.java
@@ -71,7 +75,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.14.3'
+          gradle-version: '9.1.0'
 
       - name: Provision PlexonCore 1.0.0 API
         shell: bash
