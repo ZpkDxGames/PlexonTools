@@ -1,22 +1,27 @@
-name: Build
+name: Release PlexonTools 4.1.0
 
 on:
   push:
-    branches: ['**']
-    tags-ignore: ['v*']
-  pull_request:
+    tags:
+      - 'v4.1.0'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  verify:
+  release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout tagged source
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Require exact release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = 'v4.1.0'
 
       - name: Set up Java 25
         uses: actions/setup-java@v5
@@ -46,10 +51,10 @@ jobs:
             -Dpackaging=jar \
             -DgeneratePom=true
 
-      - name: Test and package
+      - name: Test and build exact tag
         run: gradle clean check build --stacktrace
 
-      - name: Verify distribution
+      - name: Verify release JAR and checksum
         shell: bash
         run: |
           set -euo pipefail
@@ -57,7 +62,6 @@ jobs:
           test -s "${jar_path}"
           jar tf "${jar_path}" > build/jar-contents.txt
           grep -qx 'plugin.yml' build/jar-contents.txt
-          grep -qx 'com/plexon/tools/PlexonTools.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/api/PlexonToolsAPI.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/event/PlexonToolProgressEvent.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/event/PlexonToolLevelUpEvent.class' build/jar-contents.txt
@@ -70,17 +74,35 @@ jobs:
             | head -n 1 | tr -d " '\"\r" | grep -qx '4.1.0'
           javap -verbose -classpath "${jar_path}" com.plexon.tools.PlexonTools \
             | grep -q 'major version: 69'
-          sha256sum "${jar_path}" > build/SHA256SUMS.txt
-          sha256sum --check build/SHA256SUMS.txt
+          cd build/libs
+          sha256sum PlexonTools-4.1.0.jar > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
 
-      - name: Check whitespace
-        run: git diff --check
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          notes=$(mktemp)
+          cat > "${notes}" <<'NOTES'
+          ## PlexonTools 4.1.0
 
-      - name: Upload verified artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PlexonTools-4.1.0-${{ github.sha }}
-          path: |
-            build/libs/PlexonTools-4.1.0.jar
-            build/SHA256SUMS.txt
-          if-no-files-found: error
+          Core-native infrastructure/API release preserving the recovered production 4.0.0 gameplay, configuration, PDC identity, SQLite data, natural-block provenance, GUI, abilities, and progression behavior.
+
+          ### Integration
+          - PlexonCore 1.0.0 / Core API 1.x, with standalone fallback
+          - Public `PlexonToolsAPI` through Bukkit ServicesManager
+          - `PlexonToolProgressEvent` and `PlexonToolLevelUpEvent` for PlexonQuests 3.1.0
+          - Paper 26.2 / Java 25
+
+          Keep the existing `plugins/PlexonTools/` directory when upgrading.
+          NOTES
+          gh release create "${GITHUB_REF_NAME}" \
+            build/libs/PlexonTools-4.1.0.jar \
+            build/libs/SHA256SUMS.txt \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title 'PlexonTools 4.1.0' \
+            --notes-file "${notes}" \
+            --latest
