@@ -6,6 +6,7 @@ on:
       - release/4.1.0
     paths:
       - '.github/workflows/apply-4.1.yml'
+      - '.migration/**'
 
 permissions:
   contents: write
@@ -25,11 +26,15 @@ jobs:
         run: |
           set -euo pipefail
           sha256sum .migration/patchpart-*.txt
-          test "$(wc -c < .migration/patchpart-00.txt)" -eq 7500
+          test "$(wc -c < .migration/patchpart-00-00.txt)" -eq 2500
+          test "$(wc -c < .migration/patchpart-00-01.txt)" -eq 2500
+          test "$(wc -c < .migration/patchpart-00-02.txt)" -eq 2500
           test "$(wc -c < .migration/patchpart-01.txt)" -eq 7500
           test "$(wc -c < .migration/patchpart-02.txt)" -eq 7500
           test "$(wc -c < .migration/patchpart-03.txt)" -eq 6840
-          echo 'f0081d0600353a39c6b0601d2bb2c96d9f7b9e9ad9d69c3dfc2747e0ed3d059f  .migration/patchpart-00.txt' | sha256sum --check
+          echo '8335045b35ca779c6cebea27ed7fdc22ac83831008468097a5dd8e48add9667d  .migration/patchpart-00-00.txt' | sha256sum --check
+          echo '9bc0688853ec8ea4735f00d983f3af4bc9d42748aabc7ae8e1311804f6540fcd  .migration/patchpart-00-01.txt' | sha256sum --check
+          echo '35646181b2a6f5023e7df8b34c464fb36a6df807e765924ee833355894ddcfd5  .migration/patchpart-00-02.txt' | sha256sum --check
           echo 'b2c46f9608af877a11b3da9b44f694a30cc1a443e39a1428162bfce28de24eeb  .migration/patchpart-01.txt' | sha256sum --check
           echo 'c530bb950b93ac5e5771e46b26edc8d44c86f1282f5e3d61237dd9728a4c9cca  .migration/patchpart-02.txt' | sha256sum --check
           echo '4867d72450789feb0cc5093b12b2ade3eefe2b4111ac49ba016c66be9f7cb060  .migration/patchpart-03.txt' | sha256sum --check
