@@ -63,7 +63,7 @@ jobs:
           set -euo pipefail
           JAR="build/libs/PlexonTools-4.0.0.jar"
           test -f "$JAR"
-          unzip -p "$JAR" plugin.yml | grep -q 'version: 4.0.0'
+          unzip -p "$JAR" plugin.yml | grep -Eq "^version: ['\"]?4\.0\.0['\"]?$"
           unzip -p "$JAR" config.yml | sha256sum | grep -q '^ac075e7dea73b34ffb41f974dba20110fe3e1aeb866fadde3bce74ac8caeedb7'
           unzip -p "$JAR" tools.yml | sha256sum | grep -q '^72e10e8191fe1510ebcdd5595d2127c864ae6cad9bbc7ba2d7047024dd03c04d'
 
