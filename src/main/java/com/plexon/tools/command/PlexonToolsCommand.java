@@ -28,6 +28,7 @@ public final class PlexonToolsCommand implements TabExecutor {
     private final MessageService messages;
     private final ReloadAction reloadAction;
     private final BackupAction backupAction;
+    private final DiagnosticsAction diagnosticsAction;
 
     public PlexonToolsCommand(
             CategoryRepository categories,
@@ -36,7 +37,8 @@ public final class PlexonToolsCommand implements TabExecutor {
             GuiManager gui,
             MessageService messages,
             ReloadAction reloadAction,
-            BackupAction backupAction
+            BackupAction backupAction,
+            DiagnosticsAction diagnosticsAction
     ) {
         this.categories = categories;
         this.tools = tools;
@@ -45,6 +47,7 @@ public final class PlexonToolsCommand implements TabExecutor {
         this.messages = messages;
         this.reloadAction = reloadAction;
         this.backupAction = backupAction;
+        this.diagnosticsAction = diagnosticsAction;
     }
 
     @Override
@@ -68,6 +71,7 @@ public final class PlexonToolsCommand implements TabExecutor {
             case "give" -> give(sender, args);
             case "reload" -> reload(sender);
             case "backup" -> backup(sender);
+            case "diagnostics" -> diagnostics(sender);
             case "gui" -> openAdmin(sender);
             case "all" -> openShowcase(sender, null, args);
             default -> openCategory(sender, route, args, label);
@@ -192,6 +196,15 @@ public final class PlexonToolsCommand implements TabExecutor {
         return true;
     }
 
+    private boolean diagnostics(CommandSender sender) {
+        if (!sender.hasPermission("plexontools.diagnostics")) {
+            messages.send(sender, "no-permission");
+            return true;
+        }
+        diagnosticsAction.lines().forEach(line -> sender.sendMessage(messages.parse(line)));
+        return true;
+    }
+
     private boolean openAdmin(CommandSender sender) {
         if (!sender.hasPermission("plexontools.gui")) {
             messages.send(sender, "no-permission");
@@ -243,6 +256,7 @@ public final class PlexonToolsCommand implements TabExecutor {
                     + " give <player> <tool_id> [world]</white>"));
             sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " reload</white>"));
             sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " backup</white>"));
+            sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " diagnostics</white>"));
         }
     }
 
@@ -264,6 +278,7 @@ public final class PlexonToolsCommand implements TabExecutor {
             if (sender.hasPermission("plexontools.gui")) values.add("gui");
             if (sender.hasPermission("plexontools.reload")) values.add("reload");
             if (sender.hasPermission("plexontools.backup")) values.add("backup");
+            if (sender.hasPermission("plexontools.diagnostics")) values.add("diagnostics");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             Bukkit.getOnlinePlayers().forEach(player -> values.add(player.getName()));
         } else if (args.length == 2
@@ -290,5 +305,10 @@ public final class PlexonToolsCommand implements TabExecutor {
     @FunctionalInterface
     public interface BackupAction {
         Path backup() throws Exception;
+    }
+
+    @FunctionalInterface
+    public interface DiagnosticsAction {
+        List<String> lines();
     }
 }

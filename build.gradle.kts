@@ -6,30 +6,32 @@ plugins {
 }
 
 group = "com.plexon"
-version = "4.0.0"
+version = "4.1.0"
 
 val pluginVersion = version.toString()
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
     withSourcesJar()
     withJavadocJar()
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.2.build.121-stable")
+    compileOnly("com.zpkdxgames:PlexonCore:1.0.0")
     implementation("org.xerial:sqlite-jdbc:3.53.4.0") {
         exclude(group = "org.slf4j", module = "slf4j-api")
     }
-    testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    testImplementation("io.papermc.paper:paper-api:26.2.build.121-stable")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-    options.release.set(21)
+    options.release.set(25)
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Xlint:deprecation", "-Xlint:-processing"))
 }
 
@@ -77,6 +79,9 @@ val verifyPluginJar by tasks.registering {
         val jarFile = inputs.files.singleFile
         val requiredEntries = listOf(
             "plugin.yml",
+            "com/plexon/tools/api/PlexonToolsAPI.class",
+            "com/plexon/tools/event/PlexonToolProgressEvent.class",
+            "com/plexon/tools/event/PlexonToolLevelUpEvent.class",
             "org/sqlite/JDBC.class",
             "org/sqlite/native/Linux/x86_64/libsqlitejdbc.so",
             "org/sqlite/native/Mac/x86_64/libsqlitejdbc.dylib",
@@ -87,6 +92,11 @@ val verifyPluginJar by tasks.registering {
                 check(archive.getEntry(name) != null) {
                     "Release JAR is missing required entry: $name"
                 }
+            }
+            check(archive.entries().asSequence().none { entry ->
+                entry.name.startsWith("com/zpkdxgames/plexoncore/")
+            }) {
+                "PlexonCore runtime classes must not be shaded into PlexonTools"
             }
             val entries = archive.entries()
             while (entries.hasMoreElements()) {

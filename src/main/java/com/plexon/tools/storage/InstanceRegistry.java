@@ -228,6 +228,13 @@ public final class InstanceRegistry {
         return database.file();
     }
 
+    /** Cached SQLite journal mode, used by low-frequency diagnostics. */
+    public String journalMode() {
+        synchronized (databaseLock) {
+            return database.journalMode();
+        }
+    }
+
     public int pendingWriteCount() {
         synchronized (pendingLock) {
             int toolWrites = fullSnapshotPending || fullSnapshotInFlight

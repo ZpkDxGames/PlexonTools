@@ -6,11 +6,12 @@ api-version: '1.21'
 load: POSTWORLD
 author: ZpkDxGames
 website: https://github.com/ZpkDxGames/PlexonTools
+softdepend: [PlexonCore]
 
 commands:
   plexontools:
     description: Opens the world tool menu and manages PlexonTools.
-    usage: /<command> | [<category>|all] [player] | give <player> <tool_id> [world] | reload | backup | gui
+    usage: /<command> | [<category>|all] [player] | give <player> <tool_id> [world] | diagnostics | reload | backup | gui
     aliases: [pt, plexontool]
     permission: plexontools.use
 
@@ -26,6 +27,7 @@ permissions:
       plexontools.give: true
       plexontools.reload: true
       plexontools.backup: true
+      plexontools.diagnostics: true
       plexontools.gui: true
       plexontools.bypass.world: true
   plexontools.give:
@@ -36,6 +38,9 @@ permissions:
     default: op
   plexontools.backup:
     description: Creates a consistent checkpointed SQLite database backup.
+    default: op
+  plexontools.diagnostics:
+    description: Shows PlexonTools runtime, Core, API, event, and persistence diagnostics.
     default: op
   plexontools.gui:
     description: Opens the administrative tool editor.

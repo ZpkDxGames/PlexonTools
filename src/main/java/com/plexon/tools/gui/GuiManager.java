@@ -111,6 +111,22 @@ public final class GuiManager implements Listener {
         this.valueKey = new NamespacedKey(plugin, "gui_value");
     }
 
+    /** Closes PlexonTools-owned GUI sessions and releases editor state on disable. */
+    public void shutdown() {
+        for (UUID playerId : Set.copyOf(protectedGuiSessions)) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null
+                    && player.getOpenInventory().getTopInventory().getHolder()
+                    instanceof PlexonGuiHolder) {
+                player.closeInventory();
+            }
+        }
+        pendingDeletes.clear();
+        targetSearches.clear();
+        guardedInventoryOpens.clear();
+        protectedGuiSessions.clear();
+    }
+
     public void openShowcase(Player player, int requestedPage) {
         openShowcase(player, player, null, requestedPage);
     }

@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.1.0 — 2026-09-07
+
+- Migrated PlexonTools onto optional PlexonCore 1.0.0 module registration with Core API range `>=1.0 <2.0`, STARTING/READY/DEGRADED/FAILED lifecycle reporting, and safe standalone fallback.
+- Added the Bukkit `ServicesManager`-registered, read-only `com.plexon.tools.api.PlexonToolsAPI` with immutable tool and definition snapshots.
+- Added exact public `com.plexon.tools.event.PlexonToolProgressEvent` and `com.plexon.tools.event.PlexonToolLevelUpEvent` contracts consumed reflectively by PlexonQuests 3.1.0.
+- Moved public progression observation to the authoritative post-registry-mutation boundary so accepted progress is emitted once, rejected/cancelled gameplay emits nothing, and listener failures cannot roll back committed tool state.
+- Preserved production 4.0.0 one-level-per-accepted-action behavior, per-level progress reset/no-overflow semantics, stable tool IDs, PDC identity, SQLite schema, natural-block provenance, abilities, and GUI behavior.
+- Added unique progression transaction/event identifiers and stable lowercase tracking IDs (`blocks_broken`, `mobs_killed`, `items_farmed`, `fish_caught`, `damage_dealt`, `blocks_placed`).
+- Added `/pt diagnostics` and `plexontools.diagnostics` for Core mode/state, SQLite WAL, counts, pending writes, API registration, and event availability.
+- Updated the target runtime to Paper 26.2 / Java 25 and added CI/release verification that PlexonCore classes are never shaded.
+- Added tag-driven `v4.1.0` release automation with SHA-256 generation.
+
+## 4.0.0 — recovered production baseline
+
+- Recovered the production 4.0.0 lineage from the deployed JAR before beginning the Core migration instead of reconstructing 4.1 from stale 3.x source.
+- Preserved the production natural/player-placed block provenance subsystem, fail-closed asynchronous chunk provenance loading, SQLite schema 2 provenance persistence, and persistence-pressure handling.
+- Restored production 4.0.0 bundled `config.yml` and `tools.yml` byte-for-byte and made the default tool generator reproduce the production `tools.yml` deterministically.
+- Revalidated the recovered baseline through Gradle `check`/build and JAR integrity checks before branching 4.1.0.
+
 ## Unreleased
 
 - Forced a complete item-profile refresh for tools previously rendered by a JAR that did not understand the dynamic lore placeholders, and exposed the active build in `/pt reload` feedback to make stale binaries immediately visible.

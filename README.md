@@ -2,50 +2,37 @@
 
 PlexonTools is a Paper-native progression engine for unique, world-activated custom tools. Every tool has its own UUID, permanent owner, world binding, activation state, level, aggregate progress, and optional per-target counters.
 
-> **Current release:** `3.6.1` — **Creator:** Tonim (`ZpkDxGames`)
+> **Current release:** `4.1.0` — **Creator:** Tonim (`ZpkDxGames`)
 
 ## Requirements
 
-- Paper `1.21.4`
-- Java `21`
+- Paper `26.2`
+- Java `25`
+- PlexonCore `1.0.0` is optional at runtime; PlexonTools remains fully functional in standalone mode
 - No external database service or manually installed runtime dependency
 - No NMS or CraftBukkit implementation access
 
-## 3.6.1 highlights
+## 4.1.0 highlights
 
-- `/pt` is now a configurable per-world activation menu instead of a category browser.
-- A tool appears automatically when its `allowed_worlds` includes the current world; `menus.yml` pins exact slots instead of acting as a second hidden allowlist.
-- Admins customize each world's title, rows, filler, pinned slots, default tool cards, and ON/OFF panels through `/pt gui` or YAML.
-- Players can activate and deactivate an available tool without losing its UUID, level, or progress.
-- A tool can share one player-owned progression record across Overworld, Nether, and End variants, or keep intentional per-world progression.
-- Bound tools are always unbreakable, owner-only, non-droppable, retained on death, and blocked from external inventories.
-- SPECIFIC objectives render one requirement per lore line; enchantments, attributes, unbreakable text, and additional vanilla details are hidden.
-- Block objectives are validated against every level's resolved tool family and harvest tier, so a material upgrade cannot leave an impossible quota behind.
-- Six tracking types: blocks broken, mobs killed, items farmed, fish caught, damage dealt, and blocks placed.
-- GENERAL shared totals and SPECIFIC per-target quotas reset at each level boundary; excess activity never counts toward the next level.
-- A configurable action bar shows current progress; item lore/PDC and action-bar rendering coalesce per instance while authoritative progress updates immediately.
-- PlexonTools claims its GUI clicks, uses distinct navigation items, and rejects external inventory opens throughout its GUI session so unrelated plugins cannot hijack Back or page navigation.
-- Mutable player/tool state now lives in generated `plexontools.db` SQLite storage with WAL, integrity checks, indexes, prepared statements, and transactional batches.
-- Normal gameplay performs no YAML or database I/O: repeated UUID updates coalesce in memory and flush asynchronously in bounded batches.
-- Existing schema-v3/v4 `data.yml` registries migrate automatically and idempotently with a timestamped backup and post-import verification.
-- `/pt backup` creates a checkpointed SQLite backup under `plugins/PlexonTools/backups`.
-- Every administrator YAML now includes an inline schema guide; the global `tool-lore.template` list is freely reorderable and GENERAL, SPECIFIC, and MAX rows have separate formats.
-- Current documented copies of every editable YAML are refreshed under `plugins/PlexonTools/examples` without overwriting live configuration.
-- Per-level Auto Smelt, protected-aware 3×3 mining, EXP Booster, potion effect, and Magnet abilities.
-- An in-game dashboard for world menus, tools, internal categories, global settings, requirements, levels, and abilities.
-- `<!italic>` normalization for every MiniMessage deserialization, including names, lore, messages, and GUIs.
-- Item PDC mutations and progression calculations stay in memory; changed registry records persist asynchronously in coalesced SQLite transactions.
-- Backward-compatible loading for 2.0 definitions, issued items, list filters, and legacy `data.yml` records.
-- Bundled defaults provide four complete 100-level relics—Sword, Pickaxe, Axe, and Shovel—shared across `Survival_World` and its Nether/End variants. `/pt` pins them in that exact order at slots 10, 12, 14, and 16.
+- Preserves the recovered production 4.0.0 gameplay, UUID/PDC identity, 100-level definitions, natural/player-placed block provenance, abilities, GUI, and SQLite schema behavior.
+- Registers as PlexonCore module `tools` against Core API `>=1.0 <2.0` when PlexonCore 1.0.0 is present and compatible.
+- Falls back safely to `STANDALONE` mode when Core is absent, disabled, incompatible, or unavailable.
+- Registers the read-only `com.plexon.tools.api.PlexonToolsAPI` through Bukkit `ServicesManager` in both Core and standalone modes.
+- Emits post-commit `PlexonToolProgressEvent` and `PlexonToolLevelUpEvent` events for PlexonQuests 3.1.0 without a direct Quests dependency.
+- Uses unique event IDs and one transaction ID per accepted progression mutation, while preserving 4.0.0's one-level-per-action/no-overflow progression behavior.
+- Adds `/pt diagnostics` for Core mode/state, API/event availability, SQLite WAL state, definition counts, tracked instances, and pending persistence work.
+- Builds for Paper 26.2 / Java 25 and verifies that PlexonCore runtime classes are not shaded into the plugin JAR.
+
+The detailed integration contracts are documented in [docs/API.md](docs/API.md), [docs/PLEXONCORE.md](docs/PLEXONCORE.md), and [docs/MIGRATION_4_1.md](docs/MIGRATION_4_1.md).
 
 ## Installation
 
-1. Download `PlexonTools-3.6.1.jar` from the GitHub release.
+1. Download `PlexonTools-4.1.0.jar` from the GitHub release.
 2. Place it in the Paper server's `plugins` directory.
 3. Start the server once to generate the five editable YAML files, their `examples/` references, and `plexontools.db`.
 4. Customize through `/pt gui` or YAML, then run `/pt reload`.
 
-Build from source with Java 21 and `gradle clean build`.
+Build from source with Java 25. PlexonCore 1.0.0 is a compile-only dependency; CI provisions the pinned Core release JAR into Maven Local before `gradle clean build`.
 
 ## Commands
 
@@ -58,6 +45,7 @@ Build from source with Java 21 and `gradle clean build`.
 | `/pt gui` | `plexontools.gui` | Open the administrative dashboard |
 | `/pt reload` | `plexontools.reload` | Reload settings, messages, categories, tools, and world menus |
 | `/pt backup` | `plexontools.backup` | Flush pending records and create a consistent SQLite backup |
+| `/pt diagnostics` | `plexontools.diagnostics` | Show Core/API/event and SQLite runtime health |
 
 Aliases: `/plexontool` and `/plexontools`. `plexontools.admin` includes all administrative and bypass capabilities.
 

@@ -1,6 +1,8 @@
 package com.plexon.tools.service;
 
 import com.plexon.tools.config.PluginSettings;
+import com.plexon.tools.event.PlexonToolLevelUpEvent;
+import com.plexon.tools.event.PlexonToolProgressEvent;
 import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.item.ToolState;
 import com.plexon.tools.message.MessageService;
@@ -11,6 +13,7 @@ import com.plexon.tools.util.RequirementProgression;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -259,6 +262,8 @@ public final class ProgressionService implements Listener {
         }
 
         instanceRegistry.update(updated, amount, player.getName());
+        publishProgressEvents(player, definition, current, updated, target, amount,
+                result.levelsGained());
         if (result.levelsGained() > 0) {
             pendingVisuals.remove(updated.instanceId());
             LocatedItem located = locate(player, updated.instanceId(), hand);
@@ -274,6 +279,54 @@ public final class ProgressionService implements Listener {
             queueVisual(player, hand, definition, updated.instanceId());
         }
         return updated;
+    }
+
+    private void publishProgressEvents(
+            Player player,
+            ToolDefinition definition,
+            ToolState previous,
+            ToolState updated,
+            String target,
+            long amount,
+            int levelsGained
+    ) {
+        String transactionId = UUID.randomUUID().toString();
+        String progressType = definition.trackingType().name().toLowerCase(Locale.ROOT);
+        Material material = definition.trackingType().usesMaterialTargets()
+                ? Material.matchMaterial(target == null ? "" : target)
+                : null;
+        try {
+            plugin.getServer().getPluginManager().callEvent(new PlexonToolProgressEvent(
+                    player,
+                    definition.id(),
+                    definition.category(),
+                    progressType,
+                    amount,
+                    updated.level(),
+                    material,
+                    transactionId + ":progress",
+                    transactionId,
+                    updated.instanceId()));
+
+            if (levelsGained > 0 && updated.level() > previous.level()) {
+                plugin.getServer().getPluginManager().callEvent(new PlexonToolLevelUpEvent(
+                        player,
+                        definition.id(),
+                        definition.category(),
+                        previous.level(),
+                        updated.level(),
+                        transactionId + ":level:" + previous.level() + "-" + updated.level(),
+                        transactionId,
+                        updated.instanceId(),
+                        updated.boundWorld()));
+            }
+        } catch (RuntimeException exception) {
+            // Public events observe already-committed progression. A consumer failure
+            // must never roll back or corrupt authoritative tool state.
+            plugin.getLogger().log(Level.WARNING,
+                    "A PlexonTools public progression event listener failed after state commit",
+                    exception);
+        }
     }
 
     private void queueVisual(
