@@ -111,6 +111,7 @@ public final class ToolProgressListener implements Listener {
         if (abilities.isAreaMining(player)) {
             return;
         }
+        abilities.prepareBlockDrops(event, context.definition(), latest);
         abilities.mineArea(event, context.definition(), latest);
     }
 
