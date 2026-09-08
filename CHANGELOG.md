@@ -1,5 +1,31 @@
 # Changelog
 
+## 4.1.1 — 2026-09-08
+
+### Performance
+
+- Optimized the ordinary single-block legendary-tool progression hot path without treating 3×3 Area Mine as the primary cause.
+- Coalesced compatible high-frequency `PlexonToolProgressEvent` notifications over a short two-tick window while preserving exact downstream `amount` totals.
+- Preserved immediate `PlexonToolLevelUpEvent` delivery and flushes pending progress before level boundaries.
+- Reused authoritative latest `ToolState` snapshots inside `ProgressionService` instead of rebuilding the same registry-backed state repeatedly during rapid mining.
+- Reused the validated `BlockBreakEvent` tool context for the matching Auto Smelt / Magnet `BlockDropItemEvent`, with a safe fallback for unrelated drop events.
+- Removed duplicate natural-block provenance consumption from the normal tool-break path.
+- Reduced repeated registry dirty bookkeeping for already-pending tool instances while preserving queue bounds, full-snapshot fallback, and asynchronous SQLite persistence.
+- Preserved the existing coalesced item lore/PDC/action-bar refresh rather than moving visual rendering back into every block break.
+
+### Compatibility
+
+- Preserved PlexonCore 1.x integration and standalone fallback.
+- Preserved PlexonQuests integration through the existing public PlexonTools event classes with no hard Quests dependency.
+- Preserved `PlexonToolsAPI`, `PlexonToolProgressEvent`, and `PlexonToolLevelUpEvent` source/binary contracts; progress consumers must use the existing `amount` field because one event may represent multiple accepted units.
+- Preserved SQLite storage format, WAL behavior, migrations, backup behavior, and shutdown drain.
+
+### Stability
+
+- Added regression tests for coalesced progress totals, material/level grouping, and player-scoped event draining.
+- Updated Java 25 / Paper 26.2 CI and tag-driven release verification for the `4.1.1` artifact.
+- Runtime profiling and Paper stress validation remain mandatory release gates; no benchmark percentage is claimed without measured results.
+
 ## 4.1.0 — 2026-09-07
 
 - Migrated PlexonTools onto optional PlexonCore 1.0.0 module registration with Core API range `>=1.0 <2.0`, STARTING/READY/DEGRADED/FAILED lifecycle reporting, and safe standalone fallback.

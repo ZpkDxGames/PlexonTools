@@ -104,13 +104,14 @@ public final class ToolProgressListener implements Listener {
         String target = blockTrackingTarget(
                 context.definition().trackingType(), event.getBlock());
         if (target != null && context.definition().tracks(target, latest.level())
-                && naturalBlocks.allowsProgress(event.getBlock())) {
+                && naturalBlocks.isNatural(event.getBlock())) {
             latest = progression.addResolvedProgress(
                     player, EquipmentSlot.HAND, context.definition(), latest, target, 1L);
         }
         if (abilities.isAreaMining(player)) {
             return;
         }
+        abilities.prepareBlockDrops(event, context.definition(), latest);
         abilities.mineArea(event, context.definition(), latest);
     }
 

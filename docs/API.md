@@ -1,6 +1,6 @@
 # PlexonTools 4.1 Public API
 
-PlexonTools 4.1.0 exposes a stable read-only API and two post-commit progression events. The API and events belong to PlexonTools and remain available when PlexonCore is not installed.
+PlexonTools 4.1.1 exposes a stable read-only API and two post-commit progression events. The API and events belong to PlexonTools and remain available when PlexonCore is not installed.
 
 ## Service lookup
 
@@ -34,7 +34,11 @@ Exact class:
 com.plexon.tools.event.PlexonToolProgressEvent
 ```
 
-It extends `PlayerEvent`, is non-cancellable, and is fired after an accepted gameplay mutation has been committed to the authoritative in-memory registry.
+It extends `PlayerEvent`, is non-cancellable, and is fired only after accepted progression has already been committed to authoritative in-memory state.
+
+Starting with 4.1.1, compatible high-frequency progress notifications may be coalesced over a short server-tick window. One event can therefore represent multiple accepted progression units through its existing `amount` field. Consumers must add the reported amount rather than assume one event equals one block/action. The semantic total is unchanged: ten accepted units still produce a downstream total amount of ten.
+
+Batch grouping keeps player, tool instance, tool ID, category, progress type, material/target metadata, and level distinct. Mixed materials or progress on opposite sides of a level boundary are not combined incorrectly. A level-up flushes older pending progress for the instance first and the level-up notification remains immediate.
 
 Data includes player, stable tool ID/category, stable progress type, applied amount, current level, relevant Bukkit material when applicable, event ID, transaction ID, and tool instance UUID.
 
@@ -64,7 +68,7 @@ damage_dealt
 blocks_placed
 ```
 
-No event is emitted when the current 4.0 rules reject progress, including wrong owner/world/tool, ignored targets, cancelled gameplay, rejected player-placed blocks, or excluded secondary behavior.
+No event is emitted when progression rules reject the action, including wrong owner/world/tool, ignored targets, cancelled gameplay, rejected player-placed blocks, or excluded secondary behavior.
 
 ## Level-up event
 
@@ -74,13 +78,15 @@ Exact class:
 com.plexon.tools.event.PlexonToolLevelUpEvent
 ```
 
-It extends `PlayerEvent`, is non-cancellable, and is emitted after the committed level transition. Accessors include player, tool ID/category, old/new level, event ID, transaction ID, instance UUID, and bound world.
+It extends `PlayerEvent`, is non-cancellable, and is emitted immediately after the committed level transition. Accessors include player, tool ID/category, old/new level, event ID, transaction ID, instance UUID, and bound world.
 
-Production 4.0.0 intentionally permits at most one level advancement per accepted action and discards overflow at the boundary. 4.1.0 preserves that behavior; therefore one accepted transaction emits at most one level-up event.
+Production behavior intentionally permits at most one level advancement per accepted action and discards overflow at the boundary. 4.1.1 preserves that behavior; therefore one accepted action emits at most one level-up event.
 
 ## Event IDs
 
-Every accepted progression operation receives one UUID transaction ID. Child event IDs are unique and derived from that transaction:
+Each emitted progress notification receives a UUID transaction ID. A batched notification covers the compatible accepted units represented by its `amount`. At a level boundary, the immediate progress notification and level-up event share the same transaction ID.
+
+Child event IDs remain derived from the transaction:
 
 ```text
 <transaction>:progress

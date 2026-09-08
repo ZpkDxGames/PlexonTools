@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -43,20 +44,25 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 /**
- * Owns authoritative in-memory progression and coalesces expensive visual item
- * refreshes without moving Bukkit inventory operations off the server thread.
+ * Owns authoritative in-memory progression and coalesces expensive secondary
+ * notifications/visual refreshes without moving Bukkit operations off-thread.
  */
 public final class ProgressionService implements Listener {
+    private static final long PROGRESS_EVENT_BATCH_TICKS = 2L;
+
     private final JavaPlugin plugin;
     private final ToolItemService itemService;
     private final InstanceRegistry instanceRegistry;
     private final PluginSettings settings;
     private final MessageService messages;
     private final Map<UUID, Long> lastWarnings = new HashMap<>();
+    private final Map<UUID, ToolState> latestStates = new HashMap<>();
     private final Map<UUID, PendingVisual> pendingVisuals = new LinkedHashMap<>();
+    private final ProgressEventBatcher progressEventBatcher = new ProgressEventBatcher();
     private final IdentityHashMap<ToolDefinition, NavigableMap<Integer, LevelRequirement>>
             requirementCache = new IdentityHashMap<>();
     private BukkitTask visualTask;
+    private BukkitTask progressEventTask;
 
     public ProgressionService(
             JavaPlugin plugin,
@@ -73,26 +79,41 @@ public final class ProgressionService implements Listener {
     }
 
     public void start() {
-        stopTask();
-        long interval = settings.progressVisualRefreshTicks();
+        stopTasks();
+        long visualInterval = settings.progressVisualRefreshTicks();
         visualTask = Bukkit.getScheduler().runTaskTimer(
-                plugin, () -> flushPendingVisuals(true), interval, interval);
+                plugin, () -> flushPendingVisuals(true), visualInterval, visualInterval);
+        progressEventTask = Bukkit.getScheduler().runTaskTimer(
+                plugin, this::flushPendingProgressEvents,
+                PROGRESS_EVENT_BATCH_TICKS, PROGRESS_EVENT_BATCH_TICKS);
     }
 
     public void pause() {
-        stopTask();
+        stopTasks();
+        flushPendingProgressEvents();
         flushPendingVisuals(false);
     }
 
     public void shutdown() {
-        stopTask();
+        stopTasks();
+        flushPendingProgressEvents();
         flushPendingVisuals(false);
+        progressEventBatcher.clear();
         pendingVisuals.clear();
+        latestStates.clear();
         lastWarnings.clear();
     }
 
     public void clearDefinitionCaches() {
         requirementCache.clear();
+    }
+
+    public int pendingProgressEventGroupCount() {
+        return progressEventBatcher.size();
+    }
+
+    public long progressEventBatchTicks() {
+        return PROGRESS_EVENT_BATCH_TICKS;
     }
 
     /**
@@ -119,12 +140,11 @@ public final class ProgressionService implements Listener {
         if (identity == null) {
             return ToolResolution.invalid();
         }
-        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(
-                identity.instanceId());
-        if (record != null) {
-            if (record.toolId().equalsIgnoreCase(identity.toolId())
-                    && record.ownerId().equals(identity.ownerId())) {
-                return ToolResolution.resolved(record.state());
+        ToolState authoritative = stateForInstance(identity.instanceId());
+        if (authoritative != null) {
+            if (authoritative.toolId().equalsIgnoreCase(identity.toolId())
+                    && authoritative.ownerId().equals(identity.ownerId())) {
+                return ToolResolution.resolved(authoritative);
             }
             return ToolResolution.invalid();
         }
@@ -134,14 +154,27 @@ public final class ProgressionService implements Listener {
     }
 
     public ToolState latestState(ToolState suppliedState) {
-        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(
-                suppliedState.instanceId());
-        if (record == null
-                || !record.toolId().equalsIgnoreCase(suppliedState.toolId())
-                || !record.ownerId().equals(suppliedState.ownerId())) {
+        ToolState authoritative = stateForInstance(suppliedState.instanceId());
+        if (authoritative == null
+                || !authoritative.toolId().equalsIgnoreCase(suppliedState.toolId())
+                || !authoritative.ownerId().equals(suppliedState.ownerId())) {
             return suppliedState;
         }
-        return record.state();
+        return authoritative;
+    }
+
+    private ToolState stateForInstance(UUID instanceId) {
+        ToolState cached = latestStates.get(instanceId);
+        if (cached != null) {
+            return cached;
+        }
+        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(instanceId);
+        if (record == null) {
+            return null;
+        }
+        ToolState loaded = record.state();
+        latestStates.put(instanceId, loaded);
+        return loaded;
     }
 
     public boolean canUse(Player player, ToolDefinition definition, ToolState state, boolean notify) {
@@ -247,7 +280,10 @@ public final class ProgressionService implements Listener {
             if (!current.equals(registryState)
                     || instanceRegistry.findCached(current.instanceId()) == null) {
                 instanceRegistry.update(current, 0L, player.getName());
+                latestStates.put(current.instanceId(), current);
                 queueVisual(player, hand, definition, current.instanceId());
+            } else {
+                latestStates.putIfAbsent(current.instanceId(), current);
             }
             return current;
         }
@@ -262,6 +298,7 @@ public final class ProgressionService implements Listener {
         }
 
         instanceRegistry.update(updated, amount, player.getName());
+        latestStates.put(updated.instanceId(), updated);
         publishProgressEvents(player, definition, current, updated, target, amount,
                 result.levelsGained());
         if (result.levelsGained() > 0) {
@@ -290,41 +327,115 @@ public final class ProgressionService implements Listener {
             long amount,
             int levelsGained
     ) {
-        String transactionId = UUID.randomUUID().toString();
         String progressType = definition.trackingType().name().toLowerCase(Locale.ROOT);
         Material material = definition.trackingType().usesMaterialTargets()
                 ? Material.matchMaterial(target == null ? "" : target)
                 : null;
-        try {
-            plugin.getServer().getPluginManager().callEvent(new PlexonToolProgressEvent(
-                    player,
+
+        if (levelsGained <= 0 || updated.level() <= previous.level()) {
+            progressEventBatcher.add(
+                    player.getUniqueId(),
+                    updated.instanceId(),
                     definition.id(),
                     definition.category(),
                     progressType,
-                    amount,
+                    material,
                     updated.level(),
+                    amount);
+            return;
+        }
+
+        // Preserve ordering at level boundaries: accumulated progress for the old
+        // level is published first, then the boundary mutation and level-up event
+        // remain immediate and share one transaction identifier.
+        dispatchPendingProgress(progressEventBatcher.drainInstance(updated.instanceId()));
+        String transactionId = UUID.randomUUID().toString();
+        dispatchProgressEvent(player, definition.id(), definition.category(), progressType,
+                amount, updated.level(), material, transactionId, updated.instanceId());
+        dispatchLevelUpEvent(player, definition, previous, updated, transactionId);
+    }
+
+    private void flushPendingProgressEvents() {
+        dispatchPendingProgress(progressEventBatcher.drainAll());
+    }
+
+    private void flushProgressEventsForPlayer(Player player) {
+        dispatchPendingProgress(progressEventBatcher.drainPlayer(player.getUniqueId()));
+    }
+
+    private void dispatchPendingProgress(List<ProgressEventBatcher.PendingProgress> pendingEvents) {
+        for (ProgressEventBatcher.PendingProgress pending : pendingEvents) {
+            Player player = Bukkit.getPlayer(pending.playerId());
+            if (player == null) {
+                continue;
+            }
+            String transactionId = UUID.randomUUID().toString();
+            dispatchProgressEvent(
+                    player,
+                    pending.toolId(),
+                    pending.category(),
+                    pending.progressType(),
+                    pending.amount(),
+                    pending.level(),
+                    pending.material(),
+                    transactionId,
+                    pending.instanceId());
+        }
+    }
+
+    private void dispatchProgressEvent(
+            Player player,
+            String toolId,
+            String category,
+            String progressType,
+            long amount,
+            int level,
+            Material material,
+            String transactionId,
+            UUID instanceId
+    ) {
+        try {
+            plugin.getServer().getPluginManager().callEvent(new PlexonToolProgressEvent(
+                    player,
+                    toolId,
+                    category,
+                    progressType,
+                    amount,
+                    level,
                     material,
                     transactionId + ":progress",
                     transactionId,
-                    updated.instanceId()));
-
-            if (levelsGained > 0 && updated.level() > previous.level()) {
-                plugin.getServer().getPluginManager().callEvent(new PlexonToolLevelUpEvent(
-                        player,
-                        definition.id(),
-                        definition.category(),
-                        previous.level(),
-                        updated.level(),
-                        transactionId + ":level:" + previous.level() + "-" + updated.level(),
-                        transactionId,
-                        updated.instanceId(),
-                        updated.boundWorld()));
-            }
+                    instanceId));
         } catch (RuntimeException exception) {
             // Public events observe already-committed progression. A consumer failure
             // must never roll back or corrupt authoritative tool state.
             plugin.getLogger().log(Level.WARNING,
-                    "A PlexonTools public progression event listener failed after state commit",
+                    "A PlexonTools public progress event listener failed after state commit",
+                    exception);
+        }
+    }
+
+    private void dispatchLevelUpEvent(
+            Player player,
+            ToolDefinition definition,
+            ToolState previous,
+            ToolState updated,
+            String transactionId
+    ) {
+        try {
+            plugin.getServer().getPluginManager().callEvent(new PlexonToolLevelUpEvent(
+                    player,
+                    definition.id(),
+                    definition.category(),
+                    previous.level(),
+                    updated.level(),
+                    transactionId + ":level:" + previous.level() + "-" + updated.level(),
+                    transactionId,
+                    updated.instanceId(),
+                    updated.boundWorld()));
+        } catch (RuntimeException exception) {
+            plugin.getLogger().log(Level.WARNING,
+                    "A PlexonTools public level-up event listener failed after state commit",
                     exception);
         }
     }
@@ -347,17 +458,20 @@ public final class ProgressionService implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(PlayerQuitEvent event) {
+        flushProgressEventsForPlayer(event.getPlayer());
         flushPlayer(event.getPlayer());
         lastWarnings.remove(event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onWorldChange(PlayerChangedWorldEvent event) {
+        flushProgressEventsForPlayer(event.getPlayer());
         flushPlayer(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onDeath(PlayerDeathEvent event) {
+        flushProgressEventsForPlayer(event.getEntity());
         flushPlayer(event.getEntity());
     }
 
@@ -412,16 +526,14 @@ public final class ProgressionService implements Listener {
         if (player == null) {
             return;
         }
-        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(
-                visual.instanceId());
-        if (record == null) {
+        ToolState state = stateForInstance(visual.instanceId());
+        if (state == null) {
             return;
         }
         LocatedItem located = locate(player, visual.instanceId(), visual.preferredHand());
         if (located == null) {
             return;
         }
-        ToolState state = record.state();
         ItemStack refreshed = itemService.refreshProgress(
                 located.item(), visual.definition(), state, player.getName());
         located.replace(player, refreshed);
@@ -463,10 +575,14 @@ public final class ProgressionService implements Listener {
         return identity != null && identity.instanceId().equals(instanceId);
     }
 
-    private void stopTask() {
+    private void stopTasks() {
         if (visualTask != null) {
             visualTask.cancel();
             visualTask = null;
+        }
+        if (progressEventTask != null) {
+            progressEventTask.cancel();
+            progressEventTask = null;
         }
     }
 
