@@ -60,7 +60,8 @@ public final class NaturalBlockTracker implements Listener {
     private final ArrayDeque<ChunkLoadRequest> loadQueue = new ArrayDeque<>();
     private final Set<ChunkKey> queuedLoads = new HashSet<>();
     private final Map<ChunkKey, Long> loadTokens = new HashMap<>();
-    private final IdentityHashMap<BlockBreakEvent, Origin> breakOrigins = new IdentityHashMap<>();
+    private final IdentityHashMap<BlockBreakEvent, Origin> consumedBreakOrigins =
+            new IdentityHashMap<>();
 
     private boolean active;
     private boolean loadInFlight;
@@ -81,7 +82,7 @@ public final class NaturalBlockTracker implements Listener {
         loadQueue.clear();
         queuedLoads.clear();
         loadTokens.clear();
-        breakOrigins.clear();
+        consumedBreakOrigins.clear();
         nextLoadToken = 0L;
         index.clear();
         if (!active) return;
@@ -101,7 +102,7 @@ public final class NaturalBlockTracker implements Listener {
         loadQueue.clear();
         queuedLoads.clear();
         loadTokens.clear();
-        breakOrigins.clear();
+        consumedBreakOrigins.clear();
         index.clear();
     }
 
@@ -112,17 +113,16 @@ public final class NaturalBlockTracker implements Listener {
     }
 
     /**
-     * Returns the provenance classification already consumed for this successful
-     * BlockBreakEvent. The classification is prepared at HIGHEST and removed at
-     * MONITOR, so the progression listener does not perform a second index lookup.
+     * Classifies and consumes provenance once from the successful MONITOR-stage
+     * PlexonTools break path. The later cleanup handler sees the same event and
+     * skips a second index operation. Cancelled events never reach this method.
      */
     public boolean allowsProgress(BlockBreakEvent event) {
         if (!active) return true;
-        Origin origin = breakOrigins.get(event);
+        Origin origin = consumedBreakOrigins.get(event);
         if (origin == null) {
-            // Defensive fallback for synthetic/non-standard event dispatch.
             origin = consume(event.getBlock());
-            breakOrigins.put(event, origin);
+            consumedBreakOrigins.put(event, origin);
         }
         return allows(origin);
     }
@@ -149,23 +149,11 @@ public final class NaturalBlockTracker implements Listener {
         markPlaced(event.getBlockPlaced());
     }
 
-    /**
-     * Consume/classify once after normal protection priorities have completed,
-     * before PlexonTools' MONITOR progression stage reads the cached result.
-     */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onBreakClassify(BlockBreakEvent event) {
-        if (active) {
-            breakOrigins.put(event, consume(event.getBlock()));
-        }
-    }
-
     @EventHandler(priority = EventPriority.MONITOR)
     public void onBreakCleanup(BlockBreakEvent event) {
-        Origin classified = breakOrigins.remove(event);
-        if (active && !event.isCancelled() && classified == null) {
-            // Fallback for an event that skipped the classifier; ordinary
-            // successful breaks still clean their provenance exactly once.
+        Origin consumed = consumedBreakOrigins.remove(event);
+        if (active && !event.isCancelled() && consumed == null) {
+            // Non-PlexonTools breaks still clear placed-block provenance once.
             consume(event.getBlock());
         }
     }
