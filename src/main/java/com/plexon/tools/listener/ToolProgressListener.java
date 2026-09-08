@@ -6,8 +6,8 @@ import com.plexon.tools.item.ToolState;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.TrackingType;
 import com.plexon.tools.service.AbilityService;
-import com.plexon.tools.service.ProgressionService;
 import com.plexon.tools.service.NaturalBlockTracker;
+import com.plexon.tools.service.ProgressionService;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
@@ -21,17 +21,40 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerHarvestBlockEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
+/**
+ * Gameplay listener for PlexonTools progression.
+ *
+ * <p>The ordinary main-hand block break path is intentionally different from
+ * the lower-frequency handlers below: once a tool has been resolved and
+ * validated, its parsed identity/definition/state are retained in an
+ * {@link ActiveToolContext}. Steady-state mining therefore does not rediscover
+ * the same PDC identity and UUIDs for every block.</p>
+ */
 public final class ToolProgressListener implements Listener {
+    private static final long ACTIVE_IDENTITY_REVALIDATE_TICKS = 10L;
     private static final Set<Material> FARM_TARGETS = Set.of(
             Material.WHEAT,
             Material.CARROTS,
@@ -53,15 +76,16 @@ public final class ToolProgressListener implements Listener {
             Material.TROPICAL_FISH,
             Material.PUFFERFISH
     );
+
     private final ToolConfigRepository tools;
     private final ProgressionService progression;
     private final AbilityService abilities;
     private final NaturalBlockTracker naturalBlocks;
     private final PluginSettings settings;
-    private final IdentityHashMap<BlockBreakEvent, ToolUse> blockBreakContexts =
-            new IdentityHashMap<>();
+    private final Map<UUID, ActiveToolContext> activeTools = new HashMap<>();
     private final IdentityHashMap<EntityDamageByEntityEvent, ToolUse> damageContexts =
             new IdentityHashMap<>();
+    private long validationEpoch = 1L;
 
     public ToolProgressListener(
             ToolConfigRepository tools,
@@ -80,39 +104,49 @@ public final class ToolProgressListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        ItemStack item = player.getInventory().getItemInMainHand();
-        ToolUse context = inspect(player, item, true);
-        if (!context.usable()) {
-            if (context.tagged()) {
+        ActiveResolution resolution = resolveActive(player, true);
+        ActiveToolContext context = resolution.context();
+        if (context == null) {
+            if (resolution.tagged()) {
                 event.setCancelled(settings.cancelBlockBreaks());
             }
             return;
         }
-        blockBreakContexts.put(event, context);
-
-        abilities.boostBlockExperience(event, context.definition(), context.state());
+        abilities.boostBlockExperience(event, context.definition, context.state);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onBlockBreakAbilities(BlockBreakEvent event) {
-        ToolUse context = blockBreakContexts.remove(event);
-        if (event.isCancelled() || context == null) {
+        if (event.isCancelled()) {
             return;
         }
         Player player = event.getPlayer();
-        ToolState latest = progression.latestState(context.state());
+        ActiveToolContext context = activeTools.get(player.getUniqueId());
+        if (context == null || !context.quickIdentityMatches(
+                player.getInventory().getHeldItemSlot(),
+                player.getInventory().getItemInMainHand().getType(), validationEpoch)) {
+            return;
+        }
+        if (!fastCanUse(player, context)) {
+            invalidate(player);
+            return;
+        }
+
+        ToolState latest = progression.latestState(context.state);
+        context.refreshState(latest);
         String target = blockTrackingTarget(
-                context.definition().trackingType(), event.getBlock());
-        if (target != null && context.definition().tracks(target, latest.level())
+                context.definition.trackingType(), event.getBlock());
+        if (target != null && context.definition.tracks(target, latest.level())
                 && naturalBlocks.isNatural(event.getBlock())) {
             latest = progression.addResolvedProgress(
-                    player, EquipmentSlot.HAND, context.definition(), latest, target, 1L);
+                    player, EquipmentSlot.HAND, context.definition, latest, target, 1L);
+            context.refreshState(latest);
         }
         if (abilities.isAreaMining(player)) {
             return;
         }
-        abilities.prepareBlockDrops(event, context.definition(), latest);
-        abilities.mineArea(event, context.definition(), latest);
+        abilities.prepareBlockDrops(event, context.definition, latest);
+        abilities.mineArea(event, context.definition, latest);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -131,8 +165,9 @@ public final class ToolProgressListener implements Listener {
         if (context.definition().trackingType() == TrackingType.MOBS_KILLED) {
             String target = event.getEntityType().name();
             if (context.definition().tracks(target, context.state().level())) {
-                progression.addResolvedProgress(player, EquipmentSlot.HAND,
+                ToolState updated = progression.addResolvedProgress(player, EquipmentSlot.HAND,
                         context.definition(), context.state(), target, 1L);
+                refreshActiveState(player, updated);
             }
         }
     }
@@ -169,8 +204,9 @@ public final class ToolProgressListener implements Listener {
         String target = event.getEntityType().name();
         if (context.definition().tracks(target, latest.level())) {
             long amount = Math.max(1L, Math.round(event.getFinalDamage()));
-            progression.addResolvedProgress(player, EquipmentSlot.HAND,
+            ToolState updated = progression.addResolvedProgress(player, EquipmentSlot.HAND,
                     context.definition(), latest, target, amount);
+            refreshActiveState(player, updated);
         }
     }
 
@@ -188,8 +224,9 @@ public final class ToolProgressListener implements Listener {
         }
         String target = event.getBlockPlaced().getType().name();
         if (context.definition().tracks(target, context.state().level())) {
-            progression.addResolvedProgress(event.getPlayer(), hand,
+            ToolState updated = progression.addResolvedProgress(event.getPlayer(), hand,
                     context.definition(), context.state(), target, 1L);
+            refreshActiveState(event.getPlayer(), updated);
         }
     }
 
@@ -216,8 +253,9 @@ public final class ToolProgressListener implements Listener {
         }
         String target = caughtType.name();
         if (context.definition().tracks(target, context.state().level())) {
-            progression.addResolvedProgress(event.getPlayer(), hand,
+            ToolState updated = progression.addResolvedProgress(event.getPlayer(), hand,
                     context.definition(), context.state(), target, 1L);
+            refreshActiveState(event.getPlayer(), updated);
         }
     }
 
@@ -240,8 +278,9 @@ public final class ToolProgressListener implements Listener {
         String target = harvestedType.name();
         if (context.definition().tracks(target, context.state().level())
                 && naturalBlocks.isNatural(event.getHarvestedBlock())) {
-            progression.addResolvedProgress(event.getPlayer(), hand,
+            ToolState updated = progression.addResolvedProgress(event.getPlayer(), hand,
                     context.definition(), context.state(), target, 1L);
+            refreshActiveState(event.getPlayer(), updated);
         }
     }
 
@@ -264,6 +303,164 @@ public final class ToolProgressListener implements Listener {
         if (!context.usable() && context.tagged()) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onHeldSlotChanged(PlayerItemHeldEvent event) {
+        invalidate(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onSwapHands(PlayerSwapHandItemsEvent event) {
+        invalidate(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getWhoClicked() instanceof Player player) {
+            invalidate(player);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (event.getWhoClicked() instanceof Player player) {
+            invalidate(player);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPickup(EntityPickupItemEvent event) {
+        if (event.getEntity() instanceof Player player) {
+            invalidate(player);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDrop(PlayerDropItemEvent event) {
+        invalidate(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onWorldChange(PlayerChangedWorldEvent event) {
+        invalidate(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onRespawn(PlayerRespawnEvent event) {
+        invalidate(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        invalidate(event.getEntity());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onQuit(PlayerQuitEvent event) {
+        invalidate(event.getPlayer());
+    }
+
+    /** Invalidates all parsed active identities after a definition/config reload. */
+    public void invalidateAllActiveContexts() {
+        activeTools.clear();
+        validationEpoch++;
+        if (validationEpoch == Long.MAX_VALUE) {
+            validationEpoch = 1L;
+        }
+    }
+
+    int activeContextCount() {
+        return activeTools.size();
+    }
+
+    private ActiveResolution resolveActive(Player player, boolean notify) {
+        UUID playerId = player.getUniqueId();
+        ItemStack item = player.getInventory().getItemInMainHand();
+        int heldSlot = player.getInventory().getHeldItemSlot();
+        long currentTick = player.getWorld().getGameTime();
+        ActiveToolContext cached = activeTools.get(playerId);
+
+        if (cached != null && cached.quickIdentityMatches(
+                heldSlot, item.getType(), validationEpoch)) {
+            ToolState latest = progression.latestState(cached.state);
+            cached.refreshState(latest);
+            if (fastCanUse(player, cached)) {
+                if (currentTick < cached.nextIdentityValidationTick) {
+                    return ActiveResolution.usable(cached);
+                }
+                ProgressionService.ToolResolution revalidated = progression.resolve(item);
+                ToolState state = revalidated.state();
+                if (state != null
+                        && state.instanceId().equals(cached.instanceId)
+                        && state.toolId().equalsIgnoreCase(cached.toolId)
+                        && progression.canUse(player, cached.definition, state, false)) {
+                    cached.refreshState(state);
+                    cached.nextIdentityValidationTick = currentTick
+                            + ACTIVE_IDENTITY_REVALIDATE_TICKS;
+                    return ActiveResolution.usable(cached);
+                }
+            }
+            activeTools.remove(playerId);
+        }
+
+        ProgressionService.ToolResolution resolution = progression.resolve(item);
+        ToolState state = resolution.state();
+        if (state == null) {
+            if (notify && resolution.tagged()) {
+                progression.warnInvalid(player);
+            }
+            return resolution.tagged() ? ActiveResolution.invalid() : ActiveResolution.untagged();
+        }
+        ToolDefinition definition = tools.findCached(state.toolId());
+        if (definition == null || !definition.enabled()) {
+            if (notify) {
+                progression.warnInvalid(player);
+            }
+            return ActiveResolution.invalid();
+        }
+        if (!progression.canUse(player, definition, state, notify)) {
+            return ActiveResolution.invalid();
+        }
+
+        ActiveToolContext created = new ActiveToolContext(
+                playerId,
+                state.instanceId(),
+                state.toolId(),
+                state.ownerId(),
+                state.boundWorld(),
+                definition,
+                state,
+                heldSlot,
+                item.getType(),
+                validationEpoch,
+                currentTick + ACTIVE_IDENTITY_REVALIDATE_TICKS);
+        activeTools.put(playerId, created);
+        return ActiveResolution.usable(created);
+    }
+
+    private boolean fastCanUse(Player player, ActiveToolContext context) {
+        if (!context.ownerId.equals(player.getUniqueId())
+                || !context.definition.levels().containsKey(context.state.level())) {
+            return false;
+        }
+        String world = player.getWorld().getName();
+        boolean validWorld = context.definition.isAllowedWorld(world);
+        if (settings.enforceBoundWorld() && !context.definition.sharesProgressAcrossWorlds()) {
+            validWorld = validWorld && context.boundWorld.equalsIgnoreCase(world);
+        }
+        return validWorld || player.hasPermission("plexontools.bypass.world");
+    }
+
+    private void refreshActiveState(Player player, ToolState state) {
+        ActiveToolContext active = activeTools.get(player.getUniqueId());
+        if (active != null && active.instanceId.equals(state.instanceId())) {
+            active.refreshState(state);
+        }
+    }
+
+    private void invalidate(Player player) {
+        activeTools.remove(player.getUniqueId());
     }
 
     private ToolUse inspect(Player player, ItemStack item, boolean notify) {
@@ -315,6 +512,76 @@ public final class ToolProgressListener implements Listener {
             case MELON, PUMPKIN, SUGAR_CANE, CACTUS, BAMBOO, KELP -> true;
             default -> false;
         };
+    }
+
+    private static final class ActiveToolContext {
+        private final UUID playerId;
+        private final UUID instanceId;
+        private final String toolId;
+        private final UUID ownerId;
+        private final String boundWorld;
+        private final ToolDefinition definition;
+        private final int heldSlot;
+        private final Material material;
+        private final long validationEpoch;
+        private ToolState state;
+        private long nextIdentityValidationTick;
+
+        private ActiveToolContext(
+                UUID playerId,
+                UUID instanceId,
+                String toolId,
+                UUID ownerId,
+                String boundWorld,
+                ToolDefinition definition,
+                ToolState state,
+                int heldSlot,
+                Material material,
+                long validationEpoch,
+                long nextIdentityValidationTick
+        ) {
+            this.playerId = playerId;
+            this.instanceId = instanceId;
+            this.toolId = toolId;
+            this.ownerId = ownerId;
+            this.boundWorld = boundWorld;
+            this.definition = definition;
+            this.state = state;
+            this.heldSlot = heldSlot;
+            this.material = material;
+            this.validationEpoch = validationEpoch;
+            this.nextIdentityValidationTick = nextIdentityValidationTick;
+        }
+
+        private boolean quickIdentityMatches(int slot, Material currentMaterial, long epoch) {
+            return heldSlot == slot && material == currentMaterial && validationEpoch == epoch;
+        }
+
+        private void refreshState(ToolState latest) {
+            if (latest != null
+                    && latest.instanceId().equals(instanceId)
+                    && latest.ownerId().equals(ownerId)
+                    && latest.toolId().equalsIgnoreCase(toolId)) {
+                state = latest;
+            }
+        }
+    }
+
+    private record ActiveResolution(boolean tagged, ActiveToolContext context) {
+        private static final ActiveResolution UNTAGGED = new ActiveResolution(false, null);
+        private static final ActiveResolution INVALID = new ActiveResolution(true, null);
+
+        private static ActiveResolution untagged() {
+            return UNTAGGED;
+        }
+
+        private static ActiveResolution invalid() {
+            return INVALID;
+        }
+
+        private static ActiveResolution usable(ActiveToolContext context) {
+            return new ActiveResolution(true, context);
+        }
     }
 
     private record ToolUse(boolean tagged, ToolState state, ToolDefinition definition) {
