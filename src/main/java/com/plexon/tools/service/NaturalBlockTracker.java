@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,6 +60,7 @@ public final class NaturalBlockTracker implements Listener {
     private final ArrayDeque<ChunkLoadRequest> loadQueue = new ArrayDeque<>();
     private final Set<ChunkKey> queuedLoads = new HashSet<>();
     private final Map<ChunkKey, Long> loadTokens = new HashMap<>();
+    private final IdentityHashMap<BlockBreakEvent, Origin> breakOrigins = new IdentityHashMap<>();
 
     private boolean active;
     private boolean loadInFlight;
@@ -79,6 +81,7 @@ public final class NaturalBlockTracker implements Listener {
         loadQueue.clear();
         queuedLoads.clear();
         loadTokens.clear();
+        breakOrigins.clear();
         nextLoadToken = 0L;
         index.clear();
         if (!active) return;
@@ -98,14 +101,30 @@ public final class NaturalBlockTracker implements Listener {
         loadQueue.clear();
         queuedLoads.clear();
         loadTokens.clear();
+        breakOrigins.clear();
         index.clear();
     }
 
     public boolean allowsProgress(Block block) {
         if (!active) return true;
         Origin origin = consume(block);
-        return origin == Origin.NATURAL
-                || (origin == Origin.UNKNOWN && !settings.naturalBlockFailClosed());
+        return allows(origin);
+    }
+
+    /**
+     * Returns the provenance classification already consumed for this successful
+     * BlockBreakEvent. The classification is prepared at HIGHEST and removed at
+     * MONITOR, so the progression listener does not perform a second index lookup.
+     */
+    public boolean allowsProgress(BlockBreakEvent event) {
+        if (!active) return true;
+        Origin origin = breakOrigins.get(event);
+        if (origin == null) {
+            // Defensive fallback for synthetic/non-standard event dispatch.
+            origin = consume(event.getBlock());
+            breakOrigins.put(event, origin);
+        }
+        return allows(origin);
     }
 
     public boolean isNatural(Block block) {
@@ -115,8 +134,7 @@ public final class NaturalBlockTracker implements Listener {
         int z = block.getZ();
         ensureTracked(worldId, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
         Origin origin = index.peek(worldId, x, block.getY(), z);
-        return origin == Origin.NATURAL
-                || (origin == Origin.UNKNOWN && !settings.naturalBlockFailClosed());
+        return allows(origin);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -131,9 +149,25 @@ public final class NaturalBlockTracker implements Listener {
         markPlaced(event.getBlockPlaced());
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    /**
+     * Consume/classify once after normal protection priorities have completed,
+     * before PlexonTools' MONITOR progression stage reads the cached result.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onBreakClassify(BlockBreakEvent event) {
+        if (active) {
+            breakOrigins.put(event, consume(event.getBlock()));
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onBreakCleanup(BlockBreakEvent event) {
-        if (active) consume(event.getBlock());
+        Origin classified = breakOrigins.remove(event);
+        if (active && !event.isCancelled() && classified == null) {
+            // Fallback for an event that skipped the classifier; ordinary
+            // successful breaks still clean their provenance exactly once.
+            consume(event.getBlock());
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -200,6 +234,11 @@ public final class NaturalBlockTracker implements Listener {
         if (queuedLoads.remove(key)) {
             loadQueue.removeIf(request -> request.key().equals(key));
         }
+    }
+
+    private boolean allows(Origin origin) {
+        return origin == Origin.NATURAL
+                || (origin == Origin.UNKNOWN && !settings.naturalBlockFailClosed());
     }
 
     private void markPlaced(Block block) {
