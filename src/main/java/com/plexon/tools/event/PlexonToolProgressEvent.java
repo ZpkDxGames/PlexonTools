@@ -8,7 +8,11 @@ import org.bukkit.event.player.PlayerEvent;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Fired once after an accepted PlexonTools progression mutation is committed. */
+/**
+ * Fired after accepted PlexonTools progression is committed. High-frequency
+ * actions may be coalesced, so {@link #amount()} can represent multiple accepted
+ * progression units while preserving the exact downstream total.
+ */
 public final class PlexonToolProgressEvent extends PlayerEvent {
     private static final HandlerList HANDLERS = new HandlerList();
 
