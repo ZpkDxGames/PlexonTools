@@ -277,8 +277,12 @@ public final class ProgressionService implements Listener {
             current = current.withCategory(definition.category());
         }
         if (definition.levels().higherKey(current.level()) == null) {
+            // Max-level mining must be nearly free. A registry-backed state has
+            // already populated latestStates during identity resolution, so do
+            // not materialize another InstanceRecord snapshot per block merely
+            // to prove it still exists.
             if (!current.equals(registryState)
-                    || instanceRegistry.findCached(current.instanceId()) == null) {
+                    || !latestStates.containsKey(current.instanceId())) {
                 instanceRegistry.update(current, 0L, player.getName());
                 latestStates.put(current.instanceId(), current);
                 queueVisual(player, hand, definition, current.instanceId());
