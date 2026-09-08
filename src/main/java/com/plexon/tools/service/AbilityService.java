@@ -22,7 +22,6 @@ import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerHarvestBlockEvent;
-import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -32,6 +31,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +73,7 @@ public final class AbilityService implements Listener {
     private final ToolConfigRepository tools;
     private final ProgressionService progression;
     private final Set<UUID> areaMiningPlayers = new HashSet<>();
+    private final Map<UUID, BlockDropContext> blockDropContexts = new HashMap<>();
     private BukkitTask passiveTask;
 
     public AbilityService(
@@ -97,6 +98,7 @@ public final class AbilityService implements Listener {
             passiveTask = null;
         }
         areaMiningPlayers.clear();
+        blockDropContexts.clear();
     }
 
     public boolean isAreaMining(Player player) {
@@ -105,6 +107,32 @@ public final class AbilityService implements Listener {
 
     public void boostBlockExperience(BlockBreakEvent event, ToolDefinition definition, ToolState state) {
         event.setExpToDrop(boostedExperience(event.getExpToDrop(), definition, state));
+    }
+
+    /**
+     * Shares the already-resolved BlockBreakEvent tool state with the later
+     * BlockDropItemEvent phase. This avoids repeating ItemMeta/PDC parsing,
+     * registry lookup, definition lookup, and world/owner validation for the
+     * same successful break.
+     */
+    public void prepareBlockDrops(
+            BlockBreakEvent event,
+            ToolDefinition definition,
+            ToolState state
+    ) {
+        Player player = event.getPlayer();
+        boolean autoSmelt = hasAbility(definition, state, ToolAbilityType.AUTO_SMELT);
+        boolean magnet = hasAbility(definition, state, ToolAbilityType.MAGNET);
+        if (!autoSmelt && !magnet) {
+            blockDropContexts.remove(player.getUniqueId());
+            return;
+        }
+        Block block = event.getBlock();
+        blockDropContexts.put(player.getUniqueId(), new BlockDropContext(
+                block.getWorld().getUID(),
+                block.getX(), block.getY(), block.getZ(),
+                block.getWorld().getGameTime(),
+                definition, state, autoSmelt, magnet));
     }
 
     public void handleDeath(EntityDeathEvent event, Player player, ToolDefinition definition, ToolState state) {
@@ -164,16 +192,24 @@ public final class AbilityService implements Listener {
             return;
         }
         Player player = event.getPlayer();
-        ItemStack item = player.getInventory().getItemInMainHand();
-        ToolState state = progression.resolveState(item).orElse(null);
-        ToolDefinition definition = state == null ? null : tools.findCached(state.toolId());
-        if (definition == null || !definition.enabled()
-                || !progression.canUse(player, definition, state, false)) {
-            return;
-        }
+        BlockDropContext prepared = consumeBlockDropContext(event);
 
-        boolean autoSmelt = hasAbility(definition, state, ToolAbilityType.AUTO_SMELT);
-        boolean magnet = hasAbility(definition, state, ToolAbilityType.MAGNET);
+        boolean autoSmelt;
+        boolean magnet;
+        if (prepared != null) {
+            autoSmelt = prepared.autoSmelt();
+            magnet = prepared.magnet();
+        } else {
+            ItemStack item = player.getInventory().getItemInMainHand();
+            ToolState state = progression.resolveState(item).orElse(null);
+            ToolDefinition definition = state == null ? null : tools.findCached(state.toolId());
+            if (definition == null || !definition.enabled()
+                    || !progression.canUse(player, definition, state, false)) {
+                return;
+            }
+            autoSmelt = hasAbility(definition, state, ToolAbilityType.AUTO_SMELT);
+            magnet = hasAbility(definition, state, ToolAbilityType.MAGNET);
+        }
         if (!autoSmelt && !magnet) {
             return;
         }
@@ -185,6 +221,23 @@ public final class AbilityService implements Listener {
                 magnetEntity(player, drop);
             }
         }
+    }
+
+    private BlockDropContext consumeBlockDropContext(BlockDropItemEvent event) {
+        Player player = event.getPlayer();
+        BlockDropContext context = blockDropContexts.remove(player.getUniqueId());
+        if (context == null) {
+            return null;
+        }
+        Block block = event.getBlock();
+        if (!context.worldId().equals(block.getWorld().getUID())
+                || context.x() != block.getX()
+                || context.y() != block.getY()
+                || context.z() != block.getZ()
+                || context.gameTime() != block.getWorld().getGameTime()) {
+            return null;
+        }
+        return context;
     }
 
     public void mineArea(BlockBreakEvent original, ToolDefinition definition, ToolState state) {
@@ -358,5 +411,18 @@ public final class AbilityService implements Listener {
             }
         }
         return blocks;
+    }
+
+    private record BlockDropContext(
+            UUID worldId,
+            int x,
+            int y,
+            int z,
+            long gameTime,
+            ToolDefinition definition,
+            ToolState state,
+            boolean autoSmelt,
+            boolean magnet
+    ) {
     }
 }
