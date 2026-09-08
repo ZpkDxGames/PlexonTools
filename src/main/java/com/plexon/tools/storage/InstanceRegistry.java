@@ -348,14 +348,16 @@ public final class InstanceRegistry {
         synchronized (pendingLock) {
             if (fullSnapshotPending) {
                 pending = records.size() + pendingPlacedBlockWrites.size();
-            } else if (!pendingWrites.containsKey(instanceId)
-                    && pendingWrites.size() >= settings.databaseMaxPendingWrites()) {
-                pendingWrites.clear();
-                fullSnapshotPending = true;
-                pending = records.size() + pendingPlacedBlockWrites.size();
             } else {
-                pendingWrites.put(instanceId, currentRevision);
-                pending = pendingWrites.size() + pendingPlacedBlockWrites.size();
+                Long previousRevision = pendingWrites.put(instanceId, currentRevision);
+                if (previousRevision == null
+                        && pendingWrites.size() > settings.databaseMaxPendingWrites()) {
+                    pendingWrites.clear();
+                    fullSnapshotPending = true;
+                    pending = records.size() + pendingPlacedBlockWrites.size();
+                } else {
+                    pending = pendingWrites.size() + pendingPlacedBlockWrites.size();
+                }
             }
         }
         requestPressureFlush(pending);
