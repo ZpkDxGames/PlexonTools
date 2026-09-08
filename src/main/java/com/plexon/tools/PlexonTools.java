@@ -55,6 +55,7 @@ public final class PlexonTools extends JavaPlugin {
     private ProgressionService progression;
     private NaturalBlockTracker naturalBlocks;
     private ToolActivationService activations;
+    private ToolProgressListener progressListener;
     private BukkitTask registrySaveTask;
 
     @Override
@@ -92,9 +93,10 @@ public final class PlexonTools extends JavaPlugin {
             prompts = new ChatPromptService(this, messages);
             gui = new GuiManager(this, categories, tools, worldMenus, itemService,
                     activations, grants, prompts, settings, messages);
+            progressListener = new ToolProgressListener(
+                    tools, progression, abilities, naturalBlocks, settings);
 
-            getServer().getPluginManager().registerEvents(
-                    new ToolProgressListener(tools, progression, abilities, naturalBlocks, settings), this);
+            getServer().getPluginManager().registerEvents(progressListener, this);
             getServer().getPluginManager().registerEvents(progression, this);
             getServer().getPluginManager().registerEvents(abilities, this);
             getServer().getPluginManager().registerEvents(
@@ -145,6 +147,9 @@ public final class PlexonTools extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (progressListener != null) {
+            progressListener.invalidateAllActiveContexts();
+        }
         if (gui != null) {
             gui.shutdown();
         }
@@ -179,6 +184,9 @@ public final class PlexonTools extends JavaPlugin {
 
     private void reloadPlugin() throws Exception {
         progression.pause();
+        if (progressListener != null) {
+            progressListener.invalidateAllActiveContexts();
+        }
         try {
             reloadConfig();
             settings.load(getConfig());
