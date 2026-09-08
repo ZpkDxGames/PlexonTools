@@ -105,24 +105,51 @@ public final class AbilityService implements Listener {
         return areaMiningPlayers.contains(player.getUniqueId());
     }
 
+    /**
+     * Resolves all block-break ability flags once when an active tool context is
+     * created or its level changes. The repeated mining path then uses primitives.
+     */
+    public BlockAbilityProfile blockProfile(ToolDefinition definition, ToolState state) {
+        var level = definition.levels().get(state.level());
+        if (level == null || level.abilities().isEmpty()) {
+            return BlockAbilityProfile.NONE;
+        }
+        Map<ToolAbilityType, ToolAbilitySettings> configured = level.abilities();
+        ToolAbilitySettings exp = configured.get(ToolAbilityType.EXP_BOOSTER);
+        return new BlockAbilityProfile(
+                exp != null,
+                exp == null ? 1.0D : exp.multiplier(),
+                configured.containsKey(ToolAbilityType.AUTO_SMELT),
+                configured.containsKey(ToolAbilityType.MAGNET),
+                configured.containsKey(ToolAbilityType.AREA_MINE_3X3));
+    }
+
+    public void boostBlockExperience(
+            BlockBreakEvent event,
+            BlockAbilityProfile profile
+    ) {
+        if (!profile.expBoostEnabled() || event.getExpToDrop() <= 0) {
+            return;
+        }
+        long boosted = Math.round(event.getExpToDrop() * profile.expMultiplier());
+        event.setExpToDrop((int) Math.min(Integer.MAX_VALUE, Math.max(0L, boosted)));
+    }
+
     public void boostBlockExperience(BlockBreakEvent event, ToolDefinition definition, ToolState state) {
         event.setExpToDrop(boostedExperience(event.getExpToDrop(), definition, state));
     }
 
     /**
-     * Shares the already-resolved BlockBreakEvent tool state with the later
-     * BlockDropItemEvent phase. This avoids repeating ItemMeta/PDC parsing,
-     * registry lookup, definition lookup, and world/owner validation for the
-     * same successful break.
+     * Shares compact precomputed flags with the later BlockDropItemEvent phase.
+     * No definition/state copies are retained for an already processed break.
      */
     public void prepareBlockDrops(
             BlockBreakEvent event,
-            ToolDefinition definition,
-            ToolState state
+            BlockAbilityProfile profile
     ) {
         Player player = event.getPlayer();
-        boolean autoSmelt = hasAbility(definition, state, ToolAbilityType.AUTO_SMELT);
-        boolean magnet = hasAbility(definition, state, ToolAbilityType.MAGNET);
+        boolean autoSmelt = profile.autoSmelt();
+        boolean magnet = profile.magnet();
         if (!autoSmelt && !magnet) {
             blockDropContexts.remove(player.getUniqueId());
             return;
@@ -132,7 +159,16 @@ public final class AbilityService implements Listener {
                 block.getWorld().getUID(),
                 block.getX(), block.getY(), block.getZ(),
                 block.getWorld().getGameTime(),
-                definition, state, autoSmelt, magnet));
+                autoSmelt, magnet));
+    }
+
+    /** Compatibility path for lower-frequency callers. */
+    public void prepareBlockDrops(
+            BlockBreakEvent event,
+            ToolDefinition definition,
+            ToolState state
+    ) {
+        prepareBlockDrops(event, blockProfile(definition, state));
     }
 
     public void handleDeath(EntityDeathEvent event, Player player, ToolDefinition definition, ToolState state) {
@@ -207,8 +243,9 @@ public final class AbilityService implements Listener {
                     || !progression.canUse(player, definition, state, false)) {
                 return;
             }
-            autoSmelt = hasAbility(definition, state, ToolAbilityType.AUTO_SMELT);
-            magnet = hasAbility(definition, state, ToolAbilityType.MAGNET);
+            BlockAbilityProfile profile = blockProfile(definition, state);
+            autoSmelt = profile.autoSmelt();
+            magnet = profile.magnet();
         }
         if (!autoSmelt && !magnet) {
             return;
@@ -413,14 +450,23 @@ public final class AbilityService implements Listener {
         return blocks;
     }
 
+    public record BlockAbilityProfile(
+            boolean expBoostEnabled,
+            double expMultiplier,
+            boolean autoSmelt,
+            boolean magnet,
+            boolean areaMine
+    ) {
+        private static final BlockAbilityProfile NONE =
+                new BlockAbilityProfile(false, 1.0D, false, false, false);
+    }
+
     private record BlockDropContext(
             UUID worldId,
             int x,
             int y,
             int z,
             long gameTime,
-            ToolDefinition definition,
-            ToolState state,
             boolean autoSmelt,
             boolean magnet
     ) {
