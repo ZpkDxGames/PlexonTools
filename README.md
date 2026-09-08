@@ -2,7 +2,7 @@
 
 PlexonTools is a Paper-native progression engine for unique, world-activated custom tools. Every tool has its own UUID, permanent owner, world binding, activation state, level, aggregate progress, and optional per-target counters.
 
-> **Current release:** `4.1.0` — **Creator:** Tonim (`ZpkDxGames`)
+> **Current release:** `4.1.1` — **Creator:** Tonim (`ZpkDxGames`)
 
 ## Requirements
 
@@ -12,22 +12,22 @@ PlexonTools is a Paper-native progression engine for unique, world-activated cus
 - No external database service or manually installed runtime dependency
 - No NMS or CraftBukkit implementation access
 
-## 4.1.0 highlights
+## 4.1.1 highlights
 
-- Preserves the recovered production 4.0.0 gameplay, UUID/PDC identity, 100-level definitions, natural/player-placed block provenance, abilities, GUI, and SQLite schema behavior.
-- Registers as PlexonCore module `tools` against Core API `>=1.0 <2.0` when PlexonCore 1.0.0 is present and compatible.
-- Falls back safely to `STANDALONE` mode when Core is absent, disabled, incompatible, or unavailable.
-- Registers the read-only `com.plexon.tools.api.PlexonToolsAPI` through Bukkit `ServicesManager` in both Core and standalone modes.
-- Emits post-commit `PlexonToolProgressEvent` and `PlexonToolLevelUpEvent` events for PlexonQuests 3.1.0 without a direct Quests dependency.
-- Uses unique event IDs and one transaction ID per accepted progression mutation, while preserving 4.0.0's one-level-per-action/no-overflow progression behavior.
-- Adds `/pt diagnostics` for Core mode/state, API/event availability, SQLite WAL state, definition counts, tracked instances, and pending persistence work.
+- Optimizes the ordinary single-block legendary-tool progression hot path; 3×3 Area Mine remains supported but is not the primary optimization target.
+- Keeps authoritative level/progress state immediate while coalescing compatible high-frequency `PlexonToolProgressEvent` notifications over a short two-tick window.
+- Preserves exact public progress totals through the existing event `amount` field and keeps `PlexonToolLevelUpEvent` immediate at level boundaries.
+- Reuses the authoritative latest in-memory `ToolState` during rapid mining instead of rebuilding the same registry-backed state repeatedly.
+- Reuses the validated block-break tool context for the matching Auto Smelt / Magnet drop phase instead of resolving ItemMeta/PDC/registry/definition/world state twice for one break.
+- Uses one natural-block provenance observation for tool progression and leaves the tracker cleanup phase as the single authoritative consume.
+- Preserves PlexonCore 1.x integration, standalone fallback, PlexonQuests-compatible public events, SQLite/WAL persistence, abilities, ownership/world restrictions, and the existing coalesced visual refresh.
 - Builds for Paper 26.2 / Java 25 and verifies that PlexonCore runtime classes are not shaded into the plugin JAR.
 
-The detailed integration contracts are documented in [docs/API.md](docs/API.md), [docs/PLEXONCORE.md](docs/PLEXONCORE.md), and [docs/MIGRATION_4_1.md](docs/MIGRATION_4_1.md).
+The detailed integration contracts are documented in [docs/API.md](docs/API.md), [docs/PLEXONCORE.md](docs/PLEXONCORE.md), and [docs/MIGRATION_4_1.md](docs/MIGRATION_4_1.md). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the 4.1.1 validation/release-gate status.
 
 ## Installation
 
-1. Download `PlexonTools-4.1.0.jar` from the GitHub release.
+1. Download `PlexonTools-4.1.1.jar` from the GitHub release.
 2. Place it in the Paper server's `plugins` directory.
 3. Start the server once to generate the five editable YAML files, their `examples/` references, and `plexontools.db`.
 4. Customize through `/pt gui` or YAML, then run `/pt reload`.
@@ -86,7 +86,7 @@ For SPECIFIC `BLOCKS_BROKEN` profiles, reload also checks the resolved material 
 
 Progress is strictly per level. When a level completes, both its aggregate counter and SPECIFIC target counters reset to zero. For example, two consecutive levels that each require `STONE: 500` require 500 new Stone breaks at each level. The event that completes one level cannot contribute overflow to the next.
 
-Accepted requirement activity updates authoritative state immediately. The item lore/PDC and live action bar refresh together in a short configurable window (`performance.progress-visual-refresh-ticks`, default `4`) to reduce block-event work. Toggle the action bar with `effects.progress-action-bar` and customize `messages.progress-update`.
+Accepted requirement activity updates authoritative state immediately. The item lore/PDC and live action bar refresh together in a short configurable window (`performance.progress-visual-refresh-ticks`, default `4`) to reduce block-event work. Compatible public progress notifications are also coalesced briefly; consumers must use `PlexonToolProgressEvent.amount()` because one event may represent multiple accepted units. Level-up events remain immediate. Toggle the action bar with `effects.progress-action-bar` and customize `messages.progress-update`.
 
 ## Multi-dimension progression
 
@@ -152,14 +152,15 @@ The freely ordered compact default layout lives under `tool-lore.template` in `c
 
 ## Persistence
 
-While materialized, the item carries `id`, `uuid`, `level`, `stat_count`, `category`, `bound_world`, `owner`, and optional `stat_breakdown` keys in the `plexontools` namespace. `plexontools.db` stores players, authoritative activation entitlements, tool instances, and normalized target progress. Gameplay updates remain in memory; visual metadata is coalesced on the server thread, an asynchronous worker persists bounded database transactions, and shutdown drains the queue before checkpointing WAL.
+While materialized, the item carries `id`, `uuid`, `level`, `stat_count`, `category`, `bound_world`, `owner`, and optional `stat_breakdown` keys in the `plexontools` namespace. `plexontools.db` stores players, authoritative activation entitlements, tool instances, normalized target progress, and natural/player-placed block provenance. Gameplay updates remain in memory; visual metadata is coalesced on the server thread, an asynchronous worker persists bounded database transactions, and shutdown drains the queue before checkpointing WAL.
 
 On the first 3.6 startup, an existing schema-v3/v4 `data.yml` is strictly validated, backed up as `data.yml.pre-sqlite-<timestamp>.bak`, imported in one transaction, verified, and marked migrated. The original remains available for rollback and is never re-imported after a successful migration.
 
-Block-break tracking remains material-based: matching player-placed blocks also count because PlexonTools does not maintain block-origin history.
+When natural-block progression is enabled, player-placed blocks are indexed and excluded from block/farming progression. Provenance checks remain in memory on the gameplay thread; persistence is asynchronous and chunk provenance loading fails closed according to configuration.
 
 ## Documentation
 
+- [PlexonTools 4.1.1 release notes](RELEASE_NOTES.md)
 - [PlexonTools 3.6.1 performance and multi-dimension guide](docs/PLEXONTOOLS_3_6_1.md)
 - [PlexonTools 3.6.0 database and configuration guide](docs/PLEXONTOOLS_3_6_0.md)
 - [PlexonTools 3.5.2 release behavior](docs/PLEXONTOOLS_3_5_2.md)
