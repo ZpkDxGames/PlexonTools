@@ -1,0 +1,123 @@
+name: PlexonTools 4.1.1 Preview 2
+
+on:
+  push:
+    branches:
+      - 'agent/4.1.1-preview2-runtime-pipeline'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plexontools-4.1.1-preview2
+  cancel-in-progress: true
+
+jobs:
+  preview-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Preview 2 source
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+
+      - name: Provision PlexonCore 1.0.0 API
+        shell: bash
+        run: |
+          set -euo pipefail
+          core_jar="${RUNNER_TEMP}/PlexonCore-1.0.0.jar"
+          curl --fail --location --silent --show-error \
+            --output "${core_jar}" \
+            "https://github.com/ZpkDxGames/PlexonCore/releases/download/v1.0.0/PlexonCore-1.0.0.jar"
+          echo "4abce6de93293e21b31cb874734430d5bdc77de17a4c3b98fd6a9006e1f13018  ${core_jar}" | sha256sum --check
+          mvn -B -ntp org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
+            -Dfile="${core_jar}" \
+            -DgroupId=com.zpkdxgames \
+            -DartifactId=PlexonCore \
+            -Dversion=1.0.0 \
+            -Dpackaging=jar \
+            -DgeneratePom=true
+
+      - name: Test and build Preview 2
+        run: gradle clean check build --stacktrace
+
+      - name: Verify and label Preview 2 artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_jar='build/libs/PlexonTools-4.1.1.jar'
+          preview_jar='build/libs/PlexonTools-4.1.1-preview2.jar'
+          test -s "${source_jar}"
+          jar tf "${source_jar}" > build/jar-contents.txt
+          grep -qx 'plugin.yml' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/api/PlexonToolsAPI.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/event/PlexonToolProgressEvent.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/event/PlexonToolLevelUpEvent.class' build/jar-contents.txt
+          grep -qx 'org/sqlite/JDBC.class' build/jar-contents.txt
+          if grep -q '^com/zpkdxgames/plexoncore/' build/jar-contents.txt; then
+            echo 'PlexonCore runtime classes must not be shaded into PlexonTools' >&2
+            exit 1
+          fi
+          unzip -p "${source_jar}" plugin.yml | sed -n 's/^version:[[:space:]]*//p' \
+            | head -n 1 | tr -d " '\"\r" | grep -qx '4.1.1'
+          javap -verbose -classpath "${source_jar}" com.plexon.tools.PlexonTools \
+            | grep -q 'major version: 69'
+          cp "${source_jar}" "${preview_jar}"
+          cd build/libs
+          sha256sum PlexonTools-4.1.1-preview2.jar > SHA256SUMS-preview2.txt
+          sha256sum --check SHA256SUMS-preview2.txt
+
+      - name: Publish GitHub prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag='v4.1.1-preview2'
+          notes=$(mktemp)
+          cat > "${notes}" <<'NOTES'
+          ## PlexonTools 4.1.1 Preview 2 — Runtime Mining Pipeline
+
+          This is a performance-validation prerelease. Do not treat it as the stable 4.1.1 release yet.
+
+          ### Single-block mining hot path
+          - Adds an active main-hand tool context so steady-state mining reuses parsed instance UUIDs, owner/world data, ToolDefinition, latest state, held slot/material, and derived ability flags.
+          - Invalidates active contexts on held-slot, inventory, pickup/drop, hand-swap, world, respawn, death, quit, plugin reload, and definition reload lifecycle changes.
+          - Uses periodic identity revalidation as a safety backstop without returning to per-block PDC/UUID parsing.
+          - Removes the per-break block-event context map from normal mining.
+
+          ### Progression and persistence
+          - Mutates the authoritative in-memory InstanceRecord instead of rebuilding a complete immutable record for every +1 progress increment.
+          - Coalesces dirty persistence membership while tracking the latest revision separately for race-safe async acknowledgement.
+          - Adds an allocation-light GENERAL requirement fast path that avoids target-progress map reconstruction.
+          - Makes max-level progression bypass requirement mutation, dirty writes, public progress batching, visual progress refresh, and registry snapshot materialization.
+
+          ### Natural-block and abilities
+          - A successful PlexonTools block break classifies/consumes placed-block provenance once; cleanup reuses the same event context and cancelled events do not consume provenance.
+          - EXP Booster, Auto Smelt, Magnet, and Area Mine flags are derived when the active tool context is created or its level changes rather than through repeated generic ability-map lookup.
+          - Block drop handling retains only compact coordinates/time/ability flags rather than ToolDefinition and ToolState copies.
+
+          ### Validation gate
+          Compare vanilla, progressing legendary, and max-level legendary single-block mining with the same test area and mining speed. Stable v4.1.1 remains withheld until live Spark/MSPT results show a meaningful reduction in the repeated PlexonTools mining signature.
+          NOTES
+
+          gh release delete "${tag}" --repo "${GITHUB_REPOSITORY}" --yes --cleanup-tag >/dev/null 2>&1 || true
+          gh release create "${tag}" \
+            build/libs/PlexonTools-4.1.1-preview2.jar \
+            build/libs/SHA256SUMS-preview2.txt \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title 'PlexonTools 4.1.1 Preview 2 — Runtime Mining Pipeline' \
+            --notes-file "${notes}" \
+            --prerelease
