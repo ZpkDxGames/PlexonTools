@@ -56,6 +56,7 @@ public final class ProgressionService implements Listener {
     private final PluginSettings settings;
     private final MessageService messages;
     private final Map<UUID, Long> lastWarnings = new HashMap<>();
+    private final Map<UUID, ToolState> latestStates = new HashMap<>();
     private final Map<UUID, PendingVisual> pendingVisuals = new LinkedHashMap<>();
     private final ProgressEventBatcher progressEventBatcher = new ProgressEventBatcher();
     private final IdentityHashMap<ToolDefinition, NavigableMap<Integer, LevelRequirement>>
@@ -99,6 +100,7 @@ public final class ProgressionService implements Listener {
         flushPendingVisuals(false);
         progressEventBatcher.clear();
         pendingVisuals.clear();
+        latestStates.clear();
         lastWarnings.clear();
     }
 
@@ -138,12 +140,11 @@ public final class ProgressionService implements Listener {
         if (identity == null) {
             return ToolResolution.invalid();
         }
-        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(
-                identity.instanceId());
-        if (record != null) {
-            if (record.toolId().equalsIgnoreCase(identity.toolId())
-                    && record.ownerId().equals(identity.ownerId())) {
-                return ToolResolution.resolved(record.state());
+        ToolState authoritative = stateForInstance(identity.instanceId());
+        if (authoritative != null) {
+            if (authoritative.toolId().equalsIgnoreCase(identity.toolId())
+                    && authoritative.ownerId().equals(identity.ownerId())) {
+                return ToolResolution.resolved(authoritative);
             }
             return ToolResolution.invalid();
         }
@@ -153,14 +154,27 @@ public final class ProgressionService implements Listener {
     }
 
     public ToolState latestState(ToolState suppliedState) {
-        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(
-                suppliedState.instanceId());
-        if (record == null
-                || !record.toolId().equalsIgnoreCase(suppliedState.toolId())
-                || !record.ownerId().equals(suppliedState.ownerId())) {
+        ToolState authoritative = stateForInstance(suppliedState.instanceId());
+        if (authoritative == null
+                || !authoritative.toolId().equalsIgnoreCase(suppliedState.toolId())
+                || !authoritative.ownerId().equals(suppliedState.ownerId())) {
             return suppliedState;
         }
-        return record.state();
+        return authoritative;
+    }
+
+    private ToolState stateForInstance(UUID instanceId) {
+        ToolState cached = latestStates.get(instanceId);
+        if (cached != null) {
+            return cached;
+        }
+        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(instanceId);
+        if (record == null) {
+            return null;
+        }
+        ToolState loaded = record.state();
+        latestStates.put(instanceId, loaded);
+        return loaded;
     }
 
     public boolean canUse(Player player, ToolDefinition definition, ToolState state, boolean notify) {
@@ -266,7 +280,10 @@ public final class ProgressionService implements Listener {
             if (!current.equals(registryState)
                     || instanceRegistry.findCached(current.instanceId()) == null) {
                 instanceRegistry.update(current, 0L, player.getName());
+                latestStates.put(current.instanceId(), current);
                 queueVisual(player, hand, definition, current.instanceId());
+            } else {
+                latestStates.putIfAbsent(current.instanceId(), current);
             }
             return current;
         }
@@ -281,6 +298,7 @@ public final class ProgressionService implements Listener {
         }
 
         instanceRegistry.update(updated, amount, player.getName());
+        latestStates.put(updated.instanceId(), updated);
         publishProgressEvents(player, definition, current, updated, target, amount,
                 result.levelsGained());
         if (result.levelsGained() > 0) {
@@ -508,16 +526,14 @@ public final class ProgressionService implements Listener {
         if (player == null) {
             return;
         }
-        InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(
-                visual.instanceId());
-        if (record == null) {
+        ToolState state = stateForInstance(visual.instanceId());
+        if (state == null) {
             return;
         }
         LocatedItem located = locate(player, visual.instanceId(), visual.preferredHand());
         if (located == null) {
             return;
         }
-        ToolState state = record.state();
         ItemStack refreshed = itemService.refreshProgress(
                 located.item(), visual.definition(), state, player.getName());
         located.replace(player, refreshed);
