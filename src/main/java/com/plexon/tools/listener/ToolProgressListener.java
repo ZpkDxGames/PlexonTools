@@ -49,9 +49,9 @@ import java.util.UUID;
  *
  * <p>The ordinary main-hand block break path is intentionally different from
  * the lower-frequency handlers below: once a tool has been resolved and
- * validated, its parsed identity/definition/state are retained in an
- * {@link ActiveToolContext}. Steady-state mining therefore does not rediscover
- * the same PDC identity and UUIDs for every block.</p>
+ * validated, its parsed identity, definition, latest state and derived ability
+ * flags are retained in an {@link ActiveToolContext}. Steady-state mining does
+ * not rediscover the same PDC identity and UUIDs for every block.</p>
  */
 public final class ToolProgressListener implements Listener {
     private static final long ACTIVE_IDENTITY_REVALIDATE_TICKS = 10L;
@@ -112,7 +112,7 @@ public final class ToolProgressListener implements Listener {
             }
             return;
         }
-        abilities.boostBlockExperience(event, context.definition, context.state);
+        abilities.boostBlockExperience(event, context.abilityProfile);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -133,20 +133,22 @@ public final class ToolProgressListener implements Listener {
         }
 
         ToolState latest = progression.latestState(context.state);
-        context.refreshState(latest);
+        context.refreshState(latest, abilities);
         String target = blockTrackingTarget(
                 context.definition.trackingType(), event.getBlock());
         if (target != null && context.definition.tracks(target, latest.level())
-                && naturalBlocks.isNatural(event.getBlock())) {
+                && naturalBlocks.allowsProgress(event)) {
             latest = progression.addResolvedProgress(
                     player, EquipmentSlot.HAND, context.definition, latest, target, 1L);
-            context.refreshState(latest);
+            context.refreshState(latest, abilities);
         }
         if (abilities.isAreaMining(player)) {
             return;
         }
-        abilities.prepareBlockDrops(event, context.definition, latest);
-        abilities.mineArea(event, context.definition, latest);
+        abilities.prepareBlockDrops(event, context.abilityProfile);
+        if (context.abilityProfile.areaMine()) {
+            abilities.mineArea(event, context.definition, latest);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -364,10 +366,7 @@ public final class ToolProgressListener implements Listener {
     /** Invalidates all parsed active identities after a definition/config reload. */
     public void invalidateAllActiveContexts() {
         activeTools.clear();
-        validationEpoch++;
-        if (validationEpoch == Long.MAX_VALUE) {
-            validationEpoch = 1L;
-        }
+        validationEpoch = validationEpoch == Long.MAX_VALUE ? 1L : validationEpoch + 1L;
     }
 
     int activeContextCount() {
@@ -384,7 +383,7 @@ public final class ToolProgressListener implements Listener {
         if (cached != null && cached.quickIdentityMatches(
                 heldSlot, item.getType(), validationEpoch)) {
             ToolState latest = progression.latestState(cached.state);
-            cached.refreshState(latest);
+            cached.refreshState(latest, abilities);
             if (fastCanUse(player, cached)) {
                 if (currentTick < cached.nextIdentityValidationTick) {
                     return ActiveResolution.usable(cached);
@@ -395,7 +394,7 @@ public final class ToolProgressListener implements Listener {
                         && state.instanceId().equals(cached.instanceId)
                         && state.toolId().equalsIgnoreCase(cached.toolId)
                         && progression.canUse(player, cached.definition, state, false)) {
-                    cached.refreshState(state);
+                    cached.refreshState(state, abilities);
                     cached.nextIdentityValidationTick = currentTick
                             + ACTIVE_IDENTITY_REVALIDATE_TICKS;
                     return ActiveResolution.usable(cached);
@@ -424,13 +423,13 @@ public final class ToolProgressListener implements Listener {
         }
 
         ActiveToolContext created = new ActiveToolContext(
-                playerId,
                 state.instanceId(),
                 state.toolId(),
                 state.ownerId(),
                 state.boundWorld(),
                 definition,
                 state,
+                abilities.blockProfile(definition, state),
                 heldSlot,
                 item.getType(),
                 validationEpoch,
@@ -455,7 +454,7 @@ public final class ToolProgressListener implements Listener {
     private void refreshActiveState(Player player, ToolState state) {
         ActiveToolContext active = activeTools.get(player.getUniqueId());
         if (active != null && active.instanceId.equals(state.instanceId())) {
-            active.refreshState(state);
+            active.refreshState(state, abilities);
         }
     }
 
@@ -515,7 +514,6 @@ public final class ToolProgressListener implements Listener {
     }
 
     private static final class ActiveToolContext {
-        private final UUID playerId;
         private final UUID instanceId;
         private final String toolId;
         private final UUID ownerId;
@@ -525,28 +523,29 @@ public final class ToolProgressListener implements Listener {
         private final Material material;
         private final long validationEpoch;
         private ToolState state;
+        private AbilityService.BlockAbilityProfile abilityProfile;
         private long nextIdentityValidationTick;
 
         private ActiveToolContext(
-                UUID playerId,
                 UUID instanceId,
                 String toolId,
                 UUID ownerId,
                 String boundWorld,
                 ToolDefinition definition,
                 ToolState state,
+                AbilityService.BlockAbilityProfile abilityProfile,
                 int heldSlot,
                 Material material,
                 long validationEpoch,
                 long nextIdentityValidationTick
         ) {
-            this.playerId = playerId;
             this.instanceId = instanceId;
             this.toolId = toolId;
             this.ownerId = ownerId;
             this.boundWorld = boundWorld;
             this.definition = definition;
             this.state = state;
+            this.abilityProfile = abilityProfile;
             this.heldSlot = heldSlot;
             this.material = material;
             this.validationEpoch = validationEpoch;
@@ -557,12 +556,17 @@ public final class ToolProgressListener implements Listener {
             return heldSlot == slot && material == currentMaterial && validationEpoch == epoch;
         }
 
-        private void refreshState(ToolState latest) {
-            if (latest != null
-                    && latest.instanceId().equals(instanceId)
-                    && latest.ownerId().equals(ownerId)
-                    && latest.toolId().equalsIgnoreCase(toolId)) {
-                state = latest;
+        private void refreshState(ToolState latest, AbilityService abilities) {
+            if (latest == null
+                    || !latest.instanceId().equals(instanceId)
+                    || !latest.ownerId().equals(ownerId)
+                    || !latest.toolId().equalsIgnoreCase(toolId)) {
+                return;
+            }
+            int previousLevel = state.level();
+            state = latest;
+            if (latest.level() != previousLevel) {
+                abilityProfile = abilities.blockProfile(definition, latest);
             }
         }
     }
