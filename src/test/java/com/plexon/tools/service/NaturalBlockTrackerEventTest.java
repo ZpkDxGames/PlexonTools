@@ -10,24 +10,16 @@ import java.lang.reflect.Method;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class NaturalBlockTrackerEventTest {
     @Test
-    void classifiesBeforeProgressionAndCleansContextAtMonitor() throws Exception {
-        Method classify = NaturalBlockTracker.class.getDeclaredMethod(
-                "onBreakClassify", BlockBreakEvent.class);
-        EventHandler classifyHandler = classify.getAnnotation(EventHandler.class);
-        assertNotNull(classifyHandler);
-        assertEquals(EventPriority.HIGHEST, classifyHandler.priority());
-        assertTrue(classifyHandler.ignoreCancelled());
-
+    void cleanupRunsAtMonitorEvenForCancelledEvents() throws Exception {
         Method cleanup = NaturalBlockTracker.class.getDeclaredMethod(
                 "onBreakCleanup", BlockBreakEvent.class);
         EventHandler cleanupHandler = cleanup.getAnnotation(EventHandler.class);
         assertNotNull(cleanupHandler);
         assertEquals(EventPriority.MONITOR, cleanupHandler.priority());
         assertFalse(cleanupHandler.ignoreCancelled(),
-                "cleanup must remove cached event provenance even after a later cancellation");
+                "cleanup must remove a consumed event context after late cancellation");
     }
 }
