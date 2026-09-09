@@ -92,6 +92,7 @@ public final class AbilityService implements Listener {
     private final ToolConfigRepository tools;
     private final ProgressionService progression;
     private final MiningPerformanceProfiler profiler;
+    private final BulkBreakCoordinator bulkBreaks;
     private final Set<UUID> areaMiningPlayers = new HashSet<>();
     private final Map<UUID, LinkedHashMap<BlockDropKey, BlockDropContext>> blockDropContexts =
             new HashMap<>();
@@ -111,10 +112,12 @@ public final class AbilityService implements Listener {
         this.tools = tools;
         this.progression = progression;
         this.profiler = profiler;
+        this.bulkBreaks = new BulkBreakCoordinator(plugin);
     }
 
     public void start() {
         stop();
+        bulkBreaks.reload();
         passiveTrackingEnabled = hasPassiveHolderAbility();
         if (!passiveTrackingEnabled) {
             return;
@@ -137,6 +140,7 @@ public final class AbilityService implements Listener {
         passiveHolders.clear();
         passiveDirty.clear();
         potionEffectTypes.clear();
+        bulkBreaks.clear();
     }
 
     public boolean isAreaMining(Player player) {
@@ -153,6 +157,10 @@ public final class AbilityService implements Listener {
             pending += contexts.size();
         }
         return pending;
+    }
+
+    public BulkBreakCoordinator.Diagnostics bulkBreakDiagnostics() {
+        return bulkBreaks.diagnostics();
     }
 
     /**
@@ -384,6 +392,7 @@ public final class AbilityService implements Listener {
     public void onPassiveWorldChange(PlayerChangedWorldEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
         blockDropContexts.remove(playerId);
+        bulkBreaks.clearPlayer(playerId);
         markPassiveDirty(event.getPlayer());
     }
 
@@ -399,6 +408,7 @@ public final class AbilityService implements Listener {
         passiveDirty.remove(playerId);
         blockDropContexts.remove(playerId);
         areaMiningPlayers.remove(playerId);
+        bulkBreaks.clearPlayer(playerId);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -408,6 +418,7 @@ public final class AbilityService implements Listener {
         passiveDirty.remove(playerId);
         blockDropContexts.remove(playerId);
         areaMiningPlayers.remove(playerId);
+        bulkBreaks.clearPlayer(playerId);
     }
 
     private BlockDropContext consumeBlockDropContext(BlockDropItemEvent event) {
@@ -464,38 +475,40 @@ public final class AbilityService implements Listener {
         List<Block> targets = areaPlane(original.getBlock(), player.getEyeLocation().getDirection());
         areaMiningPlayers.add(player.getUniqueId());
         try {
-            for (Block block : targets) {
-                if (!canAreaBreak(block, tool)) {
-                    continue;
-                }
-                BlockBreakEvent extra = new BlockBreakEvent(block, player);
-                Bukkit.getPluginManager().callEvent(extra);
-                if (extra.isCancelled() || block.getType().isAir()) {
-                    continue;
-                }
-
-                ItemStack currentTool = player.getInventory().getItemInMainHand();
-                ToolState currentState = progression.latestState(state);
-                boolean autoSmelt = hasAbility(definition, currentState, ToolAbilityType.AUTO_SMELT);
-                boolean magnet = hasAbility(definition, currentState, ToolAbilityType.MAGNET);
-                List<ItemStack> drops = extra.isDropItems()
-                        ? block.getDrops(currentTool, player).stream().map(ItemStack::clone).toList()
-                        : List.of();
-                block.setType(Material.AIR, true);
-                for (ItemStack drop : drops) {
-                    ItemStack result = autoSmelt ? smelt(drop) : drop;
-                    if (magnet) {
-                        deliver(player, result);
-                    } else {
-                        block.getWorld().dropItemNaturally(block.getLocation(), result);
-                    }
-                }
-                if (extra.getExpToDrop() > 0) {
-                    player.giveExp(extra.getExpToDrop());
-                }
-            }
+            bulkBreaks.breakSecondaryBlocks(
+                    player,
+                    targets,
+                    block -> canAreaBreak(block, tool),
+                    event -> processAcceptedAreaBreak(event, definition, state));
         } finally {
             areaMiningPlayers.remove(player.getUniqueId());
+        }
+    }
+
+    private void processAcceptedAreaBreak(
+            BlockBreakEvent event,
+            ToolDefinition definition,
+            ToolState originalState
+    ) {
+        Player player = event.getPlayer();
+        Block block = event.getBlock();
+        ItemStack currentTool = player.getInventory().getItemInMainHand();
+        ToolState currentState = progression.latestState(originalState);
+        BlockAbilityProfile profile = blockProfile(definition, currentState);
+        List<ItemStack> drops = event.isDropItems()
+                ? block.getDrops(currentTool, player).stream().map(ItemStack::clone).toList()
+                : List.of();
+        block.setType(Material.AIR, true);
+        for (ItemStack drop : drops) {
+            ItemStack result = profile.autoSmelt() ? smelt(drop) : drop;
+            if (profile.magnet()) {
+                deliver(player, result);
+            } else {
+                block.getWorld().dropItemNaturally(block.getLocation(), result);
+            }
+        }
+        if (event.getExpToDrop() > 0) {
+            player.giveExp(event.getExpToDrop());
         }
     }
 
