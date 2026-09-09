@@ -57,4 +57,47 @@ final class PlacedBlockIndexTest {
         index.unload(chunk);
         assertTrue(index.beginLoad(chunk));
     }
+
+    @Test
+    void batchConsumePreservesOrderingAndClearsPlacedPositions() {
+        UUID world = UUID.randomUUID();
+        PlacedBlockIndex index = new PlacedBlockIndex();
+        ChunkKey chunk = new ChunkKey(world, 0, 0);
+        PlacedBlockPosition placed = new PlacedBlockPosition(world, 1, 64, 1);
+        PlacedBlockPosition natural = new PlacedBlockPosition(world, 2, 64, 1);
+
+        index.beginLoad(chunk);
+        index.completeLoad(chunk, List.of(placed));
+
+        assertEquals(List.of(
+                        PlacedBlockIndex.Origin.PLAYER_PLACED,
+                        PlacedBlockIndex.Origin.NATURAL),
+                index.consumeAll(List.of(placed, natural)));
+        assertEquals(PlacedBlockIndex.Origin.NATURAL, index.peek(placed));
+    }
+
+    @Test
+    void diagnosticsCountLoadedUnknownAndPlacedState() {
+        UUID world = UUID.randomUUID();
+        PlacedBlockIndex index = new PlacedBlockIndex();
+        ChunkKey ready = new ChunkKey(world, 0, 0);
+        ChunkKey loading = new ChunkKey(world, 1, 0);
+        PlacedBlockPosition first = new PlacedBlockPosition(world, 1, 64, 1);
+        PlacedBlockPosition second = new PlacedBlockPosition(world, 2, 80, 2);
+
+        index.beginLoad(ready);
+        index.completeLoad(ready, List.of(first));
+        index.markPlaced(second);
+        index.beginLoad(loading);
+
+        assertEquals(2, index.loadedChunkCount());
+        assertEquals(1, index.unknownChunkCount());
+        assertEquals(2, index.trackedPlacedPositionCount());
+
+        index.consume(first);
+        assertEquals(1, index.trackedPlacedPositionCount());
+        index.unload(loading);
+        assertEquals(1, index.loadedChunkCount());
+        assertEquals(0, index.unknownChunkCount());
+    }
 }
