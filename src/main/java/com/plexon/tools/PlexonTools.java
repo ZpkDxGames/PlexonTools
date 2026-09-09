@@ -240,6 +240,7 @@ public final class PlexonTools extends JavaPlugin {
                 ? "REGISTERED" : "UNAVAILABLE";
         String eventState = publicEventsAvailable() ? "AVAILABLE" : "UNAVAILABLE";
         NaturalBlockTracker.Diagnostics provenance = naturalBlocks.diagnostics();
+        InstanceRegistry.PersistenceDiagnostics persistence = instanceRegistry.persistenceDiagnostics();
         var bulk = abilities.bulkBreakDiagnostics();
         return List.of(
                 "<gradient:#66BB6A:#42A5F5><bold>PlexonTools Diagnostics</bold></gradient>",
@@ -257,7 +258,13 @@ public final class PlexonTools extends JavaPlugin {
                 diagnostic("Definitions", tools.size() + " tools • " + categories.size()
                         + " categories • " + worldMenus.size() + " world menus"),
                 diagnostic("Instances", instanceRegistry.size() + " tracked • "
-                        + instanceRegistry.pendingWriteCount() + " pending writes"),
+                        + persistence.pendingWrites() + " pending writes"),
+                diagnostic("Persistence", persistence.committedBatches() + " commits • avg batch "
+                        + String.format(java.util.Locale.ROOT, "%.1f", persistence.averageBatchSize())
+                        + " • " + persistence.dirtyMutations() + " dirty mutations"),
+                diagnostic("Storage pressure", "high-water " + persistence.queueHighWaterMark()
+                        + " • " + persistence.pressureFlushes() + " pressure flushes • "
+                        + persistence.failedWriteBatches() + " failed batches"),
                 diagnostic("Natural blocks", provenance.active() ? "ENABLED" : "DISABLED"),
                 diagnostic("Natural provenance", provenance.loadedChunks() + " chunks • "
                         + provenance.trackedPlacedPositions() + " placed • "
