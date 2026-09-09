@@ -1,0 +1,131 @@
+name: PlexonTools 4.1.1 Preview 3
+
+on:
+  push:
+    branches:
+      - 'agent/4.1.1-preview3-pipeline-profiler'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plexontools-4.1.1-preview3
+  cancel-in-progress: true
+
+jobs:
+  preview-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Preview 3 source
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+
+      - name: Provision PlexonCore 1.0.0 API
+        shell: bash
+        run: |
+          set -euo pipefail
+          core_jar="${RUNNER_TEMP}/PlexonCore-1.0.0.jar"
+          curl --fail --location --silent --show-error \
+            --output "${core_jar}" \
+            "https://github.com/ZpkDxGames/PlexonCore/releases/download/v1.0.0/PlexonCore-1.0.0.jar"
+          echo "4abce6de93293e21b31cb874734430d5bdc77de17a4c3b98fd6a9006e1f13018  ${core_jar}" | sha256sum --check
+          mvn -B -ntp org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
+            -Dfile="${core_jar}" \
+            -DgroupId=com.zpkdxgames \
+            -DartifactId=PlexonCore \
+            -Dversion=1.0.0 \
+            -Dpackaging=jar \
+            -DgeneratePom=true
+
+      - name: Test and build Preview 3
+        run: gradle clean check build --stacktrace
+
+      - name: Verify and label Preview 3 artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_jar='build/libs/PlexonTools-4.1.1.jar'
+          preview_jar='build/libs/PlexonTools-4.1.1-preview3.jar'
+          test -s "${source_jar}"
+          jar tf "${source_jar}" > build/jar-contents.txt
+          grep -qx 'plugin.yml' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/PlexonTools.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/performance/MiningPerformanceProfiler.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/api/PlexonToolsAPI.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/event/PlexonToolProgressEvent.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/event/PlexonToolLevelUpEvent.class' build/jar-contents.txt
+          grep -qx 'org/sqlite/JDBC.class' build/jar-contents.txt
+          if grep -q '^com/zpkdxgames/plexoncore/' build/jar-contents.txt; then
+            echo 'PlexonCore runtime classes must not be shaded into PlexonTools' >&2
+            exit 1
+          fi
+          unzip -p "${source_jar}" plugin.yml | sed -n 's/^version:[[:space:]]*//p' \
+            | head -n 1 | tr -d " '\"\r" | grep -qx '4.1.1'
+          javap -verbose -classpath "${source_jar}" com.plexon.tools.PlexonTools \
+            | grep -q 'major version: 69'
+          cp "${source_jar}" "${preview_jar}"
+          cd build/libs
+          sha256sum PlexonTools-4.1.1-preview3.jar > SHA256SUMS-preview3.txt
+          sha256sum --check SHA256SUMS-preview3.txt
+
+      - name: Publish GitHub prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag='v4.1.1-preview3'
+          notes=$(mktemp)
+          cat > "${notes}" <<'NOTES'
+          ## PlexonTools 4.1.1 Preview 3 — Diagnostic Pipeline Isolation
+
+          This is a diagnostic performance-validation prerelease. Stable `v4.1.1` remains blocked until live profiling and MSPT/Spark validation demonstrate a material improvement.
+
+          ### Internal mining profiler
+          - Added an allocation-conscious profiler that is disabled by default and uses bounded timing reservoirs.
+          - Added aggregate average, max, P50, P95 and P99 timing data for the ordinary PlexonTools single-block pipeline.
+          - Added per-stage timing for HIGH/MONITOR block handlers, active context/identity/validation, natural provenance, progression, registry mutation, event batching, abilities, BlockDrop handling and visual work.
+          - Added synchronous periodic-task timings for visual refresh, progress-event flush and passive-effect refresh.
+          - Added worst-sample queue metadata to correlate spikes with pending visuals, event groups, dirty instances and active contexts.
+
+          ### Operation counters
+          - Active-context hits/misses and hit rate.
+          - PDC identity reads, UUID parses and definition/registry lookups.
+          - Requirement progression calls, natural-block lookups/consumes and registry mutations.
+          - Dirty queue first/repeated writes and progress-event batch create/merge counts.
+          - Visual refreshes, inventory scans and BlockDrop fallback resolutions.
+
+          ### Admin diagnostics
+          - `/pt perf start [samples]`
+          - `/pt perf stop`
+          - `/pt perf reset`
+          - `/pt perf report [console]`
+          - `/pt perf status`
+          - `/pt perf isolate <stage> <on|off>`
+          - Isolation is admin-only, temporary, explicitly diagnostic, and clears on stop/reload/restart.
+
+          ### Validation status
+          No performance root cause is claimed by this prerelease yet. Preview 3 is specifically intended to collect the live evidence required before a targeted optimization is selected. Use the same single-block benchmark conditions as Preview 2, keep 3x3 disabled, compare progressing vs max-level tools, and run the natural/abilities/visual A/B tests documented in `docs/PERFORMANCE_DIAGNOSTICS_4_1_1_PREVIEW3.md`.
+          NOTES
+
+          gh release delete "${tag}" --repo "${GITHUB_REPOSITORY}" --yes --cleanup-tag >/dev/null 2>&1 || true
+          gh release create "${tag}" \
+            build/libs/PlexonTools-4.1.1-preview3.jar \
+            build/libs/SHA256SUMS-preview3.txt \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title 'PlexonTools 4.1.1 Preview 3 — Diagnostic Pipeline Isolation' \
+            --notes-file "${notes}" \
+            --prerelease
