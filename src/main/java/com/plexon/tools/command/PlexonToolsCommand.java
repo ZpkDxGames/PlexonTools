@@ -5,6 +5,8 @@ import com.plexon.tools.config.ToolConfigRepository;
 import com.plexon.tools.gui.GuiManager;
 import com.plexon.tools.message.MessageService;
 import com.plexon.tools.model.ToolDefinition;
+import com.plexon.tools.performance.MiningPerformanceProfiler;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Isolation;
 import com.plexon.tools.service.ToolGrantService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -29,6 +31,7 @@ public final class PlexonToolsCommand implements TabExecutor {
     private final ReloadAction reloadAction;
     private final BackupAction backupAction;
     private final DiagnosticsAction diagnosticsAction;
+    private final MiningPerformanceProfiler profiler;
 
     public PlexonToolsCommand(
             CategoryRepository categories,
@@ -38,7 +41,8 @@ public final class PlexonToolsCommand implements TabExecutor {
             MessageService messages,
             ReloadAction reloadAction,
             BackupAction backupAction,
-            DiagnosticsAction diagnosticsAction
+            DiagnosticsAction diagnosticsAction,
+            MiningPerformanceProfiler profiler
     ) {
         this.categories = categories;
         this.tools = tools;
@@ -48,6 +52,7 @@ public final class PlexonToolsCommand implements TabExecutor {
         this.reloadAction = reloadAction;
         this.backupAction = backupAction;
         this.diagnosticsAction = diagnosticsAction;
+        this.profiler = profiler;
     }
 
     @Override
@@ -72,6 +77,7 @@ public final class PlexonToolsCommand implements TabExecutor {
             case "reload" -> reload(sender);
             case "backup" -> backup(sender);
             case "diagnostics" -> diagnostics(sender);
+            case "perf" -> performance(sender, args);
             case "gui" -> openAdmin(sender);
             case "all" -> openShowcase(sender, null, args);
             default -> openCategory(sender, route, args, label);
@@ -205,6 +211,139 @@ public final class PlexonToolsCommand implements TabExecutor {
         return true;
     }
 
+    private boolean performance(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("plexontools.admin")) {
+            messages.send(sender, "no-permission");
+            return true;
+        }
+        if (args.length < 2) {
+            sendPerfUsage(sender);
+            return true;
+        }
+
+        String action = args[1].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "start" -> {
+                if (args.length > 3) {
+                    sendPerfUsage(sender);
+                    return true;
+                }
+                int sampleLimit = 0;
+                if (args.length == 3) {
+                    try {
+                        sampleLimit = Integer.parseInt(args[2]);
+                    } catch (NumberFormatException exception) {
+                        sender.sendMessage(messages.parse(
+                                "<red>Sample limit must be a positive integer.</red>"));
+                        return true;
+                    }
+                    if (sampleLimit <= 0) {
+                        sender.sendMessage(messages.parse(
+                                "<red>Sample limit must be greater than zero.</red>"));
+                        return true;
+                    }
+                }
+                profiler.startSession(sampleLimit);
+                sender.sendMessage(messages.parse(
+                        "<green><bold>PlexonTools mining profiler started.</bold></green>"
+                                + (sampleLimit > 0
+                                ? " <gray>Auto-stop: " + sampleLimit + " Plexon block samples.</gray>"
+                                : " <gray>Use /pt perf stop when the benchmark ends.</gray>")));
+                sender.sendMessage(messages.parse(
+                        "<yellow>Profiling adds diagnostic overhead; compare only runs using the same mode.</yellow>"));
+            }
+            case "stop" -> {
+                profiler.stopSession();
+                sender.sendMessage(messages.parse(
+                        "<yellow>PlexonTools mining profiler stopped. Isolation flags were cleared.</yellow>"));
+            }
+            case "reset" -> {
+                profiler.reset();
+                sender.sendMessage(messages.parse(
+                        "<green>Mining profiler metrics reset.</green>"));
+            }
+            case "report" -> {
+                List<String> lines = profiler.reportLines();
+                lines.forEach(line -> sender.sendMessage(messages.parse(line)));
+                if (args.length == 3 && args[2].equalsIgnoreCase("console")) {
+                    lines.forEach(line -> messages.plugin().getLogger().info(stripMiniMessage(line)));
+                    sender.sendMessage(messages.parse(
+                            "<gray>Profile report also written to console.</gray>"));
+                } else if (args.length > 2) {
+                    sendPerfUsage(sender);
+                }
+            }
+            case "status" -> {
+                sender.sendMessage(messages.parse(
+                        "<gradient:#66BB6A:#42A5F5><bold>PlexonTools Performance Diagnostics</bold></gradient>"));
+                sender.sendMessage(messages.parse(
+                        "<gray>Profiler:</gray> <white>"
+                                + (profiler.enabled() ? "RUNNING" : "STOPPED") + "</white>"));
+                sender.sendMessage(messages.parse(
+                        "<gray>Samples:</gray> <white>" + profiler.blockSamples() + "</white>"));
+                if (profiler.autoStopSamples() > 0) {
+                    sender.sendMessage(messages.parse(
+                            "<gray>Auto-stop:</gray> <white>" + profiler.autoStopSamples() + "</white>"));
+                }
+                profiler.isolationStatusLines().forEach(line -> sender.sendMessage(messages.parse(
+                        "<dark_gray>•</dark_gray> <gray>" + line + "</gray>")));
+            }
+            case "isolate" -> isolate(sender, args);
+            default -> sendPerfUsage(sender);
+        }
+        return true;
+    }
+
+    private void isolate(CommandSender sender, String[] args) {
+        if (args.length != 4) {
+            sendPerfUsage(sender);
+            return;
+        }
+        Isolation isolation = Isolation.parse(args[2]);
+        if (isolation == null) {
+            sender.sendMessage(messages.parse(
+                    "<red>Unknown isolation stage.</red> <gray>Use tab completion or /pt perf status.</gray>"));
+            return;
+        }
+        String rawState = args[3].toLowerCase(Locale.ROOT);
+        boolean enabled;
+        if (rawState.equals("on")) {
+            enabled = true;
+        } else if (rawState.equals("off")) {
+            enabled = false;
+        } else {
+            sender.sendMessage(messages.parse("<red>Isolation state must be on or off.</red>"));
+            return;
+        }
+        if (!profiler.enabled()) {
+            sender.sendMessage(messages.parse(
+                    "<red>Start a profiling session before enabling diagnostic isolation.</red>"));
+            return;
+        }
+        profiler.setIsolation(isolation, enabled);
+        sender.sendMessage(messages.parse(
+                "<yellow><bold>DIAGNOSTIC MODE:</bold></yellow> <gray>"
+                        + isolation.key() + " isolation is now </gray><white>"
+                        + (enabled ? "ON" : "OFF") + "</white><gray>.</gray>"));
+        sender.sendMessage(messages.parse(
+                "<red>Isolation changes normal gameplay semantics and automatically resets on stop, reload, or restart.</red>"));
+    }
+
+    private void sendPerfUsage(CommandSender sender) {
+        sender.sendMessage(messages.parse(
+                "<gradient:#66BB6A:#42A5F5><bold>PlexonTools Performance Diagnostics</bold></gradient>"));
+        sender.sendMessage(messages.parse("<white>/pt perf start [samples]</white>"));
+        sender.sendMessage(messages.parse("<white>/pt perf stop</white>"));
+        sender.sendMessage(messages.parse("<white>/pt perf reset</white>"));
+        sender.sendMessage(messages.parse("<white>/pt perf report [console]</white>"));
+        sender.sendMessage(messages.parse("<white>/pt perf status</white>"));
+        sender.sendMessage(messages.parse("<white>/pt perf isolate <stage> <on|off></white>"));
+    }
+
+    private static String stripMiniMessage(String line) {
+        return line.replaceAll("<[^>]+>", "");
+    }
+
     private boolean openAdmin(CommandSender sender) {
         if (!sender.hasPermission("plexontools.gui")) {
             messages.send(sender, "no-permission");
@@ -257,6 +396,7 @@ public final class PlexonToolsCommand implements TabExecutor {
             sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " reload</white>"));
             sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " backup</white>"));
             sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " diagnostics</white>"));
+            sender.sendMessage(messages.parse("<white>/" + messages.plain(label) + " perf</white>"));
         }
     }
 
@@ -279,8 +419,26 @@ public final class PlexonToolsCommand implements TabExecutor {
             if (sender.hasPermission("plexontools.reload")) values.add("reload");
             if (sender.hasPermission("plexontools.backup")) values.add("backup");
             if (sender.hasPermission("plexontools.diagnostics")) values.add("diagnostics");
+            if (sender.hasPermission("plexontools.admin")) values.add("perf");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             Bukkit.getOnlinePlayers().forEach(player -> values.add(player.getName()));
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("perf")
+                && sender.hasPermission("plexontools.admin")) {
+            values.addAll(List.of("start", "stop", "reset", "report", "status", "isolate"));
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("perf")
+                && args[1].equalsIgnoreCase("start")) {
+            values.add("1000");
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("perf")
+                && args[1].equalsIgnoreCase("report")) {
+            values.add("console");
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("perf")
+                && args[1].equalsIgnoreCase("isolate")) {
+            for (Isolation isolation : Isolation.values()) {
+                values.add(isolation.key());
+            }
+        } else if (args.length == 4 && args[0].equalsIgnoreCase("perf")
+                && args[1].equalsIgnoreCase("isolate")) {
+            values.addAll(List.of("on", "off"));
         } else if (args.length == 2
                 && sender.hasPermission("plexontools.admin")
                 && (args[0].equalsIgnoreCase("all") || categories.find(args[0]).isPresent())) {
