@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.plexon"
-version = "4.2.0"
+version = "4.2.1"
 
 val pluginVersion = version.toString()
 
@@ -18,7 +18,7 @@ java {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2.build.121-stable")
-    compileOnly("com.zpkdxgames:PlexonCore:1.0.0")
+    compileOnly("com.zpkdxgames:PlexonCore:2.0.4")
     implementation("org.xerial:sqlite-jdbc:3.53.4.0") {
         exclude(group = "org.slf4j", module = "slf4j-api")
     }
