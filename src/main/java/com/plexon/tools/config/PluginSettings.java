@@ -57,7 +57,19 @@ public final class PluginSettings {
     private MenuItemTemplate worldMenuActivePanel;
     private MenuItemTemplate worldMenuInactivePanel;
 
-    public void load(FileConfiguration config) {
+    /**
+     * Parses a complete candidate first and only mutates the shared runtime
+     * settings object after every validation step succeeds. A late malformed
+     * lore/menu/storage value therefore cannot leave `/pt reload` with a
+     * partially-applied settings object.
+     */
+    public synchronized void load(FileConfiguration config) {
+        PluginSettings candidate = new PluginSettings();
+        candidate.loadCandidate(config);
+        copyFrom(candidate);
+    }
+
+    private void loadCandidate(FileConfiguration config) {
         enforceBoundWorld = config.getBoolean("settings.enforce-bound-world", true);
         enforceOwner = config.getBoolean("settings.enforce-owner", true);
         cancelBlockBreaks = config.getBoolean("settings.cancel-unauthorized-block-breaks", true);
@@ -152,6 +164,57 @@ public final class PluginSettings {
         maximumRequirementLine = lore.maximumRequirementLine();
         enchantmentLine = lore.enchantmentLine();
         emptyEnchantmentLine = lore.emptyEnchantmentLine();
+    }
+
+    private void copyFrom(PluginSettings source) {
+        enforceBoundWorld = source.enforceBoundWorld;
+        enforceOwner = source.enforceOwner;
+        cancelBlockBreaks = source.cancelBlockBreaks;
+        cancelInteractions = source.cancelInteractions;
+        cancelAttacks = source.cancelAttacks;
+        warningCooldownMillis = source.warningCooldownMillis;
+        databaseFile = source.databaseFile;
+        databaseFlushIntervalTicks = source.databaseFlushIntervalTicks;
+        databaseWriteBatchSize = source.databaseWriteBatchSize;
+        databaseMaxPendingWrites = source.databaseMaxPendingWrites;
+        databaseMaxBatchesPerFlush = source.databaseMaxBatchesPerFlush;
+        databasePressureFlushThreshold = source.databasePressureFlushThreshold;
+        databaseBusyTimeoutMillis = source.databaseBusyTimeoutMillis;
+        databaseWalAutoCheckpointPages = source.databaseWalAutoCheckpointPages;
+        databaseIntegrityCheck = source.databaseIntegrityCheck;
+        naturalBlockProgressionEnabled = source.naturalBlockProgressionEnabled;
+        naturalBlockFailClosed = source.naturalBlockFailClosed;
+        naturalBlockChunkLoadBatchSize = source.naturalBlockChunkLoadBatchSize;
+        naturalBlockChunkLoadRetryTicks = source.naturalBlockChunkLoadRetryTicks;
+        progressVisualRefreshTicks = source.progressVisualRefreshTicks;
+        progressBarWidth = source.progressBarWidth;
+        progressFilledSymbol = source.progressFilledSymbol;
+        progressEmptySymbol = source.progressEmptySymbol;
+        progressFilledFormat = source.progressFilledFormat;
+        progressEmptyFormat = source.progressEmptyFormat;
+        progressValueStartColor = source.progressValueStartColor;
+        progressValueMiddleColor = source.progressValueMiddleColor;
+        progressValueCompleteColor = source.progressValueCompleteColor;
+        showcaseTitle = source.showcaseTitle;
+        categoryTitle = source.categoryTitle;
+        showLockedTools = source.showLockedTools;
+        showcaseRows = source.showcaseRows;
+        adminTitle = source.adminTitle;
+        levelUpSound = source.levelUpSound;
+        levelUpParticles = source.levelUpParticles;
+        progressActionBar = source.progressActionBar;
+        defaultLore = source.defaultLore;
+        generalRequirementLine = source.generalRequirementLine;
+        specificRequirementLine = source.specificRequirementLine;
+        maximumRequirementLine = source.maximumRequirementLine;
+        enchantmentLine = source.enchantmentLine;
+        emptyEnchantmentLine = source.emptyEnchantmentLine;
+        worldMenuAutoShowAllowedTools = source.worldMenuAutoShowAllowedTools;
+        worldMenuTogglePanelEnabled = source.worldMenuTogglePanelEnabled;
+        worldMenuToolCardActiveGlint = source.worldMenuToolCardActiveGlint;
+        worldMenuToolCard = source.worldMenuToolCard;
+        worldMenuActivePanel = source.worldMenuActivePanel;
+        worldMenuInactivePanel = source.worldMenuInactivePanel;
     }
 
     public boolean enforceBoundWorld() { return enforceBoundWorld; }
