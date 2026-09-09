@@ -25,15 +25,18 @@ public final class PlexonCoreBridge implements CoreBridge {
             "custom-item-metadata",
             "world-bound-tools",
             "tool-categories",
-            "tool-abilities");
+            "tool-abilities",
+            "core2-runtime-candidate");
 
     private final JavaPlugin plugin;
     private final PlexonCoreAPI core;
     private final CoreVersion version;
+    private final boolean runtimeAvailable;
     private final boolean compatible;
+    private final String registrationApiRange;
     private boolean ownsRegistration;
     private String registrationState = "NOT_REGISTERED";
-    private String detail = "PlexonCore API resolved";
+    private String detail;
 
     public PlexonCoreBridge(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -44,19 +47,37 @@ public final class PlexonCoreBridge implements CoreBridge {
         }
         this.core = registration.getProvider();
         this.version = core.version();
-        this.compatible = ModuleVersionRange.parse(SUPPORTED_API_RANGE).contains(version);
-        if (!compatible) {
-            detail = "Core API " + version.apiVersion()
-                    + " is outside supported range " + SUPPORTED_API_RANGE;
-        }
+
+        boolean api2 = core.supportsApi(2, 0);
+        boolean api1 = core.supportsApi(1, 0);
+        this.runtimeAvailable = api2;
+        this.compatible = api2 || api1;
+        this.registrationApiRange = api2 ? RUNTIME_API_RANGE : LEGACY_API_RANGE;
+        this.detail = api2
+                ? "PlexonCore 2 runtime is available; local mining remains authoritative until 4.3 parity gates pass"
+                : api1
+                        ? "PlexonCore legacy API resolved"
+                        : "Core API " + version.apiVersion()
+                                + " is outside supported ranges " + SUPPORTED_API_RANGE;
     }
 
     @Override public boolean installed() { return true; }
     @Override public boolean available() { return compatible; }
     @Override public boolean compatible() { return compatible; }
+    @Override public boolean runtimeAvailable() { return runtimeAvailable; }
     @Override public String pluginVersion() { return version.pluginVersion(); }
     @Override public String apiVersion() { return version.apiVersion(); }
-    @Override public String mode() { return compatible && ownsRegistration ? "CORE" : "STANDALONE"; }
+    @Override public String registrationApiRange() { return registrationApiRange; }
+
+    /**
+     * Runtime acquisition is intentionally not reported as CORE_RUNTIME until
+     * the final-phase/cancellation, legacy provenance and performance parity
+     * gates have been demonstrated against the released Core 2 implementation.
+     */
+    @Override
+    public String mode() {
+        return compatible && ownsRegistration ? "CORE_LEGACY" : "STANDALONE";
+    }
 
     @Override
     public String registrationState() {
@@ -87,10 +108,12 @@ public final class PlexonCoreBridge implements CoreBridge {
                 plugin.getName(),
                 plugin.getPluginMeta().getVersion(),
                 plugin,
-                ModuleVersionRange.parse(SUPPORTED_API_RANGE),
+                ModuleVersionRange.parse(registrationApiRange),
                 CAPABILITIES,
                 ModuleState.STARTING,
-                "Initializing PlexonTools",
+                runtimeAvailable
+                        ? "Initializing PlexonTools with Core 2 compatibility; local mining authority retained"
+                        : "Initializing PlexonTools",
                 Instant.now());
 
         ModuleRegistry.RegistrationResult result = core.modules().register(descriptor);
