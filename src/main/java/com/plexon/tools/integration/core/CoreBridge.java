@@ -2,7 +2,7 @@ package com.plexon.tools.integration.core;
 
 /** Optional PlexonCore integration boundary. No Core runtime types leak through this interface. */
 public interface CoreBridge {
-    String SUPPORTED_API_RANGE = ">=1.0 <2.0";
+    String SUPPORTED_API_RANGE = ">=1.0 <3.0";
     String MODULE_ID = "tools";
 
     boolean installed();
