@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class PluginSettingsTest {
+    private static final PluginSettings.MaterialValidator HEADLESS_ITEM_VALIDATOR = ignored -> true;
+
     @Test
     void preservesAdministratorLoreOrderAndRequirementFormats() {
         YamlConfiguration config = new YamlConfiguration();
@@ -66,7 +68,7 @@ final class PluginSettingsTest {
         valid.set("settings.unauthorized-warning-cooldown-ms", 2750L);
         valid.set("progress-bar.width", 17);
         valid.set("performance.progress-visual-refresh-ticks", 6L);
-        settings.load(valid);
+        settings.load(valid, HEADLESS_ITEM_VALIDATOR);
 
         YamlConfiguration invalid = new YamlConfiguration();
         invalid.set("settings.unauthorized-warning-cooldown-ms", 9900L);
@@ -76,7 +78,8 @@ final class PluginSettingsTest {
         // must not leak into the already-active runtime settings after failure.
         invalid.set("tool-lore.template", "not-a-list");
 
-        assertThrows(IllegalArgumentException.class, () -> settings.load(invalid));
+        assertThrows(IllegalArgumentException.class,
+                () -> settings.load(invalid, HEADLESS_ITEM_VALIDATOR));
         assertEquals(2750L, settings.warningCooldownMillis());
         assertEquals(17, settings.progressBarWidth());
         assertEquals(6L, settings.progressVisualRefreshTicks());
