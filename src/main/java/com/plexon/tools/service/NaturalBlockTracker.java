@@ -68,6 +68,9 @@ public final class NaturalBlockTracker implements Listener {
     private long generation;
     private long nextLoadToken;
     private long lastLoadFailureWarning;
+    private long loadBatchCount;
+    private long loadRetryCount;
+    private long failedLoadCount;
 
     public NaturalBlockTracker(JavaPlugin plugin, PluginSettings settings, InstanceRegistry registry) {
         this.plugin = plugin;
@@ -84,6 +87,10 @@ public final class NaturalBlockTracker implements Listener {
         loadTokens.clear();
         consumedBreakOrigins.clear();
         nextLoadToken = 0L;
+        lastLoadFailureWarning = 0L;
+        loadBatchCount = 0L;
+        loadRetryCount = 0L;
+        failedLoadCount = 0L;
         index.clear();
         if (!active) return;
 
@@ -113,6 +120,39 @@ public final class NaturalBlockTracker implements Listener {
     }
 
     /**
+     * Batch classification/consumption for bounded internal bulk operations.
+     * Ordering is identical to the supplied block list. All index mutation is
+     * performed inside one service call; persistence remains coalesced by the
+     * registry's placed-block write map.
+     */
+    public List<Boolean> allowsProgressBatch(List<Block> blocks) {
+        if (blocks.isEmpty()) {
+            return List.of();
+        }
+        if (!active) {
+            return java.util.Collections.nCopies(blocks.size(), Boolean.TRUE);
+        }
+
+        List<PlacedBlockPosition> positions = new ArrayList<>(blocks.size());
+        for (Block block : blocks) {
+            PlacedBlockPosition position = position(block);
+            ensureTracked(position.chunk());
+            positions.add(position);
+        }
+
+        List<Origin> origins = index.consumeAll(positions);
+        List<Boolean> allowed = new ArrayList<>(origins.size());
+        for (int index = 0; index < origins.size(); index++) {
+            Origin origin = origins.get(index);
+            if (origin != Origin.NATURAL) {
+                registry.queuePlacedBlock(positions.get(index), false);
+            }
+            allowed.add(allows(origin));
+        }
+        return List.copyOf(allowed);
+    }
+
+    /**
      * Classifies and consumes provenance once from the successful MONITOR-stage
      * PlexonTools break path. The later cleanup handler sees the same event and
      * skips a second index operation. Cancelled events never reach this method.
@@ -135,6 +175,19 @@ public final class NaturalBlockTracker implements Listener {
         ensureTracked(worldId, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
         Origin origin = index.peek(worldId, x, block.getY(), z);
         return allows(origin);
+    }
+
+    /** Cheap main-thread snapshot for `/pt diagnostics` and performance reports. */
+    public Diagnostics diagnostics() {
+        return new Diagnostics(
+                active,
+                index.loadedChunkCount(),
+                index.trackedPlacedPositionCount(),
+                index.unknownChunkCount(),
+                loadQueue.size() + (loadInFlight ? 1 : 0),
+                loadBatchCount,
+                loadRetryCount,
+                failedLoadCount);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -342,6 +395,7 @@ public final class NaturalBlockTracker implements Listener {
     private void dispatchLoad(List<ChunkLoadRequest> requests) {
         long currentGeneration = generation;
         loadInFlight = true;
+        loadBatchCount++;
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             Map<ChunkKey, List<PlacedBlockPosition>> loaded = null;
             Exception failure = null;
@@ -376,6 +430,7 @@ public final class NaturalBlockTracker implements Listener {
             return;
         }
 
+        failedLoadCount++;
         long now = System.currentTimeMillis();
         if (now - lastLoadFailureWarning >= 10_000L) {
             lastLoadFailureWarning = now;
@@ -389,6 +444,7 @@ public final class NaturalBlockTracker implements Listener {
                 if (index.contains(request.key())
                         && loadTokens.getOrDefault(request.key(), -1L) == request.token()) {
                     queueLoad(request.key());
+                    loadRetryCount++;
                 }
             }
             pumpLoads();
@@ -409,6 +465,17 @@ public final class NaturalBlockTracker implements Listener {
     private static ChunkKey chunkKey(Chunk chunk) {
         return new ChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
     }
+
+    public record Diagnostics(
+            boolean active,
+            int loadedChunks,
+            int trackedPlacedPositions,
+            int unknownChunks,
+            int pendingLoads,
+            long loadBatches,
+            long retries,
+            long failedLoads
+    ) {}
 
     private record ChunkLoadRequest(ChunkKey key, long token) {}
     private record BlockMove(PlacedBlockPosition from, PlacedBlockPosition to, Origin origin) {}
