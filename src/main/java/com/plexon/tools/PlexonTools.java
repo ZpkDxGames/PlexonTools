@@ -203,6 +203,10 @@ public final class PlexonTools extends JavaPlugin {
             progression.clearDefinitionCaches();
             worldMenus.reload();
             naturalBlocks.start();
+            // AbilityService caches enabled passive-holder state and resolved
+            // potion metadata. Refresh it exactly once after a successful tool
+            // definition reload so tasks cannot retain stale configuration.
+            abilities.start();
             getServer().getOnlinePlayers().forEach(activations::reconcile);
             scheduleRegistrySave();
             coreBridge.markReady("PlexonTools reloaded; API and progression services ready");
@@ -235,6 +239,7 @@ public final class PlexonTools extends JavaPlugin {
                 .anyMatch(registration -> registration.getProvider() == publicApi)
                 ? "REGISTERED" : "UNAVAILABLE";
         String eventState = publicEventsAvailable() ? "AVAILABLE" : "UNAVAILABLE";
+        NaturalBlockTracker.Diagnostics provenance = naturalBlocks.diagnostics();
         return List.of(
                 "<gradient:#66BB6A:#42A5F5><bold>PlexonTools Diagnostics</bold></gradient>",
                 diagnostic("Plugin", getPluginMeta().getVersion()),
@@ -252,8 +257,17 @@ public final class PlexonTools extends JavaPlugin {
                         + " categories • " + worldMenus.size() + " world menus"),
                 diagnostic("Instances", instanceRegistry.size() + " tracked • "
                         + instanceRegistry.pendingWriteCount() + " pending writes"),
-                diagnostic("Natural blocks", settings.naturalBlockProgressionEnabled()
-                        ? "ENABLED" : "DISABLED"),
+                diagnostic("Natural blocks", provenance.active() ? "ENABLED" : "DISABLED"),
+                diagnostic("Natural provenance", provenance.loadedChunks() + " chunks • "
+                        + provenance.trackedPlacedPositions() + " placed • "
+                        + provenance.unknownChunks() + " unknown • "
+                        + provenance.pendingLoads() + " pending loads"),
+                diagnostic("Provenance I/O", provenance.loadBatches() + " batches • "
+                        + provenance.retries() + " retries • "
+                        + provenance.failedLoads() + " failed"),
+                diagnostic("Ability runtime", abilities.activePassiveHolderCount()
+                        + " passive holders • " + abilities.pendingBlockDropContextCount()
+                        + " pending drop contexts"),
                 diagnostic("Mining profiler", miningProfiler.enabled()
                         ? "RUNNING • " + miningProfiler.blockSamples() + " samples" : "STOPPED"),
                 diagnostic("Public API", apiState),
