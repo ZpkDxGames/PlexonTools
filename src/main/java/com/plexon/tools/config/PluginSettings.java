@@ -65,12 +65,17 @@ public final class PluginSettings {
      * partially-applied settings object.
      */
     public synchronized void load(FileConfiguration config) {
+        load(config, PluginSettings::isConfiguredItemMaterial);
+    }
+
+    /** Package-private seam keeps pure config tests independent of Bukkit bootstrap. */
+    synchronized void load(FileConfiguration config, MaterialValidator materialValidator) {
         PluginSettings candidate = new PluginSettings();
-        candidate.loadCandidate(config);
+        candidate.loadCandidate(config, materialValidator);
         copyFrom(candidate);
     }
 
-    private void loadCandidate(FileConfiguration config) {
+    private void loadCandidate(FileConfiguration config, MaterialValidator materialValidator) {
         enforceBoundWorld = config.getBoolean("settings.enforce-bound-world", true);
         enforceOwner = config.getBoolean("settings.enforce-owner", true);
         cancelBlockBreaks = config.getBoolean("settings.cancel-unauthorized-block-breaks", true);
@@ -143,21 +148,21 @@ public final class PluginSettings {
                         "",
                         "<gray>Status</gray> {status}",
                         "{toggle_hint}"
-                ));
+                ), materialValidator);
         worldMenuActivePanel = menuItem(config, "world-menu.toggle-panel.active",
                 "LIME_STAINED_GLASS_PANE", false,
                 "<gradient:#43A047:#9CCC65><bold>✔ TOOL ACTIVE</bold></gradient>", List.of(
                         "<gray>Equipped for</gray>  <white>{world}</white>",
                         "",
                         "<#FFD54F>Click to store it safely.</#FFD54F>"
-                ));
+                ), materialValidator);
         worldMenuInactivePanel = menuItem(config, "world-menu.toggle-panel.inactive",
                 "RED_STAINED_GLASS_PANE", false,
                 "<gradient:#E53935:#FF7043><bold>✘ TOOL STORED</bold></gradient>", List.of(
                         "<gray>Stored for</gray>  <white>{world}</white>",
                         "",
                         "<#9CCC65>Click to equip it.</#9CCC65>"
-                ));
+                ), materialValidator);
         LoreSettings lore = loreSettings(config);
         defaultLore = lore.template();
         generalRequirementLine = lore.generalRequirementLine();
@@ -403,7 +408,11 @@ public final class PluginSettings {
             String maximumRequirementLine,
             String enchantmentLine,
             String emptyEnchantmentLine
-    ) {
+    ) {}
+
+    @FunctionalInterface
+    interface MaterialValidator {
+        boolean isItem(String rawMaterial);
     }
 
     private static String databaseFile(String configured) {
@@ -423,16 +432,14 @@ public final class PluginSettings {
             String defaultMaterial,
             boolean allowToolMaterial,
             String defaultName,
-            List<String> defaultLore
+            List<String> defaultLore,
+            MaterialValidator materialValidator
     ) {
         String material = config.getString(path + ".material", defaultMaterial);
         material = material == null ? defaultMaterial : material.trim().toUpperCase(Locale.ROOT);
-        if (!(allowToolMaterial && material.equals("TOOL"))) {
-            Material parsed = configuredMaterial(material);
-            if (parsed == null || !parsed.isItem() || parsed.isAir()) {
-                throw new IllegalArgumentException(path + ".material must be an item material"
-                        + (allowToolMaterial ? " or TOOL." : "."));
-            }
+        if (!(allowToolMaterial && material.equals("TOOL")) && !materialValidator.isItem(material)) {
+            throw new IllegalArgumentException(path + ".material must be an item material"
+                    + (allowToolMaterial ? " or TOOL." : "."));
         }
         String displayName = config.getString(path + ".display-name", defaultName);
         if (displayName == null || displayName.isBlank()) {
@@ -443,7 +450,11 @@ public final class PluginSettings {
         return new MenuItemTemplate(material, displayName, List.copyOf(lore));
     }
 
-    /** Server-independent enum parser used during candidate configuration validation. */
+    private static boolean isConfiguredItemMaterial(String raw) {
+        Material material = configuredMaterial(raw);
+        return material != null && material.isItem() && !material.isAir();
+    }
+
     private static Material configuredMaterial(String raw) {
         String normalized = raw.trim().toUpperCase(Locale.ROOT);
         if (normalized.startsWith("MINECRAFT:")) {
