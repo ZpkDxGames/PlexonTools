@@ -66,7 +66,7 @@ jobs:
           grep -qx 'com/plexon/tools/api/PlexonToolsAPI.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/event/PlexonToolProgressEvent.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/event/PlexonToolLevelUpEvent.class' build/jar-contents.txt
-          grep -qx 'com/plexon/tools/diagnostic/MiningPipelineProfiler.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/performance/MiningPerformanceProfiler.class' build/jar-contents.txt
           grep -qx 'org/sqlite/JDBC.class' build/jar-contents.txt
           if grep -q '^com/zpkdxgames/plexoncore/' build/jar-contents.txt; then
             echo 'PlexonCore runtime classes must not be shaded into PlexonTools' >&2
