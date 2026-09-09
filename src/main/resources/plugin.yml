@@ -11,7 +11,7 @@ softdepend: [PlexonCore]
 commands:
   plexontools:
     description: Opens the world tool menu and manages PlexonTools.
-    usage: /<command> | [<category>|all] [player] | give <player> <tool_id> [world] | diagnostics | reload | backup | gui
+    usage: /<command> | [<category>|all] [player] | give <player> <tool_id> [world] | diagnostics | perf | reload | backup | gui
     aliases: [pt, plexontool]
     permission: plexontools.use
 
@@ -20,7 +20,7 @@ permissions:
     description: Opens the current world's tool activation menu.
     default: true
   plexontools.admin:
-    description: Grants every administrative capability, including opening player GUIs remotely.
+    description: Grants every administrative capability, including opening player GUIs remotely and Preview diagnostics.
     default: op
     children:
       plexontools.use: true
