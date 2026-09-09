@@ -29,20 +29,20 @@ jobs:
         with:
           gradle-version: '9.1.0'
 
-      - name: Provision PlexonCore 1.0.0 API
+      - name: Provision PlexonCore 2.0.0 API
         shell: bash
         run: |
           set -euo pipefail
-          core_jar="${RUNNER_TEMP}/PlexonCore-1.0.0.jar"
+          core_jar="${RUNNER_TEMP}/PlexonCore-2.0.0.jar"
           curl --fail --location --silent --show-error \
             --output "${core_jar}" \
-            "https://github.com/ZpkDxGames/PlexonCore/releases/download/v1.0.0/PlexonCore-1.0.0.jar"
-          echo "4abce6de93293e21b31cb874734430d5bdc77de17a4c3b98fd6a9006e1f13018  ${core_jar}" | sha256sum --check
+            "https://github.com/ZpkDxGames/PlexonCore/releases/download/v2.0.0/PlexonCore-2.0.0.jar"
+          echo "179b82ce7fd82e3095b3a6d0d893af6d7c97f91bd7ce403e96d7f3581462dfec  ${core_jar}" | sha256sum --check
           mvn -B -ntp org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
             -Dfile="${core_jar}" \
             -DgroupId=com.zpkdxgames \
             -DartifactId=PlexonCore \
-            -Dversion=1.0.0 \
+            -Dversion=2.0.0 \
             -Dpackaging=jar \
             -DgeneratePom=true
 
@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          jar_path='build/libs/PlexonTools-4.2.0.jar'
+          jar_path='build/libs/PlexonTools-4.3.0.jar'
           test -s "${jar_path}"
           jar tf "${jar_path}" > build/jar-contents.txt
           grep -qx 'plugin.yml' build/jar-contents.txt
@@ -61,13 +61,14 @@ jobs:
           grep -qx 'com/plexon/tools/api/PlexonToolsAPI.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/event/PlexonToolProgressEvent.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/event/PlexonToolLevelUpEvent.class' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/integration/core/PlexonCoreBridge.class' build/jar-contents.txt
           grep -qx 'org/sqlite/JDBC.class' build/jar-contents.txt
           if grep -q '^com/zpkdxgames/plexoncore/' build/jar-contents.txt; then
             echo 'PlexonCore runtime classes must not be shaded into PlexonTools' >&2
             exit 1
           fi
           unzip -p "${jar_path}" plugin.yml | sed -n 's/^version:[[:space:]]*//p' \
-            | head -n 1 | tr -d " '\"\r" | grep -qx '4.2.0'
+            | head -n 1 | tr -d " '\"\r" | grep -qx '4.3.0'
           javap -verbose -classpath "${jar_path}" com.plexon.tools.PlexonTools \
             | grep -q 'major version: 69'
           sha256sum "${jar_path}" > build/SHA256SUMS.txt
@@ -79,8 +80,8 @@ jobs:
       - name: Upload verified artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PlexonTools-4.2.0-${{ github.sha }}
+          name: PlexonTools-4.3.0-${{ github.sha }}
           path: |
-            build/libs/PlexonTools-4.2.0.jar
+            build/libs/PlexonTools-4.3.0.jar
             build/SHA256SUMS.txt
           if-no-files-found: error
