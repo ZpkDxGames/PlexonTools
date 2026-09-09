@@ -1,5 +1,5 @@
 # ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-# ┃                    PlexonTools 4.0.0 configuration                ┃
+# ┃                    PlexonTools 4.2.0 configuration                ┃
 # ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 #
 # Text supports Adventure MiniMessage:
@@ -64,6 +64,16 @@ performance:
   # Level-ups, quit/death/world transitions, reload, and shutdown flush at once.
   # Use 1 for nearly immediate visuals; higher values reduce metadata/packet work.
   progress-visual-refresh-ticks: 4
+
+  # Bulk abilities are bounded even if future tool definitions grow beyond 3x3.
+  # STRICT_EVENTS keeps Bukkit BlockBreakEvent cancellation/protection semantics
+  # for every secondary block. OPTIMIZED is accepted as a requested mode but
+  # safely falls back to STRICT_EVENTS until explicit protection hooks can prove
+  # equivalent authorization behavior.
+  area-mine:
+    mode: STRICT_EVENTS
+    max-secondary-blocks: 8
+    max-blocks-per-player-per-tick: 8
 
 # Upgrade credit for BLOCKS_BROKEN and block-based farming objectives is
 # restricted to natural blocks. Player placements are indexed on placement,
