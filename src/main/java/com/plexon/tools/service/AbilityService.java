@@ -24,8 +24,19 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerHarvestBlockEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -37,12 +48,16 @@ import org.bukkit.util.Vector;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 public final class AbilityService implements Listener {
+    private static final int MAX_PENDING_DROP_CONTEXTS_PER_PLAYER = 16;
+    private static final long MAX_DROP_CONTEXT_AGE_TICKS = 4L;
     private static final Set<Material> UNBREAKABLE_AREA_BLOCKS = Set.of(
             Material.BEDROCK,
             Material.BARRIER,
@@ -78,8 +93,13 @@ public final class AbilityService implements Listener {
     private final ProgressionService progression;
     private final MiningPerformanceProfiler profiler;
     private final Set<UUID> areaMiningPlayers = new HashSet<>();
-    private final Map<UUID, BlockDropContext> blockDropContexts = new HashMap<>();
+    private final Map<UUID, LinkedHashMap<BlockDropKey, BlockDropContext>> blockDropContexts =
+            new HashMap<>();
+    private final Set<UUID> passiveHolders = new HashSet<>();
+    private final Set<UUID> passiveDirty = new HashSet<>();
+    private final Map<String, PotionEffectType> potionEffectTypes = new HashMap<>();
     private BukkitTask passiveTask;
+    private boolean passiveTrackingEnabled;
 
     public AbilityService(
             JavaPlugin plugin,
@@ -95,6 +115,13 @@ public final class AbilityService implements Listener {
 
     public void start() {
         stop();
+        passiveTrackingEnabled = hasPassiveHolderAbility();
+        if (!passiveTrackingEnabled) {
+            return;
+        }
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            passiveDirty.add(player.getUniqueId());
+        }
         passiveTask = Bukkit.getScheduler().runTaskTimer(plugin,
                 this::profiledPassiveRefresh, 20L, 40L);
     }
@@ -104,12 +131,28 @@ public final class AbilityService implements Listener {
             passiveTask.cancel();
             passiveTask = null;
         }
+        passiveTrackingEnabled = false;
         areaMiningPlayers.clear();
         blockDropContexts.clear();
+        passiveHolders.clear();
+        passiveDirty.clear();
+        potionEffectTypes.clear();
     }
 
     public boolean isAreaMining(Player player) {
         return areaMiningPlayers.contains(player.getUniqueId());
+    }
+
+    public int activePassiveHolderCount() {
+        return passiveHolders.size();
+    }
+
+    public int pendingBlockDropContextCount() {
+        int pending = 0;
+        for (Map<BlockDropKey, BlockDropContext> contexts : blockDropContexts.values()) {
+            pending += contexts.size();
+        }
+        return pending;
     }
 
     /**
@@ -148,25 +191,37 @@ public final class AbilityService implements Listener {
 
     /**
      * Shares compact precomputed flags with the later BlockDropItemEvent phase.
-     * No definition/state copies are retained for an already processed break.
+     * Context is correlated by player and exact block position instead of one
+     * mutable slot per player, so rapid/overlapping breaks cannot overwrite the
+     * ability flags for another pending drop event.
      */
     public void prepareBlockDrops(
             BlockBreakEvent event,
             BlockAbilityProfile profile
     ) {
-        Player player = event.getPlayer();
         boolean autoSmelt = profile.autoSmelt();
         boolean magnet = profile.magnet();
         if (!autoSmelt && !magnet) {
-            blockDropContexts.remove(player.getUniqueId());
             return;
         }
+        Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
         Block block = event.getBlock();
-        blockDropContexts.put(player.getUniqueId(), new BlockDropContext(
-                block.getWorld().getUID(),
-                block.getX(), block.getY(), block.getZ(),
-                block.getWorld().getGameTime(),
-                autoSmelt, magnet));
+        long gameTime = block.getWorld().getGameTime();
+        LinkedHashMap<BlockDropKey, BlockDropContext> contexts =
+                blockDropContexts.computeIfAbsent(playerId, ignored -> new LinkedHashMap<>());
+        purgeStaleDropContexts(contexts, block.getWorld().getUID(), gameTime);
+        while (contexts.size() >= MAX_PENDING_DROP_CONTEXTS_PER_PLAYER) {
+            Iterator<BlockDropKey> iterator = contexts.keySet().iterator();
+            if (!iterator.hasNext()) {
+                break;
+            }
+            iterator.next();
+            iterator.remove();
+        }
+        BlockDropKey key = new BlockDropKey(
+                block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
+        contexts.put(key, new BlockDropContext(gameTime, autoSmelt, magnet));
     }
 
     /** Compatibility path for lower-frequency callers. */
@@ -270,7 +325,7 @@ public final class AbilityService implements Listener {
                 return;
             }
             long abilityStarted = profiler.begin();
-            for (Item drop : new ArrayList<>(event.getItems())) {
+            for (Item drop : event.getItems()) {
                 if (autoSmelt) {
                     drop.setItemStack(smelt(drop.getItemStack()));
                 }
@@ -284,21 +339,118 @@ public final class AbilityService implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveHeldSlotChanged(PlayerItemHeldEvent event) {
+        markPassiveDirty(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveSwapHands(PlayerSwapHandItemsEvent event) {
+        markPassiveDirty(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveInventoryClick(InventoryClickEvent event) {
+        if (event.getWhoClicked() instanceof Player player) {
+            markPassiveDirty(player);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveInventoryDrag(InventoryDragEvent event) {
+        if (event.getWhoClicked() instanceof Player player) {
+            markPassiveDirty(player);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassivePickup(EntityPickupItemEvent event) {
+        if (event.getEntity() instanceof Player player) {
+            markPassiveDirty(player);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveDrop(PlayerDropItemEvent event) {
+        markPassiveDirty(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveJoin(PlayerJoinEvent event) {
+        markPassiveDirty(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveWorldChange(PlayerChangedWorldEvent event) {
+        UUID playerId = event.getPlayer().getUniqueId();
+        blockDropContexts.remove(playerId);
+        markPassiveDirty(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveRespawn(PlayerRespawnEvent event) {
+        markPassiveDirty(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveDeath(PlayerDeathEvent event) {
+        UUID playerId = event.getEntity().getUniqueId();
+        passiveHolders.remove(playerId);
+        passiveDirty.remove(playerId);
+        blockDropContexts.remove(playerId);
+        areaMiningPlayers.remove(playerId);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPassiveQuit(PlayerQuitEvent event) {
+        UUID playerId = event.getPlayer().getUniqueId();
+        passiveHolders.remove(playerId);
+        passiveDirty.remove(playerId);
+        blockDropContexts.remove(playerId);
+        areaMiningPlayers.remove(playerId);
+    }
+
     private BlockDropContext consumeBlockDropContext(BlockDropItemEvent event) {
         Player player = event.getPlayer();
-        BlockDropContext context = blockDropContexts.remove(player.getUniqueId());
-        if (context == null) {
+        UUID playerId = player.getUniqueId();
+        LinkedHashMap<BlockDropKey, BlockDropContext> contexts = blockDropContexts.get(playerId);
+        if (contexts == null) {
             return null;
         }
         Block block = event.getBlock();
-        if (!context.worldId().equals(block.getWorld().getUID())
-                || context.x() != block.getX()
-                || context.y() != block.getY()
-                || context.z() != block.getZ()
-                || context.gameTime() != block.getWorld().getGameTime()) {
+        BlockDropKey key = new BlockDropKey(
+                block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
+        BlockDropContext context = contexts.remove(key);
+        if (contexts.isEmpty()) {
+            blockDropContexts.remove(playerId);
+        }
+        if (context == null) {
+            return null;
+        }
+        long age = block.getWorld().getGameTime() - context.gameTime();
+        if (age < 0L || age > MAX_DROP_CONTEXT_AGE_TICKS) {
             return null;
         }
         return context;
+    }
+
+    private static void purgeStaleDropContexts(
+            LinkedHashMap<BlockDropKey, BlockDropContext> contexts,
+            UUID worldId,
+            long gameTime
+    ) {
+        Iterator<Map.Entry<BlockDropKey, BlockDropContext>> iterator = contexts.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<BlockDropKey, BlockDropContext> entry = iterator.next();
+            if (!entry.getKey().worldId().equals(worldId)) {
+                iterator.remove();
+                continue;
+            }
+            long age = gameTime - entry.getValue().gameTime();
+            if (age < 0L || age > MAX_DROP_CONTEXT_AGE_TICKS) {
+                iterator.remove();
+            }
+        }
     }
 
     public void mineArea(BlockBreakEvent original, ToolDefinition definition, ToolState state) {
@@ -358,31 +510,93 @@ public final class AbilityService implements Listener {
     }
 
     private void refreshPassiveEffects() {
-        if (profiler.isolated(Isolation.ABILITIES)
-                || !tools.hasEnabledAbility(ToolAbilityType.MOB_POTION_EFFECT)) {
+        if (!passiveTrackingEnabled || profiler.isolated(Isolation.ABILITIES)) {
             return;
         }
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            ItemStack item = player.getInventory().getItemInMainHand();
-            ToolState state = progression.resolveState(item).orElse(null);
-            ToolDefinition definition = state == null ? null : tools.findCached(state.toolId());
-            if (definition == null || !definition.enabled()
-                    || !progression.canUse(player, definition, state, false)) {
+
+        Iterator<UUID> dirtyIterator = passiveDirty.iterator();
+        while (dirtyIterator.hasNext()) {
+            UUID playerId = dirtyIterator.next();
+            dirtyIterator.remove();
+            reconcilePassiveHolder(playerId);
+        }
+
+        Iterator<UUID> holderIterator = passiveHolders.iterator();
+        while (holderIterator.hasNext()) {
+            UUID playerId = holderIterator.next();
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null || !player.isOnline()) {
+                holderIterator.remove();
                 continue;
             }
-            ToolAbilitySettings ability = ability(
-                    definition, state, ToolAbilityType.MOB_POTION_EFFECT);
-            if (ability != null && ability.potionTarget() == AbilityTarget.HOLDER) {
-                applyPotion(player, ability);
+            ToolAbilitySettings holderAbility = resolveHolderAbility(player);
+            if (holderAbility == null) {
+                holderIterator.remove();
+                continue;
             }
+            applyPotion(player, holderAbility);
         }
     }
 
-    private static void applyPotion(LivingEntity entity, ToolAbilitySettings settings) {
-        NamespacedKey key = NamespacedKey.fromString(settings.potionEffect());
-        PotionEffectType effect = key == null ? null : Registry.MOB_EFFECT.get(key);
-        if (effect == null) {
+    private void reconcilePassiveHolder(UUID playerId) {
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null || !player.isOnline()) {
+            passiveHolders.remove(playerId);
             return;
+        }
+        ToolAbilitySettings holderAbility = resolveHolderAbility(player);
+        if (holderAbility == null) {
+            passiveHolders.remove(playerId);
+            return;
+        }
+        passiveHolders.add(playerId);
+    }
+
+    private ToolAbilitySettings resolveHolderAbility(Player player) {
+        ItemStack item = player.getInventory().getItemInMainHand();
+        ToolState state = progression.resolveState(item).orElse(null);
+        ToolDefinition definition = state == null ? null : tools.findCached(state.toolId());
+        if (definition == null || !definition.enabled()
+                || !progression.canUse(player, definition, state, false)) {
+            return null;
+        }
+        ToolAbilitySettings holderAbility = ability(
+                definition, state, ToolAbilityType.MOB_POTION_EFFECT);
+        return holderAbility != null && holderAbility.potionTarget() == AbilityTarget.HOLDER
+                ? holderAbility : null;
+    }
+
+    private void markPassiveDirty(Player player) {
+        if (passiveTrackingEnabled) {
+            passiveDirty.add(player.getUniqueId());
+        }
+    }
+
+    private boolean hasPassiveHolderAbility() {
+        for (ToolDefinition definition : tools.all()) {
+            if (!definition.enabled()) {
+                continue;
+            }
+            for (var level : definition.levels().values()) {
+                ToolAbilitySettings settings = level.abilities().get(ToolAbilityType.MOB_POTION_EFFECT);
+                if (settings != null && settings.potionTarget() == AbilityTarget.HOLDER) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void applyPotion(LivingEntity entity, ToolAbilitySettings settings) {
+        String effectName = settings.potionEffect();
+        PotionEffectType effect = potionEffectTypes.get(effectName);
+        if (effect == null) {
+            NamespacedKey key = NamespacedKey.fromString(effectName);
+            effect = key == null ? null : Registry.MOB_EFFECT.get(key);
+            if (effect == null) {
+                return;
+            }
+            potionEffectTypes.put(effectName, effect);
         }
         entity.addPotionEffect(new PotionEffect(effect, settings.durationTicks(),
                 settings.potionLevel() - 1, true, false, true));
@@ -425,7 +639,7 @@ public final class AbilityService implements Listener {
 
     private static void magnetDrops(Player player, List<ItemStack> drops) {
         List<ItemStack> leftovers = new ArrayList<>();
-        for (ItemStack drop : new ArrayList<>(drops)) {
+        for (ItemStack drop : drops) {
             leftovers.addAll(player.getInventory().addItem(drop).values());
         }
         drops.clear();
@@ -496,14 +710,9 @@ public final class AbilityService implements Listener {
                 new BlockAbilityProfile(false, 1.0D, false, false, false);
     }
 
-    private record BlockDropContext(
-            UUID worldId,
-            int x,
-            int y,
-            int z,
-            long gameTime,
-            boolean autoSmelt,
-            boolean magnet
-    ) {
+    private record BlockDropKey(UUID worldId, int x, int y, int z) {
+    }
+
+    private record BlockDropContext(long gameTime, boolean autoSmelt, boolean magnet) {
     }
 }
