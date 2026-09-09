@@ -17,8 +17,10 @@ final class StandaloneCoreBridge implements CoreBridge {
     @Override public boolean installed() { return installed; }
     @Override public boolean available() { return false; }
     @Override public boolean compatible() { return false; }
+    @Override public boolean runtimeAvailable() { return false; }
     @Override public String pluginVersion() { return pluginVersion; }
     @Override public String apiVersion() { return apiVersion; }
+    @Override public String registrationApiRange() { return "-"; }
     @Override public String mode() { return "STANDALONE"; }
     @Override public String registrationState() { return installed ? "UNAVAILABLE" : "NOT_INSTALLED"; }
     @Override public String detail() { return detail; }
