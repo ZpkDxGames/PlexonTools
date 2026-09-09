@@ -48,8 +48,12 @@ public final class PlexonCoreBridge implements CoreBridge {
         this.core = registration.getProvider();
         this.version = core.version();
 
-        boolean api2 = core.supportsApi(2, 0);
-        boolean api1 = core.supportsApi(1, 0);
+        // Core 1.0 does not define supportsApi(...), so never invoke the API 2
+        // default method while linked against a legacy runtime. The version()
+        // contract itself exists in both generations and is safe to inspect.
+        boolean api2 = version.apiMajor() >= 2 && core.supportsApi(2, 0);
+        boolean api1 = version.apiMajor() == 1
+                || (version.apiMajor() >= 2 && core.supportsApi(1, 0));
         this.runtimeAvailable = api2;
         this.compatible = api2 || api1;
         this.registrationApiRange = api2 ? RUNTIME_API_RANGE : LEGACY_API_RANGE;
