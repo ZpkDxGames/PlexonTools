@@ -13,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.time.Instant;
 import java.util.Set;
 
-/** Core-backed bridge, loaded reflectively only when PlexonCore is enabled. */
+/** Core-backed lifecycle bridge. Mining/event authority intentionally remains local in 4.2.x. */
 public final class PlexonCoreBridge implements CoreBridge {
     private static final Set<String> CAPABILITIES = Set.of(
             "tool-engine",
@@ -25,7 +25,8 @@ public final class PlexonCoreBridge implements CoreBridge {
             "custom-item-metadata",
             "world-bound-tools",
             "tool-categories",
-            "tool-abilities");
+            "tool-abilities",
+            "local-mining-authority");
 
     private final JavaPlugin plugin;
     private final PlexonCoreAPI core;
@@ -33,7 +34,7 @@ public final class PlexonCoreBridge implements CoreBridge {
     private final boolean compatible;
     private boolean ownsRegistration;
     private String registrationState = "NOT_REGISTERED";
-    private String detail = "PlexonCore API resolved";
+    private String detail = "PlexonCore API resolved; mining authority remains local";
 
     public PlexonCoreBridge(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -56,7 +57,9 @@ public final class PlexonCoreBridge implements CoreBridge {
     @Override public boolean compatible() { return compatible; }
     @Override public String pluginVersion() { return version.pluginVersion(); }
     @Override public String apiVersion() { return version.apiVersion(); }
-    @Override public String mode() { return compatible && ownsRegistration ? "CORE" : "STANDALONE"; }
+    @Override public String mode() {
+        return compatible && ownsRegistration ? "LOCAL_AUTHORITY / CORE_REGISTERED" : "STANDALONE";
+    }
 
     @Override
     public String registrationState() {
@@ -90,14 +93,15 @@ public final class PlexonCoreBridge implements CoreBridge {
                 ModuleVersionRange.parse(SUPPORTED_API_RANGE),
                 CAPABILITIES,
                 ModuleState.STARTING,
-                "Initializing PlexonTools",
+                "Initializing PlexonTools with local mining authority",
                 Instant.now());
 
         ModuleRegistry.RegistrationResult result = core.modules().register(descriptor);
         ModuleDescriptor registered = result.descriptor();
         ownsRegistration = registered != null && registered.plugin() == plugin;
 
-        if (!result.success() && !ownsRegistration && registered != null
+        // Core 1 does not have the Core 2 stale-owner replacement/owner-scoped helpers.
+        if (version.apiMajor() < 2 && !result.success() && !ownsRegistration && registered != null
                 && !registered.plugin().isEnabled()) {
             core.modules().unregister(MODULE_ID);
             result = core.modules().register(descriptor);
@@ -121,9 +125,19 @@ public final class PlexonCoreBridge implements CoreBridge {
         if (!compatible || !ownsRegistration) {
             return;
         }
-        core.modules().updateState(MODULE_ID, state, newDetail);
+        String resolvedDetail = newDetail == null ? "" : newDetail;
+        if (version.apiMajor() >= 2) {
+            if (!core.modules().updateState(MODULE_ID, plugin, state, resolvedDetail)) {
+                ownsRegistration = false;
+                registrationState = "NOT_REGISTERED";
+                detail = "Core module ownership changed before lifecycle update";
+                return;
+            }
+        } else {
+            core.modules().updateState(MODULE_ID, state, resolvedDetail);
+        }
         registrationState = state.name();
-        detail = newDetail == null ? "" : newDetail;
+        detail = resolvedDetail;
     }
 
     @Override
@@ -131,13 +145,19 @@ public final class PlexonCoreBridge implements CoreBridge {
         if (!ownsRegistration) {
             return;
         }
-        core.modules().find(MODULE_ID)
-                .filter(descriptor -> descriptor.plugin() == plugin)
-                .ifPresent(descriptor -> {
-                    core.modules().updateState(MODULE_ID, ModuleState.DISABLED,
-                            "PlexonTools disabled cleanly");
-                    core.modules().unregister(MODULE_ID);
-                });
+        if (version.apiMajor() >= 2) {
+            core.modules().updateState(MODULE_ID, plugin, ModuleState.DISABLED,
+                    "PlexonTools disabled cleanly");
+            core.modules().unregisterOwnedBy(plugin);
+        } else {
+            core.modules().find(MODULE_ID)
+                    .filter(descriptor -> descriptor.plugin() == plugin)
+                    .ifPresent(descriptor -> {
+                        core.modules().updateState(MODULE_ID, ModuleState.DISABLED,
+                                "PlexonTools disabled cleanly");
+                        core.modules().unregister(MODULE_ID);
+                    });
+        }
         ownsRegistration = false;
         registrationState = "UNREGISTERED";
     }
