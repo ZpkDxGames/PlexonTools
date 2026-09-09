@@ -111,8 +111,9 @@ public final class ToolProgressListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
+        // One timestamp is sufficient for both the HIGH-stage total and the
+        // end-to-end block sample. Avoid a second nanoTime call while profiling.
         long blockStarted = profiler.begin();
-        long highStarted = profiler.begin();
         try {
             Player player = event.getPlayer();
             ActiveResolution resolution = resolveActive(player, true);
@@ -132,13 +133,15 @@ public final class ToolProgressListener implements Listener {
                 profiler.record(Stage.BLOCK_HIGH_EXP, expStarted);
             }
         } finally {
-            profiler.record(Stage.BLOCK_HIGH_TOTAL, highStarted);
+            profiler.record(Stage.BLOCK_HIGH_TOTAL, blockStarted);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onBlockBreakAbilities(BlockBreakEvent event) {
-        Long blockStarted = blockTimers.remove(event);
+        // The map stays empty in normal production when the profiler is disabled,
+        // so skip an IdentityHashMap lookup entirely in that steady state.
+        Long blockStarted = blockTimers.isEmpty() ? null : blockTimers.remove(event);
         if (event.isCancelled()) {
             return;
         }
@@ -165,25 +168,29 @@ public final class ToolProgressListener implements Listener {
             context.refreshState(latest, abilities);
             profiler.record(Stage.BLOCK_MONITOR_LATEST_STATE, latestStarted);
 
-            long targetStarted = profiler.begin();
-            String target = blockTrackingTarget(
-                    context.definition.trackingType(), event.getBlock());
-            boolean tracks = target != null && context.definition.tracks(target, latest.level());
-            profiler.record(Stage.BLOCK_MONITOR_TARGET, targetStarted);
+            // Terminal tools still retain their abilities, but progression work
+            // (target resolution, provenance and mutation) is unnecessary.
+            if (latest.level() < context.definition.maxLevel()) {
+                long targetStarted = profiler.begin();
+                String target = blockTrackingTarget(
+                        context.definition.trackingType(), event.getBlock());
+                boolean tracks = target != null && context.definition.tracks(target, latest.level());
+                profiler.record(Stage.BLOCK_MONITOR_TARGET, targetStarted);
 
-            if (tracks) {
-                boolean allowed = true;
-                if (!profiler.isolated(Isolation.NATURAL_TRACKING)) {
-                    long naturalStarted = profiler.begin();
-                    profiler.count(Counter.NATURAL_BLOCK_LOOKUPS);
-                    profiler.count(Counter.NATURAL_BLOCK_CONSUMES);
-                    allowed = naturalBlocks.allowsProgress(event);
-                    profiler.record(Stage.BLOCK_MONITOR_NATURAL, naturalStarted);
-                }
-                if (allowed && !profiler.isolated(Isolation.PROGRESSION)) {
-                    latest = progression.addResolvedProgress(
-                            player, EquipmentSlot.HAND, context.definition, latest, target, 1L);
-                    context.refreshState(latest, abilities);
+                if (tracks) {
+                    boolean allowed = true;
+                    if (!profiler.isolated(Isolation.NATURAL_TRACKING)) {
+                        long naturalStarted = profiler.begin();
+                        profiler.count(Counter.NATURAL_BLOCK_LOOKUPS);
+                        profiler.count(Counter.NATURAL_BLOCK_CONSUMES);
+                        allowed = naturalBlocks.allowsProgress(event);
+                        profiler.record(Stage.BLOCK_MONITOR_NATURAL, naturalStarted);
+                    }
+                    if (allowed && !profiler.isolated(Isolation.PROGRESSION)) {
+                        latest = progression.addResolvedProgress(
+                                player, EquipmentSlot.HAND, context.definition, latest, target, 1L);
+                        context.refreshState(latest, abilities);
+                    }
                 }
             }
 
@@ -427,6 +434,7 @@ public final class ToolProgressListener implements Listener {
     public void invalidateAllActiveContexts() {
         activeTools.clear();
         blockTimers.clear();
+        damageContexts.clear();
         validationEpoch = validationEpoch == Long.MAX_VALUE ? 1L : validationEpoch + 1L;
     }
 
@@ -506,6 +514,13 @@ public final class ToolProgressListener implements Listener {
             return ActiveResolution.invalid();
         }
 
+        String currentWorld = player.getWorld().getName();
+        boolean definitionWorldValid = definition.isAllowedWorld(currentWorld);
+        if (settings.enforceBoundWorld() && !definition.sharesProgressAcrossWorlds()) {
+            definitionWorldValid = definitionWorldValid
+                    && state.boundWorld().equalsIgnoreCase(currentWorld);
+        }
+
         ActiveToolContext created = new ActiveToolContext(
                 state.instanceId(),
                 state.toolId(),
@@ -516,6 +531,8 @@ public final class ToolProgressListener implements Listener {
                 abilities.blockProfile(definition, state),
                 heldSlot,
                 item.getType(),
+                player.getWorld().getUID(),
+                !definitionWorldValid,
                 validationEpoch,
                 currentTick + ACTIVE_IDENTITY_REVALIDATE_TICKS);
         activeTools.put(playerId, created);
@@ -524,15 +541,12 @@ public final class ToolProgressListener implements Listener {
 
     private boolean fastCanUse(Player player, ActiveToolContext context) {
         if (!context.ownerId.equals(player.getUniqueId())
-                || !context.definition.levels().containsKey(context.state.level())) {
+                || !context.definition.levels().containsKey(context.state.level())
+                || !context.worldId.equals(player.getWorld().getUID())) {
             return false;
         }
-        String world = player.getWorld().getName();
-        boolean validWorld = context.definition.isAllowedWorld(world);
-        if (settings.enforceBoundWorld() && !context.definition.sharesProgressAcrossWorlds()) {
-            validWorld = validWorld && context.boundWorld.equalsIgnoreCase(world);
-        }
-        return validWorld || player.hasPermission("plexontools.bypass.world");
+        return !context.requiresWorldBypass
+                || player.hasPermission("plexontools.bypass.world");
     }
 
     private void refreshActiveState(Player player, ToolState state) {
@@ -605,6 +619,8 @@ public final class ToolProgressListener implements Listener {
         private final ToolDefinition definition;
         private final int heldSlot;
         private final Material material;
+        private final UUID worldId;
+        private final boolean requiresWorldBypass;
         private final long validationEpoch;
         private ToolState state;
         private AbilityService.BlockAbilityProfile abilityProfile;
@@ -620,6 +636,8 @@ public final class ToolProgressListener implements Listener {
                 AbilityService.BlockAbilityProfile abilityProfile,
                 int heldSlot,
                 Material material,
+                UUID worldId,
+                boolean requiresWorldBypass,
                 long validationEpoch,
                 long nextIdentityValidationTick
         ) {
@@ -632,6 +650,8 @@ public final class ToolProgressListener implements Listener {
             this.abilityProfile = abilityProfile;
             this.heldSlot = heldSlot;
             this.material = material;
+            this.worldId = worldId;
+            this.requiresWorldBypass = requiresWorldBypass;
             this.validationEpoch = validationEpoch;
             this.nextIdentityValidationTick = nextIdentityValidationTick;
         }
