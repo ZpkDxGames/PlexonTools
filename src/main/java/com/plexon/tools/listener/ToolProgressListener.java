@@ -5,6 +5,10 @@ import com.plexon.tools.config.ToolConfigRepository;
 import com.plexon.tools.item.ToolState;
 import com.plexon.tools.model.ToolDefinition;
 import com.plexon.tools.model.TrackingType;
+import com.plexon.tools.performance.MiningPerformanceProfiler;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Counter;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Isolation;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Stage;
 import com.plexon.tools.service.AbilityService;
 import com.plexon.tools.service.NaturalBlockTracker;
 import com.plexon.tools.service.ProgressionService;
@@ -82,9 +86,11 @@ public final class ToolProgressListener implements Listener {
     private final AbilityService abilities;
     private final NaturalBlockTracker naturalBlocks;
     private final PluginSettings settings;
+    private final MiningPerformanceProfiler profiler;
     private final Map<UUID, ActiveToolContext> activeTools = new HashMap<>();
     private final IdentityHashMap<EntityDamageByEntityEvent, ToolUse> damageContexts =
             new IdentityHashMap<>();
+    private final IdentityHashMap<BlockBreakEvent, Long> blockTimers = new IdentityHashMap<>();
     private long validationEpoch = 1L;
 
     public ToolProgressListener(
@@ -92,31 +98,47 @@ public final class ToolProgressListener implements Listener {
             ProgressionService progression,
             AbilityService abilities,
             NaturalBlockTracker naturalBlocks,
-            PluginSettings settings
+            PluginSettings settings,
+            MiningPerformanceProfiler profiler
     ) {
         this.tools = tools;
         this.progression = progression;
         this.abilities = abilities;
         this.naturalBlocks = naturalBlocks;
         this.settings = settings;
+        this.profiler = profiler;
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
-        Player player = event.getPlayer();
-        ActiveResolution resolution = resolveActive(player, true);
-        ActiveToolContext context = resolution.context();
-        if (context == null) {
-            if (resolution.tagged()) {
-                event.setCancelled(settings.cancelBlockBreaks());
+        long blockStarted = profiler.begin();
+        long highStarted = profiler.begin();
+        try {
+            Player player = event.getPlayer();
+            ActiveResolution resolution = resolveActive(player, true);
+            ActiveToolContext context = resolution.context();
+            if (context == null) {
+                if (resolution.tagged()) {
+                    event.setCancelled(settings.cancelBlockBreaks());
+                }
+                return;
             }
-            return;
+            if (blockStarted != 0L) {
+                blockTimers.put(event, blockStarted);
+            }
+            if (!profiler.isolated(Isolation.ABILITIES)) {
+                long expStarted = profiler.begin();
+                abilities.boostBlockExperience(event, context.abilityProfile);
+                profiler.record(Stage.BLOCK_HIGH_EXP, expStarted);
+            }
+        } finally {
+            profiler.record(Stage.BLOCK_HIGH_TOTAL, highStarted);
         }
-        abilities.boostBlockExperience(event, context.abilityProfile);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onBlockBreakAbilities(BlockBreakEvent event) {
+        Long blockStarted = blockTimers.remove(event);
         if (event.isCancelled()) {
             return;
         }
@@ -127,27 +149,65 @@ public final class ToolProgressListener implements Listener {
                 player.getInventory().getItemInMainHand().getType(), validationEpoch)) {
             return;
         }
-        if (!fastCanUse(player, context)) {
-            invalidate(player);
-            return;
-        }
 
-        ToolState latest = progression.latestState(context.state);
-        context.refreshState(latest, abilities);
-        String target = blockTrackingTarget(
-                context.definition.trackingType(), event.getBlock());
-        if (target != null && context.definition.tracks(target, latest.level())
-                && naturalBlocks.allowsProgress(event)) {
-            latest = progression.addResolvedProgress(
-                    player, EquipmentSlot.HAND, context.definition, latest, target, 1L);
+        long monitorStarted = profiler.begin();
+        try {
+            long validationStarted = profiler.begin();
+            boolean usable = fastCanUse(player, context);
+            profiler.record(Stage.BLOCK_HIGH_VALIDATION, validationStarted);
+            if (!usable) {
+                invalidate(player);
+                return;
+            }
+
+            long latestStarted = profiler.begin();
+            ToolState latest = progression.latestState(context.state);
             context.refreshState(latest, abilities);
-        }
-        if (abilities.isAreaMining(player)) {
-            return;
-        }
-        abilities.prepareBlockDrops(event, context.abilityProfile);
-        if (context.abilityProfile.areaMine()) {
-            abilities.mineArea(event, context.definition, latest);
+            profiler.record(Stage.BLOCK_MONITOR_LATEST_STATE, latestStarted);
+
+            long targetStarted = profiler.begin();
+            String target = blockTrackingTarget(
+                    context.definition.trackingType(), event.getBlock());
+            boolean tracks = target != null && context.definition.tracks(target, latest.level());
+            profiler.record(Stage.BLOCK_MONITOR_TARGET, targetStarted);
+
+            if (tracks) {
+                boolean allowed = true;
+                if (!profiler.isolated(Isolation.NATURAL_TRACKING)) {
+                    long naturalStarted = profiler.begin();
+                    profiler.count(Counter.NATURAL_BLOCK_LOOKUPS);
+                    profiler.count(Counter.NATURAL_BLOCK_CONSUMES);
+                    allowed = naturalBlocks.allowsProgress(event);
+                    profiler.record(Stage.BLOCK_MONITOR_NATURAL, naturalStarted);
+                }
+                if (allowed && !profiler.isolated(Isolation.PROGRESSION)) {
+                    latest = progression.addResolvedProgress(
+                            player, EquipmentSlot.HAND, context.definition, latest, target, 1L);
+                    context.refreshState(latest, abilities);
+                }
+            }
+
+            if (profiler.isolated(Isolation.ABILITIES)) {
+                return;
+            }
+            long abilitiesStarted = profiler.begin();
+            if (abilities.isAreaMining(player)) {
+                profiler.record(Stage.BLOCK_MONITOR_ABILITIES, abilitiesStarted);
+                return;
+            }
+            long dropContextStarted = profiler.begin();
+            abilities.prepareBlockDrops(event, context.abilityProfile);
+            profiler.record(Stage.BLOCK_MONITOR_DROP_CONTEXT, dropContextStarted);
+            if (context.abilityProfile.areaMine()) {
+                abilities.mineArea(event, context.definition, latest);
+            }
+            profiler.record(Stage.BLOCK_MONITOR_ABILITIES, abilitiesStarted);
+        } finally {
+            profiler.record(Stage.BLOCK_MONITOR_TOTAL, monitorStarted);
+            if (blockStarted != null) {
+                profiler.record(Stage.BLOCK_TOTAL, blockStarted);
+                profiler.completeBlockSample();
+            }
         }
     }
 
@@ -366,44 +426,60 @@ public final class ToolProgressListener implements Listener {
     /** Invalidates all parsed active identities after a definition/config reload. */
     public void invalidateAllActiveContexts() {
         activeTools.clear();
+        blockTimers.clear();
         validationEpoch = validationEpoch == Long.MAX_VALUE ? 1L : validationEpoch + 1L;
     }
 
-    int activeContextCount() {
+    public int activeContextCount() {
         return activeTools.size();
     }
 
     private ActiveResolution resolveActive(Player player, boolean notify) {
+        long contextStarted = profiler.begin();
         UUID playerId = player.getUniqueId();
         ItemStack item = player.getInventory().getItemInMainHand();
         int heldSlot = player.getInventory().getHeldItemSlot();
         long currentTick = player.getWorld().getGameTime();
         ActiveToolContext cached = activeTools.get(playerId);
+        profiler.record(Stage.BLOCK_HIGH_CONTEXT, contextStarted);
 
         if (cached != null && cached.quickIdentityMatches(
                 heldSlot, item.getType(), validationEpoch)) {
             ToolState latest = progression.latestState(cached.state);
             cached.refreshState(latest, abilities);
-            if (fastCanUse(player, cached)) {
+            long validationStarted = profiler.begin();
+            boolean valid = fastCanUse(player, cached);
+            profiler.record(Stage.BLOCK_HIGH_VALIDATION, validationStarted);
+            if (valid) {
                 if (currentTick < cached.nextIdentityValidationTick) {
+                    profiler.count(Counter.CONTEXT_HITS);
                     return ActiveResolution.usable(cached);
                 }
+                long identityStarted = profiler.begin();
                 ProgressionService.ToolResolution revalidated = progression.resolve(item);
+                profiler.record(Stage.BLOCK_HIGH_IDENTITY, identityStarted);
                 ToolState state = revalidated.state();
-                if (state != null
+                validationStarted = profiler.begin();
+                boolean revalidationValid = state != null
                         && state.instanceId().equals(cached.instanceId)
                         && state.toolId().equalsIgnoreCase(cached.toolId)
-                        && progression.canUse(player, cached.definition, state, false)) {
+                        && progression.canUse(player, cached.definition, state, false);
+                profiler.record(Stage.BLOCK_HIGH_VALIDATION, validationStarted);
+                if (revalidationValid) {
                     cached.refreshState(state, abilities);
                     cached.nextIdentityValidationTick = currentTick
                             + ACTIVE_IDENTITY_REVALIDATE_TICKS;
+                    profiler.count(Counter.CONTEXT_HITS);
                     return ActiveResolution.usable(cached);
                 }
             }
             activeTools.remove(playerId);
         }
 
+        profiler.count(Counter.CONTEXT_MISSES);
+        long identityStarted = profiler.begin();
         ProgressionService.ToolResolution resolution = progression.resolve(item);
+        profiler.record(Stage.BLOCK_HIGH_IDENTITY, identityStarted);
         ToolState state = resolution.state();
         if (state == null) {
             if (notify && resolution.tagged()) {
@@ -411,14 +487,22 @@ public final class ToolProgressListener implements Listener {
             }
             return resolution.tagged() ? ActiveResolution.invalid() : ActiveResolution.untagged();
         }
+
+        long definitionStarted = profiler.begin();
+        profiler.count(Counter.DEFINITION_LOOKUPS);
         ToolDefinition definition = tools.findCached(state.toolId());
+        profiler.record(Stage.BLOCK_HIGH_DEFINITION, definitionStarted);
         if (definition == null || !definition.enabled()) {
             if (notify) {
                 progression.warnInvalid(player);
             }
             return ActiveResolution.invalid();
         }
-        if (!progression.canUse(player, definition, state, notify)) {
+
+        long validationStarted = profiler.begin();
+        boolean usable = progression.canUse(player, definition, state, notify);
+        profiler.record(Stage.BLOCK_HIGH_VALIDATION, validationStarted);
+        if (!usable) {
             return ActiveResolution.invalid();
         }
 
