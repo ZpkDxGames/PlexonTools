@@ -6,6 +6,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class PluginSettings {
     private boolean enforceBoundWorld;
@@ -409,7 +410,7 @@ public final class PluginSettings {
         String name = configured == null ? "" : configured.trim();
         if (name.isBlank() || name.contains("/") || name.contains("\\")
                 || name.equals(".") || name.equals("..")
-                || !name.toLowerCase(java.util.Locale.ROOT).endsWith(".db")) {
+                || !name.toLowerCase(Locale.ROOT).endsWith(".db")) {
             throw new IllegalArgumentException(
                     "storage.database-file must be a simple .db filename inside the plugin folder.");
         }
@@ -425,9 +426,9 @@ public final class PluginSettings {
             List<String> defaultLore
     ) {
         String material = config.getString(path + ".material", defaultMaterial);
-        material = material == null ? defaultMaterial : material.trim().toUpperCase(java.util.Locale.ROOT);
+        material = material == null ? defaultMaterial : material.trim().toUpperCase(Locale.ROOT);
         if (!(allowToolMaterial && material.equals("TOOL"))) {
-            Material parsed = Material.matchMaterial(material);
+            Material parsed = configuredMaterial(material);
             if (parsed == null || !parsed.isItem() || parsed.isAir()) {
                 throw new IllegalArgumentException(path + ".material must be an item material"
                         + (allowToolMaterial ? " or TOOL." : "."));
@@ -442,14 +443,25 @@ public final class PluginSettings {
         return new MenuItemTemplate(material, displayName, List.copyOf(lore));
     }
 
+    /** Server-independent enum parser used during candidate configuration validation. */
+    private static Material configuredMaterial(String raw) {
+        String normalized = raw.trim().toUpperCase(Locale.ROOT);
+        if (normalized.startsWith("MINECRAFT:")) {
+            normalized = normalized.substring("MINECRAFT:".length());
+        }
+        return Material.getMaterial(normalized);
+    }
+
     public record MenuItemTemplate(
             String material,
             String displayName,
             List<String> lore
     ) {
         public Material resolveMaterial(Material toolMaterial) {
-            return material.equals("TOOL")
-                    ? toolMaterial : java.util.Objects.requireNonNull(Material.matchMaterial(material));
+            if (material.equals("TOOL")) {
+                return toolMaterial;
+            }
+            return java.util.Objects.requireNonNull(configuredMaterial(material));
         }
     }
 }
