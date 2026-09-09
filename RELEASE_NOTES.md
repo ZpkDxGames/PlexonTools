@@ -1,37 +1,61 @@
-# PlexonTools 4.2.0 — Performance & Reliability
+# PlexonTools 4.3.0 RC1 — PlexonCore 2 Migration Gate
 
-PlexonTools 4.2.0 builds on the 4.1.1 mining hot-path work and focuses on bounded concurrency, lifecycle safety, Area Mine containment, provenance efficiency, persistence observability, and reload reliability for Paper 26.2 / Java 25.
+PlexonTools 4.3.0 RC1 is a compatibility and release-gate candidate for the PlexonCore 2 runtime migration. It is intentionally **not** the stable `v4.3.0` release.
 
-## Performance & reliability
+## Included in RC1
 
-- Reduced ordinary block-break overhead and avoided progression/provenance work for max-level tools while retaining their abilities.
-- Replaced periodic all-online-player passive-effect scans with event-driven relevant-holder reconciliation and cached potion-effect resolution.
-- Reworked Auto Smelt/Magnet drop correlation to use player + exact block position, bounded pending contexts, expiry, and lifecycle cleanup.
-- Added `BulkBreakCoordinator` for Area Mine with exact-position deduplication, a maximum number of secondary blocks per activation, and a per-player/per-tick dispatch budget.
-- Kept `STRICT_EVENTS` as the effective Area Mine mode so Bukkit cancellation and protection integrations remain authoritative. Requested `OPTIMIZED` mode fails safe to strict behavior until equivalent protection-safe hooks exist.
-- Added natural-block provenance batch consume primitives, loaded/unknown/tracked-position snapshots, and bulk persistence enqueue support.
-- Added persistence diagnostics for queue high-water, dirty mutations, committed batches/entries, average batch size, pressure flushes, failed writes, and snapshot/flush state.
-- Restarted ability runtime caches/tasks after successful `/pt reload` so changed definitions take effect cleanly.
-- Made `PluginSettings` reload candidate-based so malformed configuration cannot partially mutate active settings.
+- Compiles against the exact released `PlexonCore-2.0.0.jar` rather than a mutable branch build.
+- CI verifies the Core artifact SHA-256 before installing it as the compile-only dependency.
+- Registers PlexonTools against the actual Core API 2 range when Core 2 is present.
+- Retains a safe legacy Core 1 registration path where the older runtime can link the bridge.
+- Keeps PlexonCore classes out of the PlexonTools JAR.
+- Preserves the optimized PlexonTools 4.2 mining/progression path, public API/events, SQLite ownership, standalone fallback and existing player/tool data.
+- Deliberately reports local/Core-legacy mining authority until the runtime parity gates pass.
+
+## Why stable runtime authority is not enabled yet
+
+Inspection of the released PlexonCore 2.0.0 source found three material release blockers:
+
+1. **Event phase contract:** the Core block gateway acquires at `HIGHEST`, while PlexonTools' mutable block-EXP phase currently runs at `HIGH`. The Core context is therefore too late to replace that acquisition safely without changing the phase contract.
+2. **Origin migration/parity:** Core owns a separate origin database and exposes no import API for existing PlexonTools placed-block provenance. It also does not yet reproduce PlexonTools falling-block provenance transitions.
+3. **Identity performance:** Core namespace identity inspection currently reads ItemMeta/PDC on every routed break requesting identity, while PlexonTools 4.2 reuses `ActiveToolContext` and performs periodic compact revalidation. Runtime parity has not yet been measured.
+
+The candidate does not hide these gaps behind a nominal `CORE_RUNTIME` state.
+
+## Required validation before `v4.3.0`
+
+- explicit mutable/final block-event correlation contract;
+- historical origin import or parity-safe hybrid authority;
+- falling-block anti-exploit parity;
+- exact progression, cancellation and Area Mine recursion/protection tests;
+- standalone and Core lifecycle tests;
+- Spark A/B comparison: 4.2.0 vs 4.3 LOCAL vs 4.3 CORE;
+- 5-player and 10-player concurrent mining checks;
+- 30-minute mixed soak;
+- understood identity and BlockDrop fallback rates.
+
+See:
+
+- `docs/CORE_RUNTIME_4_3_AUDIT.md`
+- `docs/CORE_RUNTIME_4_3.md`
+- `docs/ORIGIN_MIGRATION_4_3.md`
+- `docs/PERFORMANCE_4_3_0.md`
 
 ## Compatibility
 
-- `PlexonToolsAPI`, `PlexonToolProgressEvent`, and `PlexonToolLevelUpEvent` remain compatible.
-- Existing SQLite data remains valid; no database reset or schema replacement is required.
-- Owner binding, world restrictions, natural-only progression, cancellation/protection behavior, and immediate authoritative progression remain intact.
-- PlexonCore 1.0.0 integration and standalone fallback remain supported.
-- Paper 26.2 / Java 25.
+- Paper 26.2
+- Java 25
+- PlexonCore 2.0.0 for Core 2 validation
+- PlexonCore remains compile-only/provided
+- Existing PlexonTools SQLite data is retained
+- Public `PlexonToolsAPI`, `PlexonToolProgressEvent`, and `PlexonToolLevelUpEvent` remain unchanged
+- PlexonTools 4.2.0 remains the production rollback artifact
 
-## Verification
+## Candidate installation
 
-The release workflow builds the exact `v4.2.0` tag using Java 25 and requires Gradle tests/checks, full release-JAR readability, public API/event classes, SQLite JDBC/native entries, absence of shaded PlexonCore runtime classes, Java 25 bytecode, and a verified SHA-256 checksum before creating the GitHub release.
-
-The source audit and runtime validation matrix are documented in `docs/PERFORMANCE_4_2_0_AUDIT.md`. Live Spark/stress/soak profiling should continue on the production-equivalent server after deployment; no unmeasured percentage performance claim is made.
-
-## Upgrade
-
-1. Stop the Paper server.
-2. Back up the current PlexonTools JAR and `plugins/PlexonTools/` directory.
-3. Replace the old JAR with `PlexonTools-4.2.0.jar`.
-4. Keep the existing configuration and `plexontools.db`; do not reset player data.
-5. Start the server and verify `/pt diagnostics` before reopening normal play.
+1. Back up the current PlexonTools JAR and `plugins/PlexonTools/` directory.
+2. Install/verify PlexonCore 2.0.0 first.
+3. Replace the PlexonTools JAR with the RC artifact.
+4. Keep the existing PlexonTools configuration and database.
+5. Start the server and inspect `/pt diagnostics`.
+6. Treat the RC as validation software until the runtime gates above are completed.
