@@ -14,6 +14,7 @@ import com.plexon.tools.item.ToolItemService;
 import com.plexon.tools.listener.ToolProgressListener;
 import com.plexon.tools.listener.ToolProtectionListener;
 import com.plexon.tools.message.MessageService;
+import com.plexon.tools.performance.MiningPerformanceProfiler;
 import com.plexon.tools.service.ChatPromptService;
 import com.plexon.tools.service.AbilityService;
 import com.plexon.tools.service.ProgressionService;
@@ -40,6 +41,7 @@ public final class PlexonTools extends JavaPlugin {
     private static final List<String> CONFIGURATION_RESOURCES = List.of(
             "config.yml", "tools.yml", "messages.yml", "categories.yml", "menus.yml");
     private final PluginSettings settings = new PluginSettings();
+    private final MiningPerformanceProfiler miningProfiler = new MiningPerformanceProfiler();
     private MessageService messages;
     private CategoryRepository categories;
     private ToolConfigRepository tools;
@@ -85,8 +87,8 @@ public final class PlexonTools extends JavaPlugin {
 
             itemService = new ToolItemService(this, messages, settings, categories);
             progression = new ProgressionService(
-                    this, itemService, instanceRegistry, settings, messages);
-            abilities = new AbilityService(this, tools, progression);
+                    this, itemService, instanceRegistry, settings, messages, miningProfiler);
+            abilities = new AbilityService(this, tools, progression, miningProfiler);
             grants = new ToolGrantService(itemService, instanceRegistry, messages);
             activations = new ToolActivationService(
                     tools, worldMenus, settings, itemService, instanceRegistry, messages);
@@ -94,7 +96,8 @@ public final class PlexonTools extends JavaPlugin {
             gui = new GuiManager(this, categories, tools, worldMenus, itemService,
                     activations, grants, prompts, settings, messages);
             progressListener = new ToolProgressListener(
-                    tools, progression, abilities, naturalBlocks, settings);
+                    tools, progression, abilities, naturalBlocks, settings, miningProfiler);
+            miningProfiler.setActiveContextSupplier(progressListener::activeContextCount);
 
             getServer().getPluginManager().registerEvents(progressListener, this);
             getServer().getPluginManager().registerEvents(progression, this);
@@ -109,7 +112,7 @@ public final class PlexonTools extends JavaPlugin {
                     "plexontools command is missing from plugin.yml");
             PlexonToolsCommand executor = new PlexonToolsCommand(
                     categories, tools, grants, gui, messages, this::reloadPlugin,
-                    instanceRegistry::createBackup, this::diagnosticsLines);
+                    instanceRegistry::createBackup, this::diagnosticsLines, miningProfiler);
             command.setExecutor(executor);
             command.setTabCompleter(executor);
 
@@ -130,6 +133,7 @@ public final class PlexonTools extends JavaPlugin {
             getLogger().info("Runtime database: " + instanceRegistry.databaseFile().getFileName());
             getLogger().info("Natural-block progression: "
                     + (settings.naturalBlockProgressionEnabled() ? "enabled" : "disabled"));
+            getLogger().info("Mining profiler: disabled by default (/pt perf start)");
             getLogger().info("PlexonCore mode: " + coreBridge.mode()
                     + " (" + coreBridge.registrationState() + ")");
             getLogger().info("Public Tools API: registered");
@@ -147,6 +151,7 @@ public final class PlexonTools extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        miningProfiler.stopSession();
         if (progressListener != null) {
             progressListener.invalidateAllActiveContexts();
         }
@@ -183,6 +188,7 @@ public final class PlexonTools extends JavaPlugin {
     }
 
     private void reloadPlugin() throws Exception {
+        miningProfiler.stopSession();
         progression.pause();
         if (progressListener != null) {
             progressListener.invalidateAllActiveContexts();
@@ -248,6 +254,8 @@ public final class PlexonTools extends JavaPlugin {
                         + instanceRegistry.pendingWriteCount() + " pending writes"),
                 diagnostic("Natural blocks", settings.naturalBlockProgressionEnabled()
                         ? "ENABLED" : "DISABLED"),
+                diagnostic("Mining profiler", miningProfiler.enabled()
+                        ? "RUNNING • " + miningProfiler.blockSamples() + " samples" : "STOPPED"),
                 diagnostic("Public API", apiState),
                 diagnostic("Public events", eventState));
     }
