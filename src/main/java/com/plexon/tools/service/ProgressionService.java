@@ -8,6 +8,11 @@ import com.plexon.tools.item.ToolState;
 import com.plexon.tools.message.MessageService;
 import com.plexon.tools.model.LevelRequirement;
 import com.plexon.tools.model.ToolDefinition;
+import com.plexon.tools.performance.MiningPerformanceProfiler;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Counter;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Isolation;
+import com.plexon.tools.performance.MiningPerformanceProfiler.SampleContext;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Stage;
 import com.plexon.tools.storage.InstanceRegistry;
 import com.plexon.tools.util.RequirementProgression;
 import io.papermc.paper.registry.RegistryAccess;
@@ -55,6 +60,7 @@ public final class ProgressionService implements Listener {
     private final InstanceRegistry instanceRegistry;
     private final PluginSettings settings;
     private final MessageService messages;
+    private final MiningPerformanceProfiler profiler;
     private final Map<UUID, Long> lastWarnings = new HashMap<>();
     private final Map<UUID, ToolState> latestStates = new HashMap<>();
     private final Map<UUID, PendingVisual> pendingVisuals = new LinkedHashMap<>();
@@ -69,22 +75,24 @@ public final class ProgressionService implements Listener {
             ToolItemService itemService,
             InstanceRegistry instanceRegistry,
             PluginSettings settings,
-            MessageService messages
+            MessageService messages,
+            MiningPerformanceProfiler profiler
     ) {
         this.plugin = plugin;
         this.itemService = itemService;
         this.instanceRegistry = instanceRegistry;
         this.settings = settings;
         this.messages = messages;
+        this.profiler = profiler;
     }
 
     public void start() {
         stopTasks();
         long visualInterval = settings.progressVisualRefreshTicks();
         visualTask = Bukkit.getScheduler().runTaskTimer(
-                plugin, () -> flushPendingVisuals(true), visualInterval, visualInterval);
+                plugin, this::profiledVisualFlush, visualInterval, visualInterval);
         progressEventTask = Bukkit.getScheduler().runTaskTimer(
-                plugin, this::flushPendingProgressEvents,
+                plugin, this::profiledProgressEventFlush,
                 PROGRESS_EVENT_BATCH_TICKS, PROGRESS_EVENT_BATCH_TICKS);
     }
 
@@ -110,6 +118,10 @@ public final class ProgressionService implements Listener {
 
     public int pendingProgressEventGroupCount() {
         return progressEventBatcher.size();
+    }
+
+    public int pendingVisualCount() {
+        return pendingVisuals.size();
     }
 
     public long progressEventBatchTicks() {
@@ -140,6 +152,11 @@ public final class ProgressionService implements Listener {
         if (identity == null) {
             return ToolResolution.invalid();
         }
+        // A valid compact identity always reads id/uuid/world/owner and parses
+        // the instance + owner UUID exactly once each.
+        profiler.count(Counter.PDC_IDENTITY_READS, 4L);
+        profiler.count(Counter.UUID_PARSES, 2L);
+
         ToolState authoritative = stateForInstance(identity.instanceId());
         if (authoritative != null) {
             if (authoritative.toolId().equalsIgnoreCase(identity.toolId())
@@ -148,9 +165,14 @@ public final class ProgressionService implements Listener {
             }
             return ToolResolution.invalid();
         }
-        return itemService.read(item)
-                .map(ToolResolution::resolved)
-                .orElseGet(ToolResolution::invalid);
+        Optional<ToolState> fallback = itemService.read(item);
+        if (fallback.isPresent()) {
+            // Full state fallback reads eight PDC fields and parses both UUIDs.
+            profiler.count(Counter.PDC_IDENTITY_READS, 8L);
+            profiler.count(Counter.UUID_PARSES, 2L);
+            return ToolResolution.resolved(fallback.get());
+        }
+        return ToolResolution.invalid();
     }
 
     public ToolState latestState(ToolState suppliedState) {
@@ -168,6 +190,7 @@ public final class ProgressionService implements Listener {
         if (cached != null) {
             return cached;
         }
+        profiler.count(Counter.REGISTRY_READS);
         InstanceRegistry.InstanceRecord record = instanceRegistry.findCached(instanceId);
         if (record == null) {
             return null;
@@ -272,14 +295,22 @@ public final class ProgressionService implements Listener {
             String target,
             long amount
     ) {
+        long mutationStarted = profiler.begin();
         ToolState current = registryState;
         if (!current.categoryId().equalsIgnoreCase(definition.category())) {
             current = current.withCategory(definition.category());
         }
+        profiler.record(Stage.BLOCK_MONITOR_STATE_MUTATION, mutationStarted);
+
         if (definition.levels().higherKey(current.level()) == null) {
-            if (!current.equals(registryState)
-                    || instanceRegistry.findCached(current.instanceId()) == null) {
-                instanceRegistry.update(current, 0L, player.getName());
+            // Max-level mining must be nearly free. A registry-backed state has
+            // already populated latestStates during identity resolution, so do
+            // not materialize another InstanceRecord snapshot per block merely
+            // to prove it still exists.
+            if ((!current.equals(registryState)
+                    || !latestStates.containsKey(current.instanceId()))
+                    && !profiler.isolated(Isolation.REGISTRY_MUTATION)) {
+                updateRegistry(current, 0L, player.getName());
                 latestStates.put(current.instanceId(), current);
                 queueVisual(player, hand, definition, current.instanceId());
             } else {
@@ -288,34 +319,73 @@ public final class ProgressionService implements Listener {
             return current;
         }
 
+        long requirementStarted = profiler.begin();
+        profiler.count(Counter.REQUIREMENT_PROGRESSION_CALLS);
         RequirementProgression.Result result = RequirementProgression.advance(
                 current.level(), current.progress(), current.targetProgress(), target, amount,
                 requirementsFor(definition));
+        profiler.record(Stage.BLOCK_MONITOR_REQUIREMENT, requirementStarted);
+
+        mutationStarted = profiler.begin();
         ToolState updated = current.withProgress(
                 result.level(), result.progress(), result.targetProgress());
+        profiler.record(Stage.BLOCK_MONITOR_STATE_MUTATION, mutationStarted);
         if (updated.equals(current)) {
             return current;
         }
+        if (profiler.isolated(Isolation.REGISTRY_MUTATION)) {
+            // Diagnostic-only mode: exercise recognition/natural/progression math
+            // without committing state or producing dependent side effects.
+            return current;
+        }
 
-        instanceRegistry.update(updated, amount, player.getName());
+        updateRegistry(updated, amount, player.getName());
         latestStates.put(updated.instanceId(), updated);
-        publishProgressEvents(player, definition, current, updated, target, amount,
-                result.levelsGained());
+
+        if (!profiler.isolated(Isolation.PROGRESS_EVENTS)) {
+            long eventStarted = profiler.begin();
+            publishProgressEvents(player, definition, current, updated, target, amount,
+                    result.levelsGained());
+            profiler.record(Stage.BLOCK_MONITOR_EVENT_BATCH, eventStarted);
+        }
+
         if (result.levelsGained() > 0) {
-            pendingVisuals.remove(updated.instanceId());
-            LocatedItem located = locate(player, updated.instanceId(), hand);
-            if (located == null) {
-                queueVisual(player, hand, definition, updated.instanceId());
-            } else {
-                ItemStack updatedItem = itemService.apply(
-                        located.item(), definition, updated, player.getName());
-                located.replace(player, updatedItem);
+            if (!profiler.isolated(Isolation.VISUAL_REFRESH)) {
+                long visualStarted = profiler.begin();
+                pendingVisuals.remove(updated.instanceId());
+                LocatedItem located = locate(player, updated.instanceId(), hand);
+                if (located == null) {
+                    queueVisual(player, hand, definition, updated.instanceId());
+                } else {
+                    ItemStack updatedItem = itemService.apply(
+                            located.item(), definition, updated, player.getName());
+                    located.replace(player, updatedItem);
+                }
+                profiler.record(Stage.BLOCK_MONITOR_VISUAL_QUEUE, visualStarted);
             }
             announceUpgrade(player, definition, updated);
         } else {
+            long visualStarted = profiler.begin();
             queueVisual(player, hand, definition, updated.instanceId());
+            profiler.record(Stage.BLOCK_MONITOR_VISUAL_QUEUE, visualStarted);
         }
         return updated;
+    }
+
+    private void updateRegistry(ToolState state, long progressAdded, String ownerName) {
+        int pendingBefore = profiler.enabled() ? instanceRegistry.pendingWriteCount() : -1;
+        long registryStarted = profiler.begin();
+        instanceRegistry.update(state, progressAdded, ownerName);
+        profiler.record(Stage.BLOCK_MONITOR_REGISTRY, registryStarted);
+        profiler.count(Counter.REGISTRY_MUTATIONS);
+        if (pendingBefore >= 0) {
+            int pendingAfter = instanceRegistry.pendingWriteCount();
+            if (pendingAfter > pendingBefore) {
+                profiler.count(Counter.DIRTY_QUEUE_FIRST_INSERTS);
+            } else {
+                profiler.count(Counter.DIRTY_QUEUE_REPEATED_UPDATES);
+            }
+        }
     }
 
     private void publishProgressEvents(
@@ -333,7 +403,7 @@ public final class ProgressionService implements Listener {
                 : null;
 
         if (levelsGained <= 0 || updated.level() <= previous.level()) {
-            progressEventBatcher.add(
+            ProgressEventBatcher.AddResult addResult = progressEventBatcher.add(
                     player.getUniqueId(),
                     updated.instanceId(),
                     definition.id(),
@@ -342,6 +412,8 @@ public final class ProgressionService implements Listener {
                     material,
                     updated.level(),
                     amount);
+            profiler.count(addResult == ProgressEventBatcher.AddResult.CREATED
+                    ? Counter.PROGRESS_BATCHES_CREATED : Counter.PROGRESS_BATCHES_MERGED);
             return;
         }
 
@@ -355,7 +427,23 @@ public final class ProgressionService implements Listener {
         dispatchLevelUpEvent(player, definition, previous, updated, transactionId);
     }
 
+    private void profiledProgressEventFlush() {
+        if (!profiler.enabled()) {
+            flushPendingProgressEvents();
+            return;
+        }
+        SampleContext context = SampleContext.queues(
+                pendingVisuals.size(), progressEventBatcher.size(), instanceRegistry.pendingWriteCount());
+        long started = profiler.begin();
+        flushPendingProgressEvents();
+        profiler.record(Stage.TASK_PROGRESS_EVENT_FLUSH, started, context);
+    }
+
     private void flushPendingProgressEvents() {
+        if (profiler.isolated(Isolation.PROGRESS_EVENTS)) {
+            progressEventBatcher.clear();
+            return;
+        }
         dispatchPendingProgress(progressEventBatcher.drainAll());
     }
 
@@ -364,6 +452,9 @@ public final class ProgressionService implements Listener {
     }
 
     private void dispatchPendingProgress(List<ProgressEventBatcher.PendingProgress> pendingEvents) {
+        if (profiler.isolated(Isolation.PROGRESS_EVENTS)) {
+            return;
+        }
         for (ProgressEventBatcher.PendingProgress pending : pendingEvents) {
             Player player = Bukkit.getPlayer(pending.playerId());
             if (player == null) {
@@ -446,6 +537,9 @@ public final class ProgressionService implements Listener {
             ToolDefinition definition,
             UUID instanceId
     ) {
+        if (profiler.isolated(Isolation.VISUAL_REFRESH)) {
+            return;
+        }
         if (!pendingVisuals.containsKey(instanceId)) {
             pendingVisuals.put(instanceId, new PendingVisual(
                     player.getUniqueId(), instanceId, hand, definition));
@@ -486,7 +580,23 @@ public final class ProgressionService implements Listener {
         });
     }
 
+    private void profiledVisualFlush() {
+        if (!profiler.enabled()) {
+            flushPendingVisuals(true);
+            return;
+        }
+        SampleContext context = SampleContext.queues(
+                pendingVisuals.size(), progressEventBatcher.size(), instanceRegistry.pendingWriteCount());
+        long started = profiler.begin();
+        flushPendingVisuals(true);
+        profiler.record(Stage.TASK_VISUAL_REFRESH, started, context);
+    }
+
     private void flushPendingVisuals(boolean sendActionBars) {
+        if (profiler.isolated(Isolation.VISUAL_REFRESH)) {
+            pendingVisuals.clear();
+            return;
+        }
         if (pendingVisuals.isEmpty()) {
             return;
         }
@@ -504,6 +614,11 @@ public final class ProgressionService implements Listener {
     }
 
     private void flushPlayer(Player player) {
+        if (profiler.isolated(Isolation.VISUAL_REFRESH)) {
+            pendingVisuals.entrySet().removeIf(entry ->
+                    entry.getValue().playerId().equals(player.getUniqueId()));
+            return;
+        }
         Iterator<PendingVisual> iterator = pendingVisuals.values().iterator();
         while (iterator.hasNext()) {
             PendingVisual visual = iterator.next();
@@ -522,25 +637,41 @@ public final class ProgressionService implements Listener {
     }
 
     private void flushVisual(PendingVisual visual, boolean sendActionBar) {
+        long visualStarted = profiler.begin();
         Player player = Bukkit.getPlayer(visual.playerId());
         if (player == null) {
+            profiler.record(Stage.VISUAL_TOTAL, visualStarted);
             return;
         }
         ToolState state = stateForInstance(visual.instanceId());
         if (state == null) {
+            profiler.record(Stage.VISUAL_TOTAL, visualStarted);
             return;
         }
+
+        long locateStarted = profiler.begin();
         LocatedItem located = locate(player, visual.instanceId(), visual.preferredHand());
+        profiler.record(Stage.VISUAL_LOCATE, locateStarted);
         if (located == null) {
+            profiler.record(Stage.VISUAL_TOTAL, visualStarted);
             return;
         }
+
+        long refreshStarted = profiler.begin();
         ItemStack refreshed = itemService.refreshProgress(
                 located.item(), visual.definition(), state, player.getName());
         located.replace(player, refreshed);
-        if (sendActionBar && settings.progressActionBar()) {
+        profiler.count(Counter.VISUAL_REFRESHES);
+        profiler.record(Stage.VISUAL_ITEM_REFRESH, refreshStarted);
+
+        if (sendActionBar && settings.progressActionBar()
+                && !profiler.isolated(Isolation.ACTIONBAR)) {
+            long actionStarted = profiler.begin();
             messages.actionBar(player, "progress-update",
                     itemService.progressPlaceholders(visual.definition(), state));
+            profiler.record(Stage.VISUAL_ACTIONBAR, actionStarted);
         }
+        profiler.record(Stage.VISUAL_TOTAL, visualStarted);
     }
 
     private LocatedItem locate(Player player, UUID instanceId, EquipmentSlot preferredHand) {
@@ -556,6 +687,7 @@ public final class ProgressionService implements Listener {
                         item, player.getInventory().getHeldItemSlot());
             }
         }
+        profiler.count(Counter.INVENTORY_SCANS);
         ItemStack[] storage = player.getInventory().getStorageContents();
         for (int slot = 0; slot < storage.length; slot++) {
             if (matches(storage[slot], instanceId)) {
@@ -572,6 +704,10 @@ public final class ProgressionService implements Listener {
 
     private boolean matches(ItemStack item, UUID instanceId) {
         ToolItemService.ToolIdentity identity = itemService.inspectIdentity(item).identity();
+        if (identity != null) {
+            profiler.count(Counter.PDC_IDENTITY_READS, 4L);
+            profiler.count(Counter.UUID_PARSES, 2L);
+        }
         return identity != null && identity.instanceId().equals(instanceId);
     }
 
@@ -594,7 +730,9 @@ public final class ProgressionService implements Listener {
                 "level", Integer.toString(state.level())
         );
         messages.sendWithoutPrefix(player, "level-up", placeholders);
-        messages.actionBar(player, "level-up", placeholders);
+        if (!profiler.isolated(Isolation.ACTIONBAR)) {
+            messages.actionBar(player, "level-up", placeholders);
+        }
 
         try {
             String configured = settings.levelUpSound().toLowerCase(Locale.ROOT);

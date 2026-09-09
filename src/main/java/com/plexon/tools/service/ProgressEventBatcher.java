@@ -18,7 +18,7 @@ final class ProgressEventBatcher {
     private final Map<UUID, ArrayList<PendingProgress>> byInstance = new LinkedHashMap<>();
     private int groupCount;
 
-    void add(
+    AddResult add(
             UUID playerId,
             UUID instanceId,
             String toolId,
@@ -45,7 +45,7 @@ final class ProgressEventBatcher {
             }
             if (Long.MAX_VALUE - pending.amount >= amount) {
                 pending.amount += amount;
-                return;
+                return AddResult.MERGED;
             }
             // Keep totals exact instead of saturating if an impossible-in-practice
             // amount would overflow a single public event.
@@ -54,6 +54,7 @@ final class ProgressEventBatcher {
         groups.add(new PendingProgress(playerId, instanceId, toolId, category,
                 progressType, material, level, amount));
         groupCount++;
+        return AddResult.CREATED;
     }
 
     List<PendingProgress> drainAll() {
@@ -109,6 +110,11 @@ final class ProgressEventBatcher {
     void clear() {
         byInstance.clear();
         groupCount = 0;
+    }
+
+    enum AddResult {
+        CREATED,
+        MERGED
     }
 
     static final class PendingProgress {

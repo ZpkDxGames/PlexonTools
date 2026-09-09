@@ -21,34 +21,56 @@ public final class RequirementProgression {
     ) {
         int level = currentLevel;
         long progress = Math.max(0L, currentProgress);
-        String target = LevelRequirement.normalize(eventTarget);
         long increment = Math.max(0L, amount);
-        int levelsGained = 0;
-
         LevelRequirement requirement = requirements.get(level);
-        if (requirement == null || increment == 0L || !requirement.accepts(target)) {
-            return new Result(level, progress, normalize(currentTargets), 0);
+        if (requirement == null || increment == 0L) {
+            return unchanged(level, progress, currentTargets);
         }
 
-        Map<String, Long> targetProgress;
+        // General block/item requirements are overwhelmingly the mining hot path.
+        // Avoid cloning/normalizing a target-progress map that is never used.
         if (requirement.mode() == RequirementMode.GENERAL) {
+            String target = LevelRequirement.normalize(eventTarget);
+            if (!requirement.accepts(target)) {
+                return unchanged(level, progress, currentTargets);
+            }
             progress = ProgressionMath.saturatingAdd(progress, increment);
-            targetProgress = Map.of();
-        } else {
-            targetProgress = normalize(currentTargets);
-            targetProgress.merge(target, increment, ProgressionMath::saturatingAdd);
-            progress = requirement.rawProgress(0L, targetProgress);
+            Integer nextLevel = requirements.higherKey(level);
+            if (nextLevel != null && progress >= requirement.amount()) {
+                return new Result(nextLevel, 0L, Map.of(), 1);
+            }
+            return new Result(level, progress, Map.of(), 0);
         }
+
+        String target = LevelRequirement.normalize(eventTarget);
+        if (!requirement.accepts(target)) {
+            return unchanged(level, progress, currentTargets);
+        }
+
+        Map<String, Long> targetProgress = normalize(currentTargets);
+        targetProgress.merge(target, increment, ProgressionMath::saturatingAdd);
+        progress = requirement.rawProgress(0L, targetProgress);
 
         Integer nextLevel = requirements.higherKey(level);
         if (nextLevel != null && requirement.complete(progress, targetProgress)) {
             level = nextLevel;
             progress = 0L;
             targetProgress = Map.of();
-            levelsGained = 1;
+            return new Result(level, progress, targetProgress, 1);
         }
 
-        return new Result(level, progress, targetProgress, levelsGained);
+        return new Result(level, progress, targetProgress, 0);
+    }
+
+    private static Result unchanged(
+            int level,
+            long progress,
+            Map<String, Long> currentTargets
+    ) {
+        if (currentTargets.isEmpty()) {
+            return new Result(level, progress, Map.of(), 0);
+        }
+        return new Result(level, progress, currentTargets, 0);
     }
 
     private static Map<String, Long> normalize(Map<String, Long> progress) {

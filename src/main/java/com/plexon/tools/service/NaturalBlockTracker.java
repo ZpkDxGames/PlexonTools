@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,6 +60,8 @@ public final class NaturalBlockTracker implements Listener {
     private final ArrayDeque<ChunkLoadRequest> loadQueue = new ArrayDeque<>();
     private final Set<ChunkKey> queuedLoads = new HashSet<>();
     private final Map<ChunkKey, Long> loadTokens = new HashMap<>();
+    private final IdentityHashMap<BlockBreakEvent, Origin> consumedBreakOrigins =
+            new IdentityHashMap<>();
 
     private boolean active;
     private boolean loadInFlight;
@@ -79,6 +82,7 @@ public final class NaturalBlockTracker implements Listener {
         loadQueue.clear();
         queuedLoads.clear();
         loadTokens.clear();
+        consumedBreakOrigins.clear();
         nextLoadToken = 0L;
         index.clear();
         if (!active) return;
@@ -98,14 +102,29 @@ public final class NaturalBlockTracker implements Listener {
         loadQueue.clear();
         queuedLoads.clear();
         loadTokens.clear();
+        consumedBreakOrigins.clear();
         index.clear();
     }
 
     public boolean allowsProgress(Block block) {
         if (!active) return true;
         Origin origin = consume(block);
-        return origin == Origin.NATURAL
-                || (origin == Origin.UNKNOWN && !settings.naturalBlockFailClosed());
+        return allows(origin);
+    }
+
+    /**
+     * Classifies and consumes provenance once from the successful MONITOR-stage
+     * PlexonTools break path. The later cleanup handler sees the same event and
+     * skips a second index operation. Cancelled events never reach this method.
+     */
+    public boolean allowsProgress(BlockBreakEvent event) {
+        if (!active) return true;
+        Origin origin = consumedBreakOrigins.get(event);
+        if (origin == null) {
+            origin = consume(event.getBlock());
+            consumedBreakOrigins.put(event, origin);
+        }
+        return allows(origin);
     }
 
     public boolean isNatural(Block block) {
@@ -115,8 +134,7 @@ public final class NaturalBlockTracker implements Listener {
         int z = block.getZ();
         ensureTracked(worldId, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
         Origin origin = index.peek(worldId, x, block.getY(), z);
-        return origin == Origin.NATURAL
-                || (origin == Origin.UNKNOWN && !settings.naturalBlockFailClosed());
+        return allows(origin);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -131,9 +149,13 @@ public final class NaturalBlockTracker implements Listener {
         markPlaced(event.getBlockPlaced());
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onBreakCleanup(BlockBreakEvent event) {
-        if (active) consume(event.getBlock());
+        Origin consumed = consumedBreakOrigins.remove(event);
+        if (active && !event.isCancelled() && consumed == null) {
+            // Non-PlexonTools breaks still clear placed-block provenance once.
+            consume(event.getBlock());
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -200,6 +222,11 @@ public final class NaturalBlockTracker implements Listener {
         if (queuedLoads.remove(key)) {
             loadQueue.removeIf(request -> request.key().equals(key));
         }
+    }
+
+    private boolean allows(Origin origin) {
+        return origin == Origin.NATURAL
+                || (origin == Origin.UNKNOWN && !settings.naturalBlockFailClosed());
     }
 
     private void markPlaced(Block block) {

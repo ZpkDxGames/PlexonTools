@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -28,6 +29,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 
+/**
+ * Authoritative in-memory instance registry with asynchronous SQLite flushing.
+ *
+ * <p>Active progression mutates the already-loaded runtime record in place.
+ * Immutable/detached {@link InstanceRecord} snapshots are materialized only for
+ * consumers and persistence batches, rather than rebuilding a complete record
+ * for every +1 mining increment.</p>
+ */
 public final class InstanceRegistry {
     private static final DateTimeFormatter BACKUP_TIME = DateTimeFormatter
             .ofPattern("uuuuMMdd-HHmmss-SSS'Z'")
@@ -37,13 +46,15 @@ public final class InstanceRegistry {
     private final Path legacyFile;
     private final RegistryDatabase database;
     private final ConcurrentMap<UUID, InstanceRecord> records = new ConcurrentHashMap<>();
+    private final ConcurrentMap<UUID, Long> recordRevisions = new ConcurrentHashMap<>();
     private final AtomicLong revision = new AtomicLong();
     private final AtomicBoolean saving = new AtomicBoolean();
     private final AtomicBoolean pressureFlushQueued = new AtomicBoolean();
     private final Object pendingLock = new Object();
     private final Object databaseLock = new Object();
     private final LinkedHashMap<UUID, Long> pendingWrites = new LinkedHashMap<>();
-    private final LinkedHashMap<PlacedBlockPosition, PendingPlacedWrite> pendingPlacedBlockWrites = new LinkedHashMap<>();
+    private final LinkedHashMap<PlacedBlockPosition, PendingPlacedWrite> pendingPlacedBlockWrites =
+            new LinkedHashMap<>();
     private boolean fullSnapshotPending;
     private boolean fullSnapshotInFlight;
 
@@ -128,19 +139,27 @@ public final class InstanceRegistry {
         }
     }
 
+    /**
+     * Mutates the already-resident runtime record. This is the high-frequency
+     * progression path and intentionally avoids ConcurrentHashMap.compute and
+     * immutable InstanceRecord reconstruction for each block.
+     */
     public void update(ToolState state, long progressAdded, String ownerName) {
         long now = System.currentTimeMillis();
-        records.compute(state.instanceId(), (instanceId, existing) -> {
-            long createdAt = existing == null ? now : existing.createdAt();
-            long lifetime = existing == null ? 0L : existing.lifetime();
-            boolean active = existing == null || existing.active();
-            boolean menuManaged = existing != null && existing.menuManaged();
-            lifetime = saturatingAdd(lifetime, Math.max(0L, progressAdded));
-            return new InstanceRecord(
+        InstanceRecord record = records.get(state.instanceId());
+        if (record == null) {
+            InstanceRecord created = new InstanceRecord(
                     state.instanceId(), state.toolId(), state.categoryId(), state.ownerId(), ownerName,
                     state.boundWorld(), state.level(), state.progress(), state.targetProgress(),
-                    active, menuManaged, lifetime, createdAt, now);
-        });
+                    true, false, Math.max(0L, progressAdded), now, now);
+            InstanceRecord raced = records.putIfAbsent(state.instanceId(), created);
+            record = raced == null ? created : raced;
+            if (raced != null) {
+                record.updateFrom(state, progressAdded, ownerName, now);
+            }
+        } else {
+            record.updateFrom(state, progressAdded, ownerName, now);
+        }
         markDirty(state.instanceId());
     }
 
@@ -148,9 +167,13 @@ public final class InstanceRegistry {
         return Optional.ofNullable(findCached(instanceId));
     }
 
-    /** Returns an authoritative in-memory record without allocating an Optional. */
+    /**
+     * Returns a detached authoritative snapshot. Runtime mutation stays private
+     * to the registry and is never exposed through the public API.
+     */
     public InstanceRecord findCached(UUID instanceId) {
-        return records.get(instanceId);
+        InstanceRecord record = records.get(instanceId);
+        return record == null ? null : record.snapshot();
     }
 
     public List<InstanceRecord> findOwned(UUID ownerId, String toolId, String boundWorld) {
@@ -161,6 +184,7 @@ public final class InstanceRegistry {
 
     public List<InstanceRecord> findOwned(UUID ownerId, String toolId) {
         return records.values().stream()
+                .map(InstanceRecord::snapshot)
                 .filter(record -> record.ownerId().equals(ownerId))
                 .filter(record -> record.toolId().equalsIgnoreCase(toolId))
                 .sorted(Comparator.comparingLong(InstanceRecord::updatedAt).reversed())
@@ -175,6 +199,7 @@ public final class InstanceRegistry {
 
     public List<InstanceRecord> findActive(UUID ownerId) {
         return records.values().stream()
+                .map(InstanceRecord::snapshot)
                 .filter(InstanceRecord::active)
                 .filter(record -> record.ownerId().equals(ownerId))
                 .sorted(Comparator
@@ -185,37 +210,15 @@ public final class InstanceRegistry {
     }
 
     public void setActive(UUID instanceId, boolean active) {
-        AtomicBoolean changed = new AtomicBoolean();
-        records.computeIfPresent(instanceId, (ignored, record) -> {
-            if (record.active() == active) {
-                return record;
-            }
-            changed.set(true);
-            return new InstanceRecord(
-                    record.instanceId(), record.toolId(), record.categoryId(), record.ownerId(),
-                    record.ownerName(), record.boundWorld(), record.level(), record.progress(),
-                    record.targetProgress(), active, record.menuManaged(), record.lifetime(),
-                    record.createdAt(), System.currentTimeMillis());
-        });
-        if (changed.get()) {
+        InstanceRecord record = records.get(instanceId);
+        if (record != null && record.setActive(active, System.currentTimeMillis())) {
             markDirty(instanceId);
         }
     }
 
     public void setMenuManaged(UUID instanceId, boolean menuManaged) {
-        AtomicBoolean changed = new AtomicBoolean();
-        records.computeIfPresent(instanceId, (ignored, record) -> {
-            if (record.menuManaged() == menuManaged) {
-                return record;
-            }
-            changed.set(true);
-            return new InstanceRecord(
-                    record.instanceId(), record.toolId(), record.categoryId(), record.ownerId(),
-                    record.ownerName(), record.boundWorld(), record.level(), record.progress(),
-                    record.targetProgress(), record.active(), menuManaged, record.lifetime(),
-                    record.createdAt(), System.currentTimeMillis());
-        });
-        if (changed.get()) {
+        InstanceRecord record = records.get(instanceId);
+        if (record != null && record.setMenuManaged(menuManaged, System.currentTimeMillis())) {
             markDirty(instanceId);
         }
     }
@@ -342,14 +345,19 @@ public final class InstanceRegistry {
         }
     }
 
+    /**
+     * Marks an instance dirty once per pending persistence window while keeping
+     * a separate latest revision for race-safe asynchronous acknowledgement.
+     */
     private void markDirty(UUID instanceId) {
         long currentRevision = revision.incrementAndGet();
+        recordRevisions.put(instanceId, currentRevision);
         int pending;
         synchronized (pendingLock) {
             if (fullSnapshotPending) {
                 pending = records.size() + pendingPlacedBlockWrites.size();
             } else {
-                Long previousRevision = pendingWrites.put(instanceId, currentRevision);
+                Long previousRevision = pendingWrites.putIfAbsent(instanceId, currentRevision);
                 if (previousRevision == null
                         && pendingWrites.size() > settings.databaseMaxPendingWrites()) {
                     pendingWrites.clear();
@@ -382,9 +390,7 @@ public final class InstanceRegistry {
         synchronized (pendingLock) {
             if (fullSnapshotPending) {
                 // Changes completed before this transition are represented by
-                // the snapshot. Later changes enter pendingWrites as deltas,
-                // preventing a busy server from rewriting the full registry
-                // repeatedly merely because its revision kept advancing.
+                // the snapshot. Later changes enter pendingWrites as deltas.
                 fullSnapshotPending = false;
                 fullSnapshotInFlight = true;
             } else {
@@ -396,8 +402,10 @@ public final class InstanceRegistry {
                 for (Map.Entry<UUID, Long> entry : pendingWrites.entrySet()) {
                     InstanceRecord record = records.get(entry.getKey());
                     if (record != null) {
-                        revisions.put(entry.getKey(), entry.getValue());
-                        batch.add(record);
+                        long latestRevision = recordRevisions.getOrDefault(
+                                entry.getKey(), entry.getValue());
+                        revisions.put(entry.getKey(), latestRevision);
+                        batch.add(record.snapshot());
                     }
                     if (revisions.size() >= settings.databaseWriteBatchSize()) {
                         break;
@@ -414,6 +422,7 @@ public final class InstanceRegistry {
         // A full snapshot can be large. Copy it on the asynchronous caller
         // without holding the lock used by gameplay-thread markDirty calls.
         List<InstanceRecord> snapshot = records.values().stream()
+                .map(InstanceRecord::snapshot)
                 .sorted(Comparator.comparing(record -> record.instanceId().toString()))
                 .toList();
         return new PendingBatch(snapshot, Map.of(), true);
@@ -469,8 +478,8 @@ public final class InstanceRegistry {
                 return;
             }
             batch.revisions().forEach((instanceId, batchRevision) -> {
-                Long current = pendingWrites.get(instanceId);
-                if (current != null && current.equals(batchRevision)) {
+                Long latestRevision = recordRevisions.get(instanceId);
+                if (latestRevision != null && latestRevision.equals(batchRevision)) {
                     pendingWrites.remove(instanceId);
                 }
             });
@@ -494,6 +503,7 @@ public final class InstanceRegistry {
         revision.set(0L);
         saving.set(false);
         pressureFlushQueued.set(false);
+        recordRevisions.clear();
         synchronized (pendingLock) {
             pendingWrites.clear();
             pendingPlacedBlockWrites.clear();
@@ -520,23 +530,42 @@ public final class InstanceRegistry {
             Map<PlacedBlockPosition, Long> revisions
     ) {}
 
-    public record InstanceRecord(
-            UUID instanceId,
-            String toolId,
-            String categoryId,
-            UUID ownerId,
-            String ownerName,
-            String boundWorld,
-            int level,
-            long progress,
-            Map<String, Long> targetProgress,
-            boolean active,
-            boolean menuManaged,
-            long lifetime,
-            long createdAt,
-            long updatedAt
-    ) {
-        public InstanceRecord {
+    /**
+     * Mutable only inside InstanceRegistry. Public callers receive detached
+     * snapshots from find/findCached/findOwned/findActive.
+     */
+    public static final class InstanceRecord {
+        private final UUID instanceId;
+        private volatile String toolId;
+        private volatile String categoryId;
+        private volatile UUID ownerId;
+        private volatile String ownerName;
+        private volatile String boundWorld;
+        private volatile int level;
+        private volatile long progress;
+        private volatile Map<String, Long> targetProgress;
+        private volatile boolean active;
+        private volatile boolean menuManaged;
+        private volatile long lifetime;
+        private final long createdAt;
+        private volatile long updatedAt;
+
+        public InstanceRecord(
+                UUID instanceId,
+                String toolId,
+                String categoryId,
+                UUID ownerId,
+                String ownerName,
+                String boundWorld,
+                int level,
+                long progress,
+                Map<String, Long> targetProgress,
+                boolean active,
+                boolean menuManaged,
+                long lifetime,
+                long createdAt,
+                long updatedAt
+        ) {
             if (instanceId == null || ownerId == null) {
                 throw new IllegalArgumentException("Instance and owner UUIDs are required.");
             }
@@ -549,29 +578,194 @@ public final class InstanceRegistry {
                     || createdAt < 0L || updatedAt < 0L) {
                 throw new IllegalArgumentException("Persistent numeric values cannot be negative.");
             }
-            categoryId = categoryId == null ? "" : categoryId;
-            if (targetProgress.isEmpty()) {
-                targetProgress = Map.of();
-            } else {
-                Map<String, Long> normalizedTargets = new LinkedHashMap<>();
-                targetProgress.forEach((rawTarget, amount) -> {
-                    String target = LevelRequirement.normalize(rawTarget);
-                    if (target.isBlank() || amount == null || amount < 1L) {
-                        throw new IllegalArgumentException(
-                                "Target progress requires a nonblank target and positive amount.");
-                    }
-                    if (normalizedTargets.putIfAbsent(target, amount) != null) {
-                        throw new IllegalArgumentException(
-                                "Duplicate normalized target progress: " + target);
-                    }
-                });
-                targetProgress = Map.copyOf(normalizedTargets);
-            }
+            this.instanceId = instanceId;
+            this.toolId = toolId;
+            this.categoryId = categoryId == null ? "" : categoryId;
+            this.ownerId = ownerId;
+            this.ownerName = ownerName;
+            this.boundWorld = boundWorld;
+            this.level = level;
+            this.progress = progress;
+            this.targetProgress = normalizeTargets(targetProgress);
+            this.active = active;
+            this.menuManaged = menuManaged;
+            this.lifetime = lifetime;
+            this.createdAt = createdAt;
+            this.updatedAt = updatedAt;
         }
 
-        public ToolState state() {
+        private synchronized void updateFrom(
+                ToolState state,
+                long progressAdded,
+                String updatedOwnerName,
+                long now
+        ) {
+            toolId = state.toolId();
+            categoryId = state.categoryId();
+            ownerId = state.ownerId();
+            ownerName = updatedOwnerName;
+            boundWorld = state.boundWorld();
+            level = state.level();
+            progress = state.progress();
+            targetProgress = state.targetProgress().isEmpty()
+                    ? Map.of() : state.targetProgress();
+            lifetime = saturatingAdd(lifetime, Math.max(0L, progressAdded));
+            updatedAt = now;
+        }
+
+        private synchronized boolean setActive(boolean newActive, long now) {
+            if (active == newActive) {
+                return false;
+            }
+            active = newActive;
+            updatedAt = now;
+            return true;
+        }
+
+        private synchronized boolean setMenuManaged(boolean newMenuManaged, long now) {
+            if (menuManaged == newMenuManaged) {
+                return false;
+            }
+            menuManaged = newMenuManaged;
+            updatedAt = now;
+            return true;
+        }
+
+        public synchronized ToolState state() {
             return new ToolState(toolId, instanceId, level, progress, boundWorld, ownerId,
                     categoryId, targetProgress);
+        }
+
+        private synchronized InstanceRecord snapshot() {
+            return new InstanceRecord(
+                    instanceId, toolId, categoryId, ownerId, ownerName, boundWorld,
+                    level, progress, targetProgress, active, menuManaged, lifetime,
+                    createdAt, updatedAt);
+        }
+
+        public UUID instanceId() {
+            return instanceId;
+        }
+
+        public String toolId() {
+            return toolId;
+        }
+
+        public String categoryId() {
+            return categoryId;
+        }
+
+        public UUID ownerId() {
+            return ownerId;
+        }
+
+        public String ownerName() {
+            return ownerName;
+        }
+
+        public String boundWorld() {
+            return boundWorld;
+        }
+
+        public int level() {
+            return level;
+        }
+
+        public long progress() {
+            return progress;
+        }
+
+        public Map<String, Long> targetProgress() {
+            return targetProgress;
+        }
+
+        public boolean active() {
+            return active;
+        }
+
+        public boolean menuManaged() {
+            return menuManaged;
+        }
+
+        public long lifetime() {
+            return lifetime;
+        }
+
+        public long createdAt() {
+            return createdAt;
+        }
+
+        public long updatedAt() {
+            return updatedAt;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof InstanceRecord record)) {
+                return false;
+            }
+            return level == record.level()
+                    && progress == record.progress()
+                    && active == record.active()
+                    && menuManaged == record.menuManaged()
+                    && lifetime == record.lifetime()
+                    && createdAt == record.createdAt()
+                    && updatedAt == record.updatedAt()
+                    && instanceId.equals(record.instanceId())
+                    && toolId.equals(record.toolId())
+                    && categoryId.equals(record.categoryId())
+                    && ownerId.equals(record.ownerId())
+                    && ownerName.equals(record.ownerName())
+                    && boundWorld.equals(record.boundWorld())
+                    && targetProgress.equals(record.targetProgress());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(instanceId, toolId, categoryId, ownerId, ownerName, boundWorld,
+                    level, progress, targetProgress, active, menuManaged, lifetime,
+                    createdAt, updatedAt);
+        }
+
+        @Override
+        public String toString() {
+            return "InstanceRecord[instanceId=" + instanceId
+                    + ", toolId=" + toolId
+                    + ", categoryId=" + categoryId
+                    + ", ownerId=" + ownerId
+                    + ", ownerName=" + ownerName
+                    + ", boundWorld=" + boundWorld
+                    + ", level=" + level
+                    + ", progress=" + progress
+                    + ", targetProgress=" + targetProgress
+                    + ", active=" + active
+                    + ", menuManaged=" + menuManaged
+                    + ", lifetime=" + lifetime
+                    + ", createdAt=" + createdAt
+                    + ", updatedAt=" + updatedAt + ']';
+        }
+
+        private static Map<String, Long> normalizeTargets(Map<String, Long> targets) {
+            Objects.requireNonNull(targets, "Target progress is required.");
+            if (targets.isEmpty()) {
+                return Map.of();
+            }
+            Map<String, Long> normalizedTargets = new LinkedHashMap<>();
+            targets.forEach((rawTarget, amount) -> {
+                String target = LevelRequirement.normalize(rawTarget);
+                if (target.isBlank() || amount == null || amount < 1L) {
+                    throw new IllegalArgumentException(
+                            "Target progress requires a nonblank target and positive amount.");
+                }
+                if (normalizedTargets.putIfAbsent(target, amount) != null) {
+                    throw new IllegalArgumentException(
+                            "Duplicate normalized target progress: " + target);
+                }
+            });
+            return Map.copyOf(normalizedTargets);
         }
     }
 }
