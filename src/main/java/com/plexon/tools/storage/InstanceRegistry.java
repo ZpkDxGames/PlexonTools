@@ -50,11 +50,16 @@ public final class InstanceRegistry {
     private final AtomicLong revision = new AtomicLong();
     private final AtomicBoolean saving = new AtomicBoolean();
     private final AtomicBoolean pressureFlushQueued = new AtomicBoolean();
+    private final AtomicLong committedBatches = new AtomicLong();
+    private final AtomicLong committedEntries = new AtomicLong();
+    private final AtomicLong failedWriteBatches = new AtomicLong();
+    private final AtomicLong pressureFlushCount = new AtomicLong();
     private final Object pendingLock = new Object();
     private final Object databaseLock = new Object();
     private final LinkedHashMap<UUID, Long> pendingWrites = new LinkedHashMap<>();
     private final LinkedHashMap<PlacedBlockPosition, PendingPlacedWrite> pendingPlacedBlockWrites =
             new LinkedHashMap<>();
+    private volatile int pendingHighWaterMark;
     private boolean fullSnapshotPending;
     private boolean fullSnapshotInFlight;
 
@@ -240,9 +245,7 @@ public final class InstanceRegistry {
 
     public int pendingWriteCount() {
         synchronized (pendingLock) {
-            int toolWrites = fullSnapshotPending || fullSnapshotInFlight
-                    ? records.size() : pendingWrites.size();
-            return toolWrites + pendingPlacedBlockWrites.size();
+            return pendingCountLocked();
         }
     }
 
@@ -252,13 +255,69 @@ public final class InstanceRegistry {
         }
     }
 
+    /**
+     * Cheap snapshot-only persistence diagnostics. Hot gameplay mutation keeps
+     * using the existing revision counter and already-computed queue sizes;
+     * metrics do not create a task/future/record per block.
+     */
+    public PersistenceDiagnostics persistenceDiagnostics() {
+        int pending;
+        int placedPending;
+        boolean snapshotPending;
+        boolean snapshotInFlight;
+        synchronized (pendingLock) {
+            pending = pendingCountLocked();
+            placedPending = pendingPlacedBlockWrites.size();
+            snapshotPending = fullSnapshotPending;
+            snapshotInFlight = fullSnapshotInFlight;
+        }
+        return new PersistenceDiagnostics(
+                pending,
+                placedPending,
+                pendingHighWaterMark,
+                revision.get(),
+                committedBatches.get(),
+                committedEntries.get(),
+                pressureFlushCount.get(),
+                failedWriteBatches.get(),
+                saving.get(),
+                pressureFlushQueued.get(),
+                snapshotPending,
+                snapshotInFlight);
+    }
+
     public void queuePlacedBlock(PlacedBlockPosition position, boolean placed) {
         long currentRevision = revision.incrementAndGet();
         int pending;
         synchronized (pendingLock) {
             pendingPlacedBlockWrites.put(position, new PendingPlacedWrite(placed, currentRevision));
-            pending = pendingWrites.size() + pendingPlacedBlockWrites.size();
+            pending = pendingCountLocked();
         }
+        updatePendingHighWater(pending);
+        requestPressureFlush(pending);
+    }
+
+    /**
+     * Batch provenance enqueue used by bulk block operations. It preserves a
+     * monotonic revision per position but acquires the pending-write lock once
+     * and requests at most one pressure flush for the whole batch.
+     */
+    public void queuePlacedBlocks(Map<PlacedBlockPosition, Boolean> changes) {
+        if (changes.isEmpty()) {
+            return;
+        }
+        int pending;
+        synchronized (pendingLock) {
+            changes.forEach((position, placed) -> {
+                Objects.requireNonNull(position, "Placed-block position is required.");
+                Objects.requireNonNull(placed, "Placed-block state is required.");
+                long currentRevision = revision.incrementAndGet();
+                pendingPlacedBlockWrites.put(
+                        position, new PendingPlacedWrite(placed, currentRevision));
+            });
+            pending = pendingCountLocked();
+        }
+        updatePendingHighWater(pending);
         requestPressureFlush(pending);
     }
 
@@ -355,20 +414,31 @@ public final class InstanceRegistry {
         int pending;
         synchronized (pendingLock) {
             if (fullSnapshotPending) {
-                pending = records.size() + pendingPlacedBlockWrites.size();
+                pending = pendingCountLocked();
             } else {
                 Long previousRevision = pendingWrites.putIfAbsent(instanceId, currentRevision);
                 if (previousRevision == null
                         && pendingWrites.size() > settings.databaseMaxPendingWrites()) {
                     pendingWrites.clear();
                     fullSnapshotPending = true;
-                    pending = records.size() + pendingPlacedBlockWrites.size();
-                } else {
-                    pending = pendingWrites.size() + pendingPlacedBlockWrites.size();
                 }
+                pending = pendingCountLocked();
             }
         }
+        updatePendingHighWater(pending);
         requestPressureFlush(pending);
+    }
+
+    private int pendingCountLocked() {
+        int toolWrites = fullSnapshotPending || fullSnapshotInFlight
+                ? records.size() : pendingWrites.size();
+        return toolWrites + pendingPlacedBlockWrites.size();
+    }
+
+    private void updatePendingHighWater(int pendingCount) {
+        if (pendingCount > pendingHighWaterMark) {
+            pendingHighWaterMark = pendingCount;
+        }
     }
 
     private void requestPressureFlush(int pendingCount) {
@@ -377,6 +447,7 @@ public final class InstanceRegistry {
                 || !pressureFlushQueued.compareAndSet(false, true)) {
             return;
         }
+        pressureFlushCount.incrementAndGet();
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
                 flushAsync();
@@ -431,8 +502,11 @@ public final class InstanceRegistry {
     private void persist(PendingBatch batch) throws SQLException {
         try {
             database.upsert(batch.records());
+            committedBatches.incrementAndGet();
+            committedEntries.addAndGet(batch.records().size());
             acknowledge(batch);
         } catch (SQLException | RuntimeException exception) {
+            failedWriteBatches.incrementAndGet();
             reject(batch);
             throw exception;
         }
@@ -460,7 +534,14 @@ public final class InstanceRegistry {
     }
 
     private void persist(PlacedBlockBatch batch) throws SQLException {
-        database.applyPlacedBlockChanges(batch.changes());
+        try {
+            database.applyPlacedBlockChanges(batch.changes());
+            committedBatches.incrementAndGet();
+            committedEntries.addAndGet(batch.changes().size());
+        } catch (SQLException | RuntimeException exception) {
+            failedWriteBatches.incrementAndGet();
+            throw exception;
+        }
         synchronized (pendingLock) {
             batch.revisions().forEach((position, batchRevision) -> {
                 PendingPlacedWrite current = pendingPlacedBlockWrites.get(position);
@@ -503,6 +584,11 @@ public final class InstanceRegistry {
         revision.set(0L);
         saving.set(false);
         pressureFlushQueued.set(false);
+        committedBatches.set(0L);
+        committedEntries.set(0L);
+        failedWriteBatches.set(0L);
+        pressureFlushCount.set(0L);
+        pendingHighWaterMark = 0;
         recordRevisions.clear();
         synchronized (pendingLock) {
             pendingWrites.clear();
@@ -514,6 +600,26 @@ public final class InstanceRegistry {
 
     private static long saturatingAdd(long first, long second) {
         return Long.MAX_VALUE - first < second ? Long.MAX_VALUE : first + second;
+    }
+
+    public record PersistenceDiagnostics(
+            int pendingWrites,
+            int pendingPlacedBlockWrites,
+            int queueHighWaterMark,
+            long dirtyMutations,
+            long committedBatches,
+            long committedEntries,
+            long pressureFlushes,
+            long failedWriteBatches,
+            boolean flushRunning,
+            boolean pressureFlushQueued,
+            boolean fullSnapshotPending,
+            boolean fullSnapshotInFlight
+    ) {
+        public double averageBatchSize() {
+            return committedBatches == 0L
+                    ? 0.0D : (double) committedEntries / (double) committedBatches;
+        }
     }
 
     private record PendingBatch(

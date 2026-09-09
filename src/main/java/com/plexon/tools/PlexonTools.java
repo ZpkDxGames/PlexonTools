@@ -203,6 +203,10 @@ public final class PlexonTools extends JavaPlugin {
             progression.clearDefinitionCaches();
             worldMenus.reload();
             naturalBlocks.start();
+            // AbilityService caches enabled passive-holder state, bulk budgets,
+            // and resolved potion metadata. Refresh it exactly once after a
+            // successful tool/config reload so tasks cannot retain stale state.
+            abilities.start();
             getServer().getOnlinePlayers().forEach(activations::reconcile);
             scheduleRegistrySave();
             coreBridge.markReady("PlexonTools reloaded; API and progression services ready");
@@ -235,6 +239,9 @@ public final class PlexonTools extends JavaPlugin {
                 .anyMatch(registration -> registration.getProvider() == publicApi)
                 ? "REGISTERED" : "UNAVAILABLE";
         String eventState = publicEventsAvailable() ? "AVAILABLE" : "UNAVAILABLE";
+        NaturalBlockTracker.Diagnostics provenance = naturalBlocks.diagnostics();
+        InstanceRegistry.PersistenceDiagnostics persistence = instanceRegistry.persistenceDiagnostics();
+        var bulk = abilities.bulkBreakDiagnostics();
         return List.of(
                 "<gradient:#66BB6A:#42A5F5><bold>PlexonTools Diagnostics</bold></gradient>",
                 diagnostic("Plugin", getPluginMeta().getVersion()),
@@ -251,9 +258,30 @@ public final class PlexonTools extends JavaPlugin {
                 diagnostic("Definitions", tools.size() + " tools • " + categories.size()
                         + " categories • " + worldMenus.size() + " world menus"),
                 diagnostic("Instances", instanceRegistry.size() + " tracked • "
-                        + instanceRegistry.pendingWriteCount() + " pending writes"),
-                diagnostic("Natural blocks", settings.naturalBlockProgressionEnabled()
-                        ? "ENABLED" : "DISABLED"),
+                        + persistence.pendingWrites() + " pending writes"),
+                diagnostic("Persistence", persistence.committedBatches() + " commits • avg batch "
+                        + String.format(java.util.Locale.ROOT, "%.1f", persistence.averageBatchSize())
+                        + " • " + persistence.dirtyMutations() + " dirty mutations"),
+                diagnostic("Storage pressure", "high-water " + persistence.queueHighWaterMark()
+                        + " • " + persistence.pressureFlushes() + " pressure flushes • "
+                        + persistence.failedWriteBatches() + " failed batches"),
+                diagnostic("Natural blocks", provenance.active() ? "ENABLED" : "DISABLED"),
+                diagnostic("Natural provenance", provenance.loadedChunks() + " chunks • "
+                        + provenance.trackedPlacedPositions() + " placed • "
+                        + provenance.unknownChunks() + " unknown • "
+                        + provenance.pendingLoads() + " pending loads"),
+                diagnostic("Provenance I/O", provenance.loadBatches() + " batches • "
+                        + provenance.retries() + " retries • "
+                        + provenance.failedLoads() + " failed"),
+                diagnostic("Ability runtime", abilities.activePassiveHolderCount()
+                        + " passive holders • " + abilities.pendingBlockDropContextCount()
+                        + " pending drop contexts"),
+                diagnostic("Area Mine", bulk.effectiveMode() + " • max "
+                        + bulk.maxSecondaryBlocks() + "/activation • "
+                        + bulk.maxBlocksPerPlayerPerTick() + "/player/tick"),
+                diagnostic("Area Mine totals", bulk.acceptedBlocks() + " accepted / "
+                        + bulk.dispatchedBlocks() + " dispatched • "
+                        + bulk.budgetLimitedActivations() + " budget-limited activations"),
                 diagnostic("Mining profiler", miningProfiler.enabled()
                         ? "RUNNING • " + miningProfiler.blockSamples() + " samples" : "STOPPED"),
                 diagnostic("Public API", apiState),

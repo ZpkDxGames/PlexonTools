@@ -3,9 +3,11 @@ package com.plexon.tools.service;
 import com.plexon.tools.storage.PlacedBlockPosition;
 import com.plexon.tools.storage.PlacedBlockPosition.ChunkKey;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -60,6 +62,28 @@ final class PlacedBlockIndex {
         chunks.clear();
     }
 
+    int loadedChunkCount() {
+        return chunks.size();
+    }
+
+    int unknownChunkCount() {
+        int count = 0;
+        for (ChunkState state : chunks.values()) {
+            if (!state.ready) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    int trackedPlacedPositionCount() {
+        int count = 0;
+        for (ChunkState state : chunks.values()) {
+            count += state.placed.cardinality();
+        }
+        return count;
+    }
+
     void markPlaced(PlacedBlockPosition position) {
         markPlaced(position.worldId(), position.x(), position.y(), position.z());
     }
@@ -87,6 +111,21 @@ final class PlacedBlockIndex {
 
     Origin consume(PlacedBlockPosition position) {
         return consume(position.worldId(), position.x(), position.y(), position.z());
+    }
+
+    /**
+     * Batch form used by bulk block operations. The caller owns ordering; this
+     * method keeps all provenance mutation in one main-thread service boundary.
+     */
+    List<Origin> consumeAll(List<PlacedBlockPosition> positions) {
+        if (positions.isEmpty()) {
+            return List.of();
+        }
+        List<Origin> origins = new ArrayList<>(positions.size());
+        for (PlacedBlockPosition position : positions) {
+            origins.add(consume(position));
+        }
+        return List.copyOf(origins);
     }
 
     Origin consume(UUID worldId, int x, int y, int z) {
@@ -190,6 +229,14 @@ final class PlacedBlockIndex {
             if (bits == null) return;
             bits.clear(index(x, y, z));
             if (bits.isEmpty()) sections.remove(section);
+        }
+
+        int cardinality() {
+            int count = 0;
+            for (BitSet bits : sections.values()) {
+                count += bits.cardinality();
+            }
+            return count;
         }
 
         void clear() { sections.clear(); }

@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class PluginSettingsTest {
+    private static final PluginSettings.MaterialValidator HEADLESS_ITEM_VALIDATOR = ignored -> true;
+
     @Test
     void preservesAdministratorLoreOrderAndRequirementFormats() {
         YamlConfiguration config = new YamlConfiguration();
@@ -60,6 +62,30 @@ final class PluginSettingsTest {
     }
 
     @Test
+    void failedLoadDoesNotPartiallyMutateLiveSettings() {
+        PluginSettings settings = new PluginSettings();
+        YamlConfiguration valid = new YamlConfiguration();
+        valid.set("settings.unauthorized-warning-cooldown-ms", 2750L);
+        valid.set("progress-bar.width", 17);
+        valid.set("performance.progress-visual-refresh-ticks", 6L);
+        settings.load(valid, HEADLESS_ITEM_VALIDATOR);
+
+        YamlConfiguration invalid = new YamlConfiguration();
+        invalid.set("settings.unauthorized-warning-cooldown-ms", 9900L);
+        invalid.set("progress-bar.width", 44);
+        invalid.set("performance.progress-visual-refresh-ticks", 19L);
+        // Lore validation occurs late in candidate parsing. The values above
+        // must not leak into the already-active runtime settings after failure.
+        invalid.set("tool-lore.template", "not-a-list");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> settings.load(invalid, HEADLESS_ITEM_VALIDATOR));
+        assertEquals(2750L, settings.warningCooldownMillis());
+        assertEquals(17, settings.progressBarWidth());
+        assertEquals(6L, settings.progressVisualRefreshTicks());
+    }
+
+    @Test
     void clampsCoalescedProgressRefreshWindow() {
         YamlConfiguration tooFast = new YamlConfiguration();
         tooFast.set("performance.progress-visual-refresh-ticks", 0L);
@@ -72,6 +98,7 @@ final class PluginSettingsTest {
         assertEquals(4L, PluginSettings.progressVisualRefreshTicks(
                 new YamlConfiguration()));
     }
+
     @Test
     void clampsRecoveredStorageAndNaturalBlockSettings() {
         YamlConfiguration config = new YamlConfiguration();
@@ -90,5 +117,4 @@ final class PluginSettingsTest {
         assertEquals(256, natural.chunkLoadBatchSize());
         assertEquals(20L, natural.chunkLoadRetryTicks());
     }
-
 }

@@ -6,6 +6,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class PluginSettings {
     private boolean enforceBoundWorld;
@@ -57,7 +58,24 @@ public final class PluginSettings {
     private MenuItemTemplate worldMenuActivePanel;
     private MenuItemTemplate worldMenuInactivePanel;
 
-    public void load(FileConfiguration config) {
+    /**
+     * Parses a complete candidate first and only mutates the shared runtime
+     * settings object after every validation step succeeds. A late malformed
+     * lore/menu/storage value therefore cannot leave `/pt reload` with a
+     * partially-applied settings object.
+     */
+    public synchronized void load(FileConfiguration config) {
+        load(config, PluginSettings::isConfiguredItemMaterial);
+    }
+
+    /** Package-private seam keeps pure config tests independent of Bukkit bootstrap. */
+    synchronized void load(FileConfiguration config, MaterialValidator materialValidator) {
+        PluginSettings candidate = new PluginSettings();
+        candidate.loadCandidate(config, materialValidator);
+        copyFrom(candidate);
+    }
+
+    private void loadCandidate(FileConfiguration config, MaterialValidator materialValidator) {
         enforceBoundWorld = config.getBoolean("settings.enforce-bound-world", true);
         enforceOwner = config.getBoolean("settings.enforce-owner", true);
         cancelBlockBreaks = config.getBoolean("settings.cancel-unauthorized-block-breaks", true);
@@ -130,21 +148,21 @@ public final class PluginSettings {
                         "",
                         "<gray>Status</gray> {status}",
                         "{toggle_hint}"
-                ));
+                ), materialValidator);
         worldMenuActivePanel = menuItem(config, "world-menu.toggle-panel.active",
                 "LIME_STAINED_GLASS_PANE", false,
                 "<gradient:#43A047:#9CCC65><bold>✔ TOOL ACTIVE</bold></gradient>", List.of(
                         "<gray>Equipped for</gray>  <white>{world}</white>",
                         "",
                         "<#FFD54F>Click to store it safely.</#FFD54F>"
-                ));
+                ), materialValidator);
         worldMenuInactivePanel = menuItem(config, "world-menu.toggle-panel.inactive",
                 "RED_STAINED_GLASS_PANE", false,
                 "<gradient:#E53935:#FF7043><bold>✘ TOOL STORED</bold></gradient>", List.of(
                         "<gray>Stored for</gray>  <white>{world}</white>",
                         "",
                         "<#9CCC65>Click to equip it.</#9CCC65>"
-                ));
+                ), materialValidator);
         LoreSettings lore = loreSettings(config);
         defaultLore = lore.template();
         generalRequirementLine = lore.generalRequirementLine();
@@ -152,6 +170,57 @@ public final class PluginSettings {
         maximumRequirementLine = lore.maximumRequirementLine();
         enchantmentLine = lore.enchantmentLine();
         emptyEnchantmentLine = lore.emptyEnchantmentLine();
+    }
+
+    private void copyFrom(PluginSettings source) {
+        enforceBoundWorld = source.enforceBoundWorld;
+        enforceOwner = source.enforceOwner;
+        cancelBlockBreaks = source.cancelBlockBreaks;
+        cancelInteractions = source.cancelInteractions;
+        cancelAttacks = source.cancelAttacks;
+        warningCooldownMillis = source.warningCooldownMillis;
+        databaseFile = source.databaseFile;
+        databaseFlushIntervalTicks = source.databaseFlushIntervalTicks;
+        databaseWriteBatchSize = source.databaseWriteBatchSize;
+        databaseMaxPendingWrites = source.databaseMaxPendingWrites;
+        databaseMaxBatchesPerFlush = source.databaseMaxBatchesPerFlush;
+        databasePressureFlushThreshold = source.databasePressureFlushThreshold;
+        databaseBusyTimeoutMillis = source.databaseBusyTimeoutMillis;
+        databaseWalAutoCheckpointPages = source.databaseWalAutoCheckpointPages;
+        databaseIntegrityCheck = source.databaseIntegrityCheck;
+        naturalBlockProgressionEnabled = source.naturalBlockProgressionEnabled;
+        naturalBlockFailClosed = source.naturalBlockFailClosed;
+        naturalBlockChunkLoadBatchSize = source.naturalBlockChunkLoadBatchSize;
+        naturalBlockChunkLoadRetryTicks = source.naturalBlockChunkLoadRetryTicks;
+        progressVisualRefreshTicks = source.progressVisualRefreshTicks;
+        progressBarWidth = source.progressBarWidth;
+        progressFilledSymbol = source.progressFilledSymbol;
+        progressEmptySymbol = source.progressEmptySymbol;
+        progressFilledFormat = source.progressFilledFormat;
+        progressEmptyFormat = source.progressEmptyFormat;
+        progressValueStartColor = source.progressValueStartColor;
+        progressValueMiddleColor = source.progressValueMiddleColor;
+        progressValueCompleteColor = source.progressValueCompleteColor;
+        showcaseTitle = source.showcaseTitle;
+        categoryTitle = source.categoryTitle;
+        showLockedTools = source.showLockedTools;
+        showcaseRows = source.showcaseRows;
+        adminTitle = source.adminTitle;
+        levelUpSound = source.levelUpSound;
+        levelUpParticles = source.levelUpParticles;
+        progressActionBar = source.progressActionBar;
+        defaultLore = source.defaultLore;
+        generalRequirementLine = source.generalRequirementLine;
+        specificRequirementLine = source.specificRequirementLine;
+        maximumRequirementLine = source.maximumRequirementLine;
+        enchantmentLine = source.enchantmentLine;
+        emptyEnchantmentLine = source.emptyEnchantmentLine;
+        worldMenuAutoShowAllowedTools = source.worldMenuAutoShowAllowedTools;
+        worldMenuTogglePanelEnabled = source.worldMenuTogglePanelEnabled;
+        worldMenuToolCardActiveGlint = source.worldMenuToolCardActiveGlint;
+        worldMenuToolCard = source.worldMenuToolCard;
+        worldMenuActivePanel = source.worldMenuActivePanel;
+        worldMenuInactivePanel = source.worldMenuInactivePanel;
     }
 
     public boolean enforceBoundWorld() { return enforceBoundWorld; }
@@ -339,14 +408,18 @@ public final class PluginSettings {
             String maximumRequirementLine,
             String enchantmentLine,
             String emptyEnchantmentLine
-    ) {
+    ) {}
+
+    @FunctionalInterface
+    interface MaterialValidator {
+        boolean isItem(String rawMaterial);
     }
 
     private static String databaseFile(String configured) {
         String name = configured == null ? "" : configured.trim();
         if (name.isBlank() || name.contains("/") || name.contains("\\")
                 || name.equals(".") || name.equals("..")
-                || !name.toLowerCase(java.util.Locale.ROOT).endsWith(".db")) {
+                || !name.toLowerCase(Locale.ROOT).endsWith(".db")) {
             throw new IllegalArgumentException(
                     "storage.database-file must be a simple .db filename inside the plugin folder.");
         }
@@ -359,16 +432,14 @@ public final class PluginSettings {
             String defaultMaterial,
             boolean allowToolMaterial,
             String defaultName,
-            List<String> defaultLore
+            List<String> defaultLore,
+            MaterialValidator materialValidator
     ) {
         String material = config.getString(path + ".material", defaultMaterial);
-        material = material == null ? defaultMaterial : material.trim().toUpperCase(java.util.Locale.ROOT);
-        if (!(allowToolMaterial && material.equals("TOOL"))) {
-            Material parsed = Material.matchMaterial(material);
-            if (parsed == null || !parsed.isItem() || parsed.isAir()) {
-                throw new IllegalArgumentException(path + ".material must be an item material"
-                        + (allowToolMaterial ? " or TOOL." : "."));
-            }
+        material = material == null ? defaultMaterial : material.trim().toUpperCase(Locale.ROOT);
+        if (!(allowToolMaterial && material.equals("TOOL")) && !materialValidator.isItem(material)) {
+            throw new IllegalArgumentException(path + ".material must be an item material"
+                    + (allowToolMaterial ? " or TOOL." : "."));
         }
         String displayName = config.getString(path + ".display-name", defaultName);
         if (displayName == null || displayName.isBlank()) {
@@ -379,14 +450,29 @@ public final class PluginSettings {
         return new MenuItemTemplate(material, displayName, List.copyOf(lore));
     }
 
+    private static boolean isConfiguredItemMaterial(String raw) {
+        Material material = configuredMaterial(raw);
+        return material != null && material.isItem() && !material.isAir();
+    }
+
+    private static Material configuredMaterial(String raw) {
+        String normalized = raw.trim().toUpperCase(Locale.ROOT);
+        if (normalized.startsWith("MINECRAFT:")) {
+            normalized = normalized.substring("MINECRAFT:".length());
+        }
+        return Material.getMaterial(normalized);
+    }
+
     public record MenuItemTemplate(
             String material,
             String displayName,
             List<String> lore
     ) {
         public Material resolveMaterial(Material toolMaterial) {
-            return material.equals("TOOL")
-                    ? toolMaterial : java.util.Objects.requireNonNull(Material.matchMaterial(material));
+            if (material.equals("TOOL")) {
+                return toolMaterial;
+            }
+            return java.util.Objects.requireNonNull(configuredMaterial(material));
         }
     }
 }

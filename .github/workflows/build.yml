@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          jar_path='build/libs/PlexonTools-4.1.1.jar'
+          jar_path='build/libs/PlexonTools-4.2.0.jar'
           test -s "${jar_path}"
           jar tf "${jar_path}" > build/jar-contents.txt
           grep -qx 'plugin.yml' build/jar-contents.txt
@@ -67,7 +67,7 @@ jobs:
             exit 1
           fi
           unzip -p "${jar_path}" plugin.yml | sed -n 's/^version:[[:space:]]*//p' \
-            | head -n 1 | tr -d " '\"\r" | grep -qx '4.1.1'
+            | head -n 1 | tr -d " '\"\r" | grep -qx '4.2.0'
           javap -verbose -classpath "${jar_path}" com.plexon.tools.PlexonTools \
             | grep -q 'major version: 69'
           sha256sum "${jar_path}" > build/SHA256SUMS.txt
@@ -79,8 +79,8 @@ jobs:
       - name: Upload verified artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PlexonTools-4.1.1-${{ github.sha }}
+          name: PlexonTools-4.2.0-${{ github.sha }}
           path: |
-            build/libs/PlexonTools-4.1.1.jar
+            build/libs/PlexonTools-4.2.0.jar
             build/SHA256SUMS.txt
           if-no-files-found: error
