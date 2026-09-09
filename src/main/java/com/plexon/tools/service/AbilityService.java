@@ -6,6 +6,10 @@ import com.plexon.tools.model.AbilityTarget;
 import com.plexon.tools.model.ToolAbilitySettings;
 import com.plexon.tools.model.ToolAbilityType;
 import com.plexon.tools.model.ToolDefinition;
+import com.plexon.tools.performance.MiningPerformanceProfiler;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Counter;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Isolation;
+import com.plexon.tools.performance.MiningPerformanceProfiler.Stage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -72,6 +76,7 @@ public final class AbilityService implements Listener {
     private final JavaPlugin plugin;
     private final ToolConfigRepository tools;
     private final ProgressionService progression;
+    private final MiningPerformanceProfiler profiler;
     private final Set<UUID> areaMiningPlayers = new HashSet<>();
     private final Map<UUID, BlockDropContext> blockDropContexts = new HashMap<>();
     private BukkitTask passiveTask;
@@ -79,17 +84,19 @@ public final class AbilityService implements Listener {
     public AbilityService(
             JavaPlugin plugin,
             ToolConfigRepository tools,
-            ProgressionService progression
+            ProgressionService progression,
+            MiningPerformanceProfiler profiler
     ) {
         this.plugin = plugin;
         this.tools = tools;
         this.progression = progression;
+        this.profiler = profiler;
     }
 
     public void start() {
         stop();
         passiveTask = Bukkit.getScheduler().runTaskTimer(plugin,
-                this::refreshPassiveEffects, 20L, 40L);
+                this::profiledPassiveRefresh, 20L, 40L);
     }
 
     public void stop() {
@@ -223,40 +230,57 @@ public final class AbilityService implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockDrops(BlockDropItemEvent event) {
-        if (!tools.hasEnabledAbility(ToolAbilityType.AUTO_SMELT)
-                && !tools.hasEnabledAbility(ToolAbilityType.MAGNET)) {
-            return;
-        }
-        Player player = event.getPlayer();
-        BlockDropContext prepared = consumeBlockDropContext(event);
-
-        boolean autoSmelt;
-        boolean magnet;
-        if (prepared != null) {
-            autoSmelt = prepared.autoSmelt();
-            magnet = prepared.magnet();
-        } else {
-            ItemStack item = player.getInventory().getItemInMainHand();
-            ToolState state = progression.resolveState(item).orElse(null);
-            ToolDefinition definition = state == null ? null : tools.findCached(state.toolId());
-            if (definition == null || !definition.enabled()
-                    || !progression.canUse(player, definition, state, false)) {
+        long totalStarted = profiler.begin();
+        try {
+            if (profiler.isolated(Isolation.DROP_ABILITIES)
+                    || profiler.isolated(Isolation.ABILITIES)) {
                 return;
             }
-            BlockAbilityProfile profile = blockProfile(definition, state);
-            autoSmelt = profile.autoSmelt();
-            magnet = profile.magnet();
-        }
-        if (!autoSmelt && !magnet) {
-            return;
-        }
-        for (Item drop : new ArrayList<>(event.getItems())) {
-            if (autoSmelt) {
-                drop.setItemStack(smelt(drop.getItemStack()));
+            if (!tools.hasEnabledAbility(ToolAbilityType.AUTO_SMELT)
+                    && !tools.hasEnabledAbility(ToolAbilityType.MAGNET)) {
+                return;
             }
-            if (magnet) {
-                magnetEntity(player, drop);
+            Player player = event.getPlayer();
+            long contextStarted = profiler.begin();
+            BlockDropContext prepared = consumeBlockDropContext(event);
+            profiler.record(Stage.DROP_CONTEXT, contextStarted);
+
+            boolean autoSmelt;
+            boolean magnet;
+            if (prepared != null) {
+                autoSmelt = prepared.autoSmelt();
+                magnet = prepared.magnet();
+            } else {
+                profiler.count(Counter.BLOCK_DROP_FALLBACKS);
+                contextStarted = profiler.begin();
+                ItemStack item = player.getInventory().getItemInMainHand();
+                ToolState state = progression.resolveState(item).orElse(null);
+                ToolDefinition definition = state == null ? null : tools.findCached(state.toolId());
+                if (definition == null || !definition.enabled()
+                        || !progression.canUse(player, definition, state, false)) {
+                    profiler.record(Stage.DROP_CONTEXT, contextStarted);
+                    return;
+                }
+                BlockAbilityProfile profile = blockProfile(definition, state);
+                autoSmelt = profile.autoSmelt();
+                magnet = profile.magnet();
+                profiler.record(Stage.DROP_CONTEXT, contextStarted);
             }
+            if (!autoSmelt && !magnet) {
+                return;
+            }
+            long abilityStarted = profiler.begin();
+            for (Item drop : new ArrayList<>(event.getItems())) {
+                if (autoSmelt) {
+                    drop.setItemStack(smelt(drop.getItemStack()));
+                }
+                if (magnet) {
+                    magnetEntity(player, drop);
+                }
+            }
+            profiler.record(Stage.DROP_ABILITIES, abilityStarted);
+        } finally {
+            profiler.record(Stage.DROP_TOTAL, totalStarted);
         }
     }
 
@@ -323,8 +347,19 @@ public final class AbilityService implements Listener {
         }
     }
 
+    private void profiledPassiveRefresh() {
+        if (!profiler.enabled()) {
+            refreshPassiveEffects();
+            return;
+        }
+        long started = profiler.begin();
+        refreshPassiveEffects();
+        profiler.record(Stage.TASK_PASSIVE_EFFECT_REFRESH, started);
+    }
+
     private void refreshPassiveEffects() {
-        if (!tools.hasEnabledAbility(ToolAbilityType.MOB_POTION_EFFECT)) {
+        if (profiler.isolated(Isolation.ABILITIES)
+                || !tools.hasEnabledAbility(ToolAbilityType.MOB_POTION_EFFECT)) {
             return;
         }
         for (Player player : Bukkit.getOnlinePlayers()) {
