@@ -38,10 +38,14 @@ public final class CoreBridgeFactory {
             CoreBridge resolved = (CoreBridge) bridge;
             if (!resolved.compatible()) {
                 plugin.getLogger().warning("PlexonCore API " + resolved.apiVersion()
-                        + " is outside supported range " + CoreBridge.SUPPORTED_API_RANGE
+                        + " is outside supported ranges " + CoreBridge.SUPPORTED_API_RANGE
                         + "; starting PlexonTools in standalone mode.");
                 return new StandaloneCoreBridge(true, resolved.pluginVersion(), resolved.apiVersion(),
                         resolved.detail());
+            }
+            if (resolved.runtimeAvailable()) {
+                plugin.getLogger().info(
+                        "PlexonCore 2 runtime detected. PlexonTools keeps the 4.2 local mining path authoritative until 4.3 runtime parity gates pass.");
             }
             return resolved;
         } catch (InvocationTargetException exception) {
