@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          jar_path='build/libs/PlexonTools-4.3.0.jar'
+          jar_path='build/libs/PlexonTools-4.3.0-rc.2.jar'
           test -s "${jar_path}"
           jar tf "${jar_path}" > build/jar-contents.txt
           grep -qx 'plugin.yml' build/jar-contents.txt
@@ -67,9 +67,9 @@ jobs:
             fi
           done
           unzip -p "${jar_path}" plugin.yml | sed -n 's/^version:[[:space:]]*//p' \
-            | head -n 1 | tr -d " '\"\r" | grep -qx '4.3.0'
+            | head -n 1 | tr -d " '\"\r" | grep -qx '4.3.0-rc.2'
           javap -verbose -classpath "${jar_path}" com.plexon.tools.PlexonTools | grep -q 'major version: 69'
-          (cd build/libs && sha256sum PlexonTools-4.3.0.jar > SHA256SUMS.txt && sha256sum --check SHA256SUMS.txt)
+          (cd build/libs && sha256sum PlexonTools-4.3.0-rc.2.jar > SHA256SUMS.txt && sha256sum --check SHA256SUMS.txt)
       - name: Generate certification evidence
         shell: bash
         run: |
@@ -85,7 +85,7 @@ jobs:
               for key in totals:
                   totals[key] += int(root.attrib.get(key, 0))
           with open('build/libs/TEST_SUMMARY.txt', 'w', encoding='utf-8') as out:
-              out.write('PlexonTools 4.3.0 CI test summary\n')
+              out.write('PlexonTools 4.3.0-rc.2 CI test summary\n')
               out.write(f"tests={totals['tests']}\n")
               out.write(f"failures={totals['failures']}\n")
               out.write(f"errors={totals['errors']}\n")
@@ -95,7 +95,7 @@ jobs:
               out.write('runtime_certification=NOT_EXECUTED\n')
           with open('build/libs/PROVENANCE.txt', 'w', encoding='utf-8') as out:
               out.write('product=PlexonTools\n')
-              out.write('version=4.3.0\n')
+              out.write('version=4.3.0-rc.2\n')
               out.write(f"commit={os.environ['GITHUB_SHA']}\n")
               out.write(f"ref={os.environ['GITHUB_REF']}\n")
               out.write('rollback_tag=v4.2.1\n')
@@ -112,9 +112,9 @@ jobs:
       - name: Upload verified artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PlexonTools-4.3.0-${{ github.sha }}
+          name: PlexonTools-4.3.0-rc.2-${{ github.sha }}
           path: |
-            build/libs/PlexonTools-4.3.0.jar
+            build/libs/PlexonTools-4.3.0-rc.2.jar
             build/libs/SHA256SUMS.txt
             build/libs/TEST_SUMMARY.txt
             build/libs/PROVENANCE.txt
