@@ -1,29 +1,29 @@
 package com.plexon.tools.service;
 
-import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * Bounded coordinator for secondary blocks produced by bulk mining abilities.
+ * Safety boundary for secondary blocks produced by bulk mining abilities.
  *
- * <p>4.2 keeps {@link Mode#STRICT_EVENTS} as the effective production mode so
- * third-party protection/listener semantics remain authoritative. The service
- * owns deduplication and per-player tick budgets now, which prevents future
- * area-size changes from becoming an unbounded synchronous event fan-out and
- * provides a focused boundary for hook-based optimized processing later.</p>
+ * <p>Phase 2 deliberately removes the legacy Tools-owned recursive
+ * {@link BlockBreakEvent} fan-out. A direct secondary-break implementation must
+ * not bypass protection plugins, provenance, Core observers, or downstream
+ * gameplay listeners; until an explicit protection-equivalent direct contract
+ * is available, Area Mine is fail-closed instead of synthesizing Bukkit block
+ * events for every adjacent block.</p>
+ *
+ * <p>The legacy configuration values remain parseable so existing installations
+ * do not fail to load. They are reported as requested mode only; the effective
+ * mode is {@link Mode#DISABLED_SAFE}.</p>
  */
 public final class BulkBreakCoordinator {
     private static final int DEFAULT_MAX_SECONDARY_BLOCKS = 8;
@@ -32,15 +32,12 @@ public final class BulkBreakCoordinator {
     private static final int ABSOLUTE_MAX_BLOCKS_PER_PLAYER_PER_TICK = 128;
 
     private final JavaPlugin plugin;
-    private final Map<UUID, TickBudget> playerBudgets = new HashMap<>();
     private Mode requestedMode = Mode.STRICT_EVENTS;
-    private Mode effectiveMode = Mode.STRICT_EVENTS;
+    private Mode effectiveMode = Mode.DISABLED_SAFE;
     private int maxSecondaryBlocks = DEFAULT_MAX_SECONDARY_BLOCKS;
     private int maxBlocksPerPlayerPerTick = DEFAULT_MAX_BLOCKS_PER_PLAYER_PER_TICK;
     private long activations;
-    private long dispatchedBlocks;
-    private long acceptedBlocks;
-    private long budgetLimitedActivations;
+    private long blockedActivations;
 
     public BulkBreakCoordinator(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -50,13 +47,7 @@ public final class BulkBreakCoordinator {
     public void reload() {
         requestedMode = Mode.parse(plugin.getConfig().getString(
                 "performance.area-mine.mode", Mode.STRICT_EVENTS.name()));
-        // OPTIMIZED is deliberately not activated until explicit protection
-        // integrations can prove equivalent cancellation/authorization safety.
-        effectiveMode = Mode.STRICT_EVENTS;
-        if (requestedMode == Mode.OPTIMIZED) {
-            plugin.getLogger().warning("performance.area-mine.mode=OPTIMIZED requested, but no "
-                    + "protection-safe optimized integration set is available; using STRICT_EVENTS.");
-        }
+        effectiveMode = Mode.DISABLED_SAFE;
         maxSecondaryBlocks = clamp(
                 plugin.getConfig().getInt("performance.area-mine.max-secondary-blocks",
                         DEFAULT_MAX_SECONDARY_BLOCKS),
@@ -65,21 +56,33 @@ public final class BulkBreakCoordinator {
                 plugin.getConfig().getInt("performance.area-mine.max-blocks-per-player-per-tick",
                         DEFAULT_MAX_BLOCKS_PER_PLAYER_PER_TICK),
                 1, ABSOLUTE_MAX_BLOCKS_PER_PLAYER_PER_TICK);
-        playerBudgets.clear();
+        if (requestedMode != Mode.DISABLED_SAFE) {
+            plugin.getLogger().warning("Area Mine secondary breaking is disabled by the Phase 2 "
+                    + "safety gate. PlexonTools no longer synthesizes recursive BlockBreakEvent "
+                    + "fan-out; a future direct mode must provide explicit protection/provenance "
+                    + "equivalence before it can be enabled.");
+        }
     }
 
     public void clear() {
-        playerBudgets.clear();
+        // No per-player execution state is retained while the safe gate is closed.
     }
 
     public void clearPlayer(UUID playerId) {
-        playerBudgets.remove(playerId);
+        // No per-player execution state is retained while the safe gate is closed.
     }
 
     /**
-     * Dispatches a bounded number of compatible secondary block events.
-     * Eligibility is checked before consuming event budget. Accepted events are
-     * handed to the caller for the actual block/drop/experience mutation.
+     * Returns whether secondary Area Mine mutation is currently certified safe.
+     * This is intentionally false in the Phase 2 RC.
+     */
+    public boolean enabled() {
+        return effectiveMode != Mode.DISABLED_SAFE;
+    }
+
+    /**
+     * Compatibility seam retained for AbilityService while Phase 2 is runtime
+     * certified. It never constructs or dispatches a secondary BlockBreakEvent.
      */
     public Result breakSecondaryBlocks(
             Player player,
@@ -91,58 +94,8 @@ public final class BulkBreakCoordinator {
             return Result.EMPTY;
         }
         activations++;
-        UUID playerId = player.getUniqueId();
-        UUID worldId = player.getWorld().getUID();
-        long tick = player.getWorld().getGameTime();
-        TickBudget previous = playerBudgets.get(playerId);
-        int alreadyUsed = previous != null
-                && previous.worldId().equals(worldId)
-                && previous.tick() == tick
-                ? previous.used() : 0;
-        int tickRemaining = Math.max(0, maxBlocksPerPlayerPerTick - alreadyUsed);
-        int activationLimit = Math.min(maxSecondaryBlocks, tickRemaining);
-        if (activationLimit <= 0) {
-            budgetLimitedActivations++;
-            return new Result(0, 0, true);
-        }
-
-        Set<BlockPosition> seen = new HashSet<>(Math.min(candidates.size(), activationLimit) * 2);
-        int dispatched = 0;
-        int accepted = 0;
-        boolean limited = false;
-        for (Block block : candidates) {
-            if (dispatched >= activationLimit) {
-                limited = true;
-                break;
-            }
-            if (!eligible.test(block)) {
-                continue;
-            }
-            BlockPosition position = new BlockPosition(
-                    block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
-            if (!seen.add(position)) {
-                continue;
-            }
-
-            BlockBreakEvent event = new BlockBreakEvent(block, player);
-            Bukkit.getPluginManager().callEvent(event);
-            dispatched++;
-            if (event.isCancelled() || block.getType().isAir()) {
-                continue;
-            }
-            acceptedHandler.accept(event);
-            accepted++;
-        }
-
-        int nowUsed = alreadyUsed + dispatched;
-        playerBudgets.put(playerId, new TickBudget(worldId, tick, nowUsed));
-        dispatchedBlocks += dispatched;
-        acceptedBlocks += accepted;
-        if (limited || candidates.size() > maxSecondaryBlocks) {
-            budgetLimitedActivations++;
-            limited = true;
-        }
-        return new Result(dispatched, accepted, limited);
+        blockedActivations++;
+        return new Result(0, 0, true);
     }
 
     public Diagnostics diagnostics() {
@@ -151,11 +104,11 @@ public final class BulkBreakCoordinator {
                 effectiveMode,
                 maxSecondaryBlocks,
                 maxBlocksPerPlayerPerTick,
-                playerBudgets.size(),
+                0,
                 activations,
-                dispatchedBlocks,
-                acceptedBlocks,
-                budgetLimitedActivations);
+                0L,
+                0L,
+                blockedActivations);
     }
 
     private static int clamp(int value, int minimum, int maximum) {
@@ -164,7 +117,8 @@ public final class BulkBreakCoordinator {
 
     public enum Mode {
         STRICT_EVENTS,
-        OPTIMIZED;
+        OPTIMIZED,
+        DISABLED_SAFE;
 
         static Mode parse(String raw) {
             if (raw == null) {
@@ -193,7 +147,4 @@ public final class BulkBreakCoordinator {
             long acceptedBlocks,
             long budgetLimitedActivations
     ) {}
-
-    private record TickBudget(UUID worldId, long tick, int used) {}
-    private record BlockPosition(UUID worldId, int x, int y, int z) {}
 }
