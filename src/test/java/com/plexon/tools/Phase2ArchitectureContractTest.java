@@ -56,7 +56,9 @@ final class Phase2ArchitectureContractTest {
         String listener = source("src/main/java/com/plexon/tools/listener/ToolProgressListener.java");
         String progression = source("src/main/java/com/plexon/tools/service/ProgressionService.java");
         assertFalse(listener.contains("refreshProgress("));
-        assertTrue(progression.contains("pendingVisuals.putIfAbsent"));
+        assertTrue(progression.contains("private void queueVisual("));
+        assertTrue(progression.contains("if (!pendingVisuals.containsKey(instanceId))"));
+        assertTrue(progression.contains("flushPendingVisuals(true)"));
     }
 
     @Test
@@ -65,6 +67,23 @@ final class Phase2ArchitectureContractTest {
         assertFalse(source.contains("getConfig()"));
         assertFalse(source.contains("YamlConfiguration"));
         assertFalse(source.contains("ConfigurationSection"));
+    }
+
+    @Test
+    void disabledAreaMiningIsGatedBeforePlaneAllocation() throws IOException {
+        String source = source("src/main/java/com/plexon/tools/service/AbilityService.java");
+        int method = source.indexOf("public void mineArea(");
+        int plane = source.indexOf("areaPlane(", method);
+        int gate = source.indexOf("!bulkBreaks.enabled()", method);
+        assertTrue(method >= 0 && gate > method && plane > gate,
+                "Area Mine must fail closed before secondary block collection");
+    }
+
+    @Test
+    void latestStateCacheHasAnExplicitHardBound() throws IOException {
+        String source = source("src/main/java/com/plexon/tools/service/ProgressionService.java");
+        assertTrue(source.contains("LATEST_STATE_CACHE_LIMIT"));
+        assertTrue(source.contains("removeEldestEntry"));
     }
 
     private static String source(String relative) throws IOException {
