@@ -24,6 +24,8 @@ import com.plexon.tools.service.ToolActivationService;
 import com.plexon.tools.storage.InstanceRegistry;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
@@ -33,7 +35,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 
@@ -59,6 +67,8 @@ public final class PlexonTools extends JavaPlugin {
     private ToolActivationService activations;
     private ToolProgressListener progressListener;
     private BukkitTask registrySaveTask;
+    private long lastReloadEpochMillis;
+    private String lastReloadState = "STARTUP";
 
     @Override
     public void onEnable() {
@@ -123,6 +133,8 @@ public final class PlexonTools extends JavaPlugin {
             abilities.start();
             getServer().getScheduler().runTask(this,
                     () -> getServer().getOnlinePlayers().forEach(activations::reconcile));
+            lastReloadEpochMillis = System.currentTimeMillis();
+            lastReloadState = "STARTUP";
             coreBridge.markReady("Tools, SQLite, public API and progression events ready");
             getLogger().info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             getLogger().info("PlexonTools " + getPluginMeta().getVersion() + " enabled");
@@ -133,6 +145,7 @@ public final class PlexonTools extends JavaPlugin {
             getLogger().info("Runtime database: " + instanceRegistry.databaseFile().getFileName());
             getLogger().info("Natural-block progression: "
                     + (settings.naturalBlockProgressionEnabled() ? "enabled" : "disabled"));
+            getLogger().info("Mining authority: LOCAL; PlexonCore is lifecycle/integration only");
             getLogger().info("Mining profiler: disabled by default (/pt perf start)");
             getLogger().info("PlexonCore mode: " + coreBridge.mode()
                     + " (" + coreBridge.registrationState() + ")");
@@ -188,12 +201,19 @@ public final class PlexonTools extends JavaPlugin {
     }
 
     private void reloadPlugin() throws Exception {
+        // Validate every candidate file before pausing or mutating live services.
+        // Existing repositories parse atomically individually; this preflight adds
+        // the missing all-file transaction boundary and catches skipped invalid
+        // category/tool/menu entries by comparing raw and compiled counts.
+        preflightReload();
+
         miningProfiler.stopSession();
         progression.pause();
         if (progressListener != null) {
             progressListener.invalidateAllActiveContexts();
         }
         try {
+            ReloadFingerprint validated = configurationFingerprint();
             reloadConfig();
             settings.load(getConfig());
             messages.reload();
@@ -202,6 +222,11 @@ public final class PlexonTools extends JavaPlugin {
             itemService.clearDefinitionCaches();
             progression.clearDefinitionCaches();
             worldMenus.reload();
+            ReloadFingerprint applied = configurationFingerprint();
+            if (!validated.equals(applied)) {
+                throw new IllegalStateException(
+                        "Configuration files changed while /pt reload was being applied; retry reload.");
+            }
             naturalBlocks.start();
             // AbilityService caches enabled passive-holder state, bulk budgets,
             // and resolved potion metadata. Refresh it exactly once after a
@@ -209,13 +234,84 @@ public final class PlexonTools extends JavaPlugin {
             abilities.start();
             getServer().getOnlinePlayers().forEach(activations::reconcile);
             scheduleRegistrySave();
+            lastReloadEpochMillis = System.currentTimeMillis();
+            lastReloadState = "SUCCESS";
             coreBridge.markReady("PlexonTools reloaded; API and progression services ready");
         } catch (Exception exception) {
+            lastReloadEpochMillis = System.currentTimeMillis();
+            lastReloadState = "FAILED/DEGRADED: " + exception.getClass().getSimpleName();
             coreBridge.markDegraded("PlexonTools reload failed: "
                     + exception.getClass().getSimpleName());
             throw exception;
         } finally {
             progression.start();
+        }
+    }
+
+    /**
+     * Parses the complete reload candidate using detached service instances.
+     * No live listener, scheduler, cache, settings object or repository is
+     * mutated until every file has passed this gate.
+     */
+    private void preflightReload() throws Exception {
+        ReloadFingerprint before = configurationFingerprint();
+
+        File configFile = new File(getDataFolder(), "config.yml");
+        YamlConfiguration candidateConfig = new YamlConfiguration();
+        candidateConfig.load(configFile);
+        PluginSettings candidateSettings = new PluginSettings();
+        candidateSettings.load(candidateConfig);
+
+        MessageService candidateMessages = new MessageService(this);
+        candidateMessages.reload();
+
+        CategoryRepository candidateCategories = new CategoryRepository(this);
+        candidateCategories.reload();
+        requireCompiledCount("categories.yml", "categories", candidateCategories.size());
+
+        ToolConfigRepository candidateTools = new ToolConfigRepository(
+                this, candidateSettings, candidateCategories);
+        candidateTools.reload();
+        requireCompiledCount("tools.yml", "tools", candidateTools.size());
+
+        WorldMenuRepository candidateWorldMenus = new WorldMenuRepository(this);
+        candidateWorldMenus.reload();
+        requireCompiledCount("menus.yml", "worlds", candidateWorldMenus.size());
+
+        ReloadFingerprint after = configurationFingerprint();
+        if (!before.equals(after)) {
+            throw new IllegalStateException(
+                    "Configuration files changed during reload validation; retry /pt reload.");
+        }
+    }
+
+    private void requireCompiledCount(String fileName, String root, int compiledCount)
+            throws IOException, org.bukkit.configuration.InvalidConfigurationException {
+        YamlConfiguration raw = new YamlConfiguration();
+        raw.load(new File(getDataFolder(), fileName));
+        ConfigurationSection section = raw.getConfigurationSection(root);
+        int configuredCount = section == null ? 0 : section.getKeys(false).size();
+        if (configuredCount != compiledCount) {
+            throw new IllegalArgumentException(fileName + " contains " + configuredCount
+                    + " configured " + root + " entries but only " + compiledCount
+                    + " compiled successfully; reload refused.");
+        }
+    }
+
+    private ReloadFingerprint configurationFingerprint() throws IOException {
+        Map<String, String> hashes = new LinkedHashMap<>();
+        for (String name : CONFIGURATION_RESOURCES) {
+            File file = new File(getDataFolder(), name);
+            hashes.put(name, sha256(Files.readAllBytes(file.toPath())));
+        }
+        return new ReloadFingerprint(Map.copyOf(hashes));
+    }
+
+    private static String sha256(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
     }
 
@@ -247,6 +343,7 @@ public final class PlexonTools extends JavaPlugin {
                 diagnostic("Plugin", getPluginMeta().getVersion()),
                 diagnostic("Paper", Bukkit.getVersion()),
                 diagnostic("Java", System.getProperty("java.version", "unknown")),
+                diagnostic("Authority", "LOCAL gameplay • LOCAL provenance • Core lifecycle only"),
                 diagnostic("Mode", coreBridge.mode()),
                 diagnostic("Core plugin", coreBridge.pluginVersion()),
                 diagnostic("Core API", coreBridge.apiVersion() + " (supports "
@@ -270,18 +367,25 @@ public final class PlexonTools extends JavaPlugin {
                         + provenance.trackedPlacedPositions() + " placed • "
                         + provenance.unknownChunks() + " unknown • "
                         + provenance.pendingLoads() + " pending loads"),
+                diagnostic("Origin decisions", "natural=" + provenance.naturalDecisions()
+                        + " • placed=" + provenance.playerPlacedDecisions()
+                        + " • unknown=" + provenance.unknownDecisions()
+                        + " • disabled=" + provenance.disabledDecisions()
+                        + " • rejected=" + provenance.rejectedDecisions()),
                 diagnostic("Provenance I/O", provenance.loadBatches() + " batches • "
                         + provenance.retries() + " retries • "
                         + provenance.failedLoads() + " failed"),
                 diagnostic("Ability runtime", abilities.activePassiveHolderCount()
                         + " passive holders • " + abilities.pendingBlockDropContextCount()
                         + " pending drop contexts"),
-                diagnostic("Area Mine", bulk.effectiveMode() + " • max "
-                        + bulk.maxSecondaryBlocks() + "/activation • "
-                        + bulk.maxBlocksPerPlayerPerTick() + "/player/tick"),
+                diagnostic("Area Mine", "requested=" + bulk.requestedMode() + " • effective="
+                        + bulk.effectiveMode() + " • max " + bulk.maxSecondaryBlocks()
+                        + "/activation • " + bulk.maxBlocksPerPlayerPerTick() + "/player/tick"),
                 diagnostic("Area Mine totals", bulk.acceptedBlocks() + " accepted / "
                         + bulk.dispatchedBlocks() + " dispatched • "
-                        + bulk.budgetLimitedActivations() + " budget-limited activations"),
+                        + bulk.budgetLimitedActivations() + " safety-blocked/limited activations"),
+                diagnostic("Reload", lastReloadState + " • "
+                        + Instant.ofEpochMilli(lastReloadEpochMillis)),
                 diagnostic("Mining profiler", miningProfiler.enabled()
                         ? "RUNNING • " + miningProfiler.blockSamples() + " samples" : "STOPPED"),
                 diagnostic("Public API", apiState),
@@ -332,4 +436,6 @@ public final class PlexonTools extends JavaPlugin {
             }
         }
     }
+
+    private record ReloadFingerprint(Map<String, String> sha256ByFile) {}
 }
