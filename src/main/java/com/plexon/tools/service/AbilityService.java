@@ -179,7 +179,7 @@ public final class AbilityService implements Listener {
                 exp == null ? 1.0D : exp.multiplier(),
                 configured.containsKey(ToolAbilityType.AUTO_SMELT),
                 configured.containsKey(ToolAbilityType.MAGNET),
-                configured.containsKey(ToolAbilityType.AREA_MINE_3X3));
+                bulkBreaks.enabled() && configured.containsKey(ToolAbilityType.AREA_MINE_3X3));
     }
 
     public void boostBlockExperience(
@@ -466,7 +466,8 @@ public final class AbilityService implements Listener {
 
     public void mineArea(BlockBreakEvent original, ToolDefinition definition, ToolState state) {
         Player player = original.getPlayer();
-        if (isAreaMining(player)
+        if (!bulkBreaks.enabled()
+                || isAreaMining(player)
                 || !hasAbility(definition, state, ToolAbilityType.AREA_MINE_3X3)
                 || !isAreaTool(player.getInventory().getItemInMainHand().getType())) {
             return;
