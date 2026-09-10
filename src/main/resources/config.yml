@@ -1,5 +1,5 @@
 # ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-# ┃                    PlexonTools 4.2.0 configuration                ┃
+# ┃                 PlexonTools 4.3.0-rc.2 configuration              ┃
 # ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 #
 # Text supports Adventure MiniMessage:
@@ -65,13 +65,13 @@ performance:
   # Use 1 for nearly immediate visuals; higher values reduce metadata/packet work.
   progress-visual-refresh-ticks: 4
 
-  # Bulk abilities are bounded even if future tool definitions grow beyond 3x3.
-  # STRICT_EVENTS keeps Bukkit BlockBreakEvent cancellation/protection semantics
-  # for every secondary block. OPTIMIZED is accepted as a requested mode but
-  # safely falls back to STRICT_EVENTS until explicit protection hooks can prove
-  # equivalent authorization behavior.
+  # Phase 2 safety gate. Legacy STRICT_EVENTS/OPTIMIZED values remain readable
+  # for existing installations, but 4.3.0-rc.2 never synthesizes recursive
+  # BlockBreakEvent fan-out and therefore forces the effective mode DISABLED_SAFE.
+  # A future direct implementation must prove protection/provenance equivalence
+  # before secondary Area Mine blocks can be re-enabled.
   area-mine:
-    mode: STRICT_EVENTS
+    mode: DISABLED_SAFE
     max-secondary-blocks: 8
     max-blocks-per-player-per-tick: 8
 
@@ -82,8 +82,8 @@ performance:
 # only an in-memory map/bit lookup; it never queries YAML or SQLite.
 natural-block-progression:
   enabled: true
-  # Chunks loaded from an existing world warm their provenance cache off-thread.
-  # true prevents the short loading window (or a DB error) becoming a bypass.
+  # Compatibility key. Phase 2 always fails closed for UNKNOWN provenance even
+  # if an older installed configuration still sets this false.
   fail-closed-while-loading: true
   # Number of loaded chunks read per serialized async database request.
   chunk-load-batch-size: 32
