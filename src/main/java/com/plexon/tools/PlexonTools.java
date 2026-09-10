@@ -202,10 +202,9 @@ public final class PlexonTools extends JavaPlugin {
 
     private void reloadPlugin() throws Exception {
         // Validate every candidate file before pausing or mutating live services.
-        // Existing repositories parse atomically individually; this preflight adds
-        // the missing all-file transaction boundary and catches skipped invalid
-        // category/tool/menu entries by comparing raw and compiled counts.
-        preflightReload();
+        // The exact fingerprint returned by preflight must remain unchanged while
+        // the already-validated files are applied.
+        ReloadFingerprint validated = preflightReload();
 
         miningProfiler.stopSession();
         progression.pause();
@@ -213,7 +212,10 @@ public final class PlexonTools extends JavaPlugin {
             progressListener.invalidateAllActiveContexts();
         }
         try {
-            ReloadFingerprint validated = configurationFingerprint();
+            if (!validated.equals(configurationFingerprint())) {
+                throw new IllegalStateException(
+                        "Configuration files changed after reload validation; retry /pt reload.");
+            }
             reloadConfig();
             settings.load(getConfig());
             messages.reload();
@@ -228,9 +230,6 @@ public final class PlexonTools extends JavaPlugin {
                         "Configuration files changed while /pt reload was being applied; retry reload.");
             }
             naturalBlocks.start();
-            // AbilityService caches enabled passive-holder state, bulk budgets,
-            // and resolved potion metadata. Refresh it exactly once after a
-            // successful tool/config reload so tasks cannot retain stale state.
             abilities.start();
             getServer().getOnlinePlayers().forEach(activations::reconcile);
             scheduleRegistrySave();
@@ -251,9 +250,10 @@ public final class PlexonTools extends JavaPlugin {
     /**
      * Parses the complete reload candidate using detached service instances.
      * No live listener, scheduler, cache, settings object or repository is
-     * mutated until every file has passed this gate.
+     * mutated until every file has passed this gate. Returns the exact validated
+     * file fingerprint so no post-validation edit can escape the transaction.
      */
-    private void preflightReload() throws Exception {
+    private ReloadFingerprint preflightReload() throws Exception {
         ReloadFingerprint before = configurationFingerprint();
 
         File configFile = new File(getDataFolder(), "config.yml");
@@ -283,6 +283,7 @@ public final class PlexonTools extends JavaPlugin {
             throw new IllegalStateException(
                     "Configuration files changed during reload validation; retry /pt reload.");
         }
+        return after;
     }
 
     private void requireCompiledCount(String fileName, String root, int compiledCount)
