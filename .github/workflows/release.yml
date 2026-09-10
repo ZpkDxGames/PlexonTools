@@ -1,9 +1,9 @@
-name: Release PlexonTools 4.2.0
+name: Release PlexonTools 4.3.0-rc.2
 
 on:
   push:
     branches:
-      - 'release-trigger/4.2.0'
+      - 'release-trigger/4.3.0-rc.2'
 
 permissions:
   contents: write
@@ -12,7 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact release source
+      - name: Checkout exact candidate
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -21,7 +21,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "${GITHUB_REF_NAME}" = 'release-trigger/4.2.0'
+          test "${GITHUB_REF_NAME}" = 'release-trigger/4.3.0-rc.2'
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
 
       - name: Set up Java 25
         uses: actions/setup-java@v5
@@ -34,94 +35,134 @@ jobs:
         with:
           gradle-version: '9.1.0'
 
-      - name: Provision PlexonCore 1.0.0 API
+      - name: Provision PlexonCore 2.0.4 API
         shell: bash
         run: |
           set -euo pipefail
-          core_jar="${RUNNER_TEMP}/PlexonCore-1.0.0.jar"
-          curl --fail --location --silent --show-error \
-            --output "${core_jar}" \
-            "https://github.com/ZpkDxGames/PlexonCore/releases/download/v1.0.0/PlexonCore-1.0.0.jar"
-          echo "4abce6de93293e21b31cb874734430d5bdc77de17a4c3b98fd6a9006e1f13018  ${core_jar}" | sha256sum --check
+          core_jar="${RUNNER_TEMP}/PlexonCore-2.0.4.jar"
+          curl --fail --location --silent --show-error --output "${core_jar}" \
+            "https://github.com/ZpkDxGames/PlexonCore/releases/download/v2.0.4/PlexonCore-2.0.4.jar"
+          echo "61d625a717da9f46ee9231e1970d84b4c317ae12cf4090cdf7c9d39b6a1a9baf  ${core_jar}" | sha256sum --check
           mvn -B -ntp org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
-            -Dfile="${core_jar}" \
-            -DgroupId=com.zpkdxgames \
-            -DartifactId=PlexonCore \
-            -Dversion=1.0.0 \
-            -Dpackaging=jar \
-            -DgeneratePom=true
+            -Dfile="${core_jar}" -DgroupId=com.zpkdxgames -DartifactId=PlexonCore \
+            -Dversion=2.0.4 -Dpackaging=jar -DgeneratePom=true
 
-      - name: Test and build exact release commit
+      - name: Test and build exact candidate
         run: gradle clean check build --stacktrace
 
-      - name: Verify release JAR and checksum
+      - name: Verify release distribution
         shell: bash
         run: |
           set -euo pipefail
-          jar_path='build/libs/PlexonTools-4.2.0.jar'
+          jar_path='build/libs/PlexonTools-4.3.0-rc.2.jar'
           test -s "${jar_path}"
           jar tf "${jar_path}" > build/jar-contents.txt
           grep -qx 'plugin.yml' build/jar-contents.txt
+          grep -qx 'com/plexon/tools/PlexonTools.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/api/PlexonToolsAPI.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/event/PlexonToolProgressEvent.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/event/PlexonToolLevelUpEvent.class' build/jar-contents.txt
           grep -qx 'org/sqlite/JDBC.class' build/jar-contents.txt
-          if grep -q '^com/zpkdxgames/plexoncore/' build/jar-contents.txt; then
-            echo 'PlexonCore runtime classes must not be shaded into PlexonTools' >&2
-            exit 1
-          fi
+          for prefix in \
+            'com/zpkdxgames/plexoncore/' \
+            'org/bukkit/' \
+            'io/papermc/' \
+            'net/kyori/adventure/' \
+            'me/clip/placeholderapi/' \
+            'com/sk89q/worldguard/' \
+            'com/fastasyncworldedit/' \
+            'com/boydti/fawe/'; do
+            if grep -q "^${prefix}" build/jar-contents.txt; then
+              echo "Provided/runtime dependency must not be shaded into PlexonTools: ${prefix}" >&2
+              exit 1
+            fi
+          done
           unzip -p "${jar_path}" plugin.yml | sed -n 's/^version:[[:space:]]*//p' \
-            | head -n 1 | tr -d " '\"\r" | grep -qx '4.2.0'
-          javap -verbose -classpath "${jar_path}" com.plexon.tools.PlexonTools \
-            | grep -q 'major version: 69'
-          cd build/libs
-          sha256sum PlexonTools-4.2.0.jar > SHA256SUMS.txt
-          sha256sum --check SHA256SUMS.txt
+            | head -n 1 | tr -d " '\"\r" | grep -qx '4.3.0-rc.2'
+          javap -verbose -classpath "${jar_path}" com.plexon.tools.PlexonTools | grep -q 'major version: 69'
+          (cd build/libs && sha256sum PlexonTools-4.3.0-rc.2.jar > SHA256SUMS.txt && sha256sum --check SHA256SUMS.txt)
 
-      - name: Publish GitHub Release
+      - name: Generate certification evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob
+          import os
+          import xml.etree.ElementTree as ET
+
+          totals = dict(tests=0, failures=0, errors=0, skipped=0)
+          for path in glob.glob('build/test-results/test/TEST-*.xml'):
+              root = ET.parse(path).getroot()
+              for key in totals:
+                  totals[key] += int(root.attrib.get(key, 0))
+          with open('build/libs/TEST_SUMMARY.txt', 'w', encoding='utf-8') as out:
+              out.write('PlexonTools 4.3.0-rc.2 certification test summary\n')
+              out.write(f"tests={totals['tests']}\n")
+              out.write(f"failures={totals['failures']}\n")
+              out.write(f"errors={totals['errors']}\n")
+              out.write(f"skipped={totals['skipped']}\n")
+              out.write('distribution=PASS\n')
+              out.write('java_major=69\n')
+              out.write('plexoncore_non_shaded=PASS\n')
+              out.write('paper_bukkit_adventure_non_shaded=PASS\n')
+              out.write('runtime_certification=NOT_EXECUTED\n')
+          with open('build/libs/PROVENANCE.txt', 'w', encoding='utf-8') as out:
+              out.write('product=PlexonTools\n')
+              out.write('version=4.3.0-rc.2\n')
+              out.write(f"commit={os.environ['GITHUB_SHA']}\n")
+              out.write(f"ref={os.environ['GITHUB_REF']}\n")
+              out.write('rollback_tag=v4.2.1\n')
+              out.write('rollback_commit=6e7a285fba8c16fc647ccc22c2c8342b2eb96711\n')
+              out.write('plexoncore=2.0.4\n')
+              out.write('gameplay_authority=LOCAL\n')
+              out.write('provenance_authority=LOCAL\n')
+              out.write('area_mine=DISABLED_SAFE\n')
+              out.write('runtime_certification=NOT_EXECUTED\n')
+          PY
+          cat build/libs/TEST_SUMMARY.txt
+          cat build/libs/PROVENANCE.txt
+
+      - name: Publish GitHub prerelease
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          release_tag='v4.2.0'
+          release_tag='v4.3.0-rc.2'
+          if git rev-parse --verify --quiet "refs/tags/${release_tag}" >/dev/null; then
+            echo "Tag ${release_tag} already exists; refusing to replace it." >&2
+            exit 1
+          fi
           if gh release view "${release_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             echo "Release ${release_tag} already exists; refusing to replace it." >&2
             exit 1
           fi
           notes=$(mktemp)
           cat > "${notes}" <<'NOTES'
-          ## PlexonTools 4.2.0 — Performance & Reliability
+          ## PlexonTools 4.3.0-rc.2 — Phase 2 runtime/performance hardening
 
-          PlexonTools 4.2.0 extends the 4.1.1 mining optimizations with bounded Area Mine execution, event-driven passive-effect reconciliation, safer BlockBreak/BlockDrop correlation, stronger natural-provenance batching, transactional settings reloads, and deeper persistence/runtime diagnostics.
+          Release candidate only. Stable promotion is blocked until PlexonCraft runtime certification.
 
-          ### Performance & reliability
-          - Reduces ordinary mining hot-path work and skips progression/provenance work for terminal tools while preserving abilities.
-          - Replaces passive whole-server scans with relevant-holder tracking and cached potion-effect resolution.
-          - Correlates pending drop contexts by player and exact block position with hard bounds and lifecycle cleanup.
-          - Adds a bounded `BulkBreakCoordinator` for Area Mine with strict event compatibility, activation caps, per-player/tick budgets, and deduplication.
-          - Adds provenance batch primitives and bulk persistence enqueue support.
-          - Adds persistence queue high-water, mutation, batch, commit, pressure-flush, failure, and snapshot diagnostics.
-          - Makes settings reload candidate-based so malformed late configuration cannot partially mutate the live runtime.
+          - Keeps Legendary Tools gameplay, identity, progression and provenance authority LOCAL to PlexonTools while integrating PlexonCore 2.0.4 for lifecycle/module status.
+          - Preserves the v4.2.1 physical item/PDC and SQLite contracts; no player tool regeneration is required by this candidate.
+          - Makes UNKNOWN provenance fail closed for natural-only progression and exposes aggregate origin diagnostics.
+          - Preserves authoritative in-memory progression, coalesced visual refresh and bounded batched persistence.
+          - Hard-bounds the latest-state acceleration cache; registry state remains authoritative after eviction.
+          - Removes PlexonTools-owned recursive BlockBreakEvent fan-out from Area Mine. Secondary Area Mine breaking is DISABLED_SAFE in this RC until a direct protection/provenance-equivalent implementation is certified.
+          - Adds complete reload preflight/fingerprinting and Phase 2 architecture regression contracts.
+          - Keeps the existing premium visual language and public API/event ordering; no cosmetic redesign is included.
 
-          ### Compatibility
-          - Public `PlexonToolsAPI`, `PlexonToolProgressEvent`, and `PlexonToolLevelUpEvent` contracts are preserved.
-          - SQLite schema and existing player/tool data remain compatible; no reset is required.
-          - Ownership, world binding, natural-block progression, cancellation/protection semantics, and PlexonCore 1.x integration remain authoritative.
-          - Area Mine defaults to compatibility-safe `STRICT_EVENTS`; requested optimized mode fails safe until protection-safe hooks are available.
-          - Paper 26.2 / Java 25.
-
-          ### Verification
-          - Java 25 Gradle tests and packaging run against the exact merged release commit.
-          - JAR contents, public API/event classes, SQLite runtime/native entries, Java 25 bytecode, and SHA-256 are verified before publication.
-
-          Keep the existing `plugins/PlexonTools/` directory when upgrading. Replace only the plugin JAR after backing up the existing installation.
+          Rollback: v4.2.1 at `6e7a285fba8c16fc647ccc22c2c8342b2eb96711`.
+          Runtime certification: NOT EXECUTED.
           NOTES
           gh release create "${release_tag}" \
-            build/libs/PlexonTools-4.2.0.jar \
+            build/libs/PlexonTools-4.3.0-rc.2.jar \
             build/libs/SHA256SUMS.txt \
+            build/libs/TEST_SUMMARY.txt \
+            build/libs/PROVENANCE.txt \
             --repo "${GITHUB_REPOSITORY}" \
             --target "${GITHUB_SHA}" \
-            --title 'PlexonTools 4.2.0 — Performance & Reliability' \
+            --title 'PlexonTools 4.3.0-rc.2 — Phase 2 RC' \
             --notes-file "${notes}" \
-            --latest
+            --prerelease
