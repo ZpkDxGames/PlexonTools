@@ -1,5 +1,5 @@
 # ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-# ┃                 PlexonTools 4.3.0-rc.2 configuration              ┃
+# ┃                   PlexonTools 4.3.0 configuration                  ┃
 # ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 #
 # Text supports Adventure MiniMessage:
@@ -65,8 +65,8 @@ performance:
   # Use 1 for nearly immediate visuals; higher values reduce metadata/packet work.
   progress-visual-refresh-ticks: 4
 
-  # Phase 2 safety gate. Legacy STRICT_EVENTS/OPTIMIZED values remain readable
-  # for existing installations, but 4.3.0-rc.2 never synthesizes recursive
+  # Stable safety gate. Legacy STRICT_EVENTS/OPTIMIZED values remain readable
+  # for existing installations, but 4.3.0 never synthesizes recursive
   # BlockBreakEvent fan-out and therefore forces the effective mode DISABLED_SAFE.
   # A future direct implementation must prove protection/provenance equivalence
   # before secondary Area Mine blocks can be re-enabled.
@@ -82,8 +82,8 @@ performance:
 # only an in-memory map/bit lookup; it never queries YAML or SQLite.
 natural-block-progression:
   enabled: true
-  # Compatibility key. Phase 2 always fails closed for UNKNOWN provenance even
-  # if an older installed configuration still sets this false.
+  # Compatibility key. Stable 4.3.0 always fails closed for UNKNOWN provenance
+  # even if an older installed configuration still sets this false.
   fail-closed-while-loading: true
   # Number of loaded chunks read per serialized async database request.
   chunk-load-batch-size: 32
