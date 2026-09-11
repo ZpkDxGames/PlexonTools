@@ -114,8 +114,8 @@ final class PlacedBlockIndex {
     }
 
     /**
-     * Batch form used by bulk block operations. The caller owns ordering; this
-     * method keeps all provenance mutation in one main-thread service boundary.
+     * Batch form used by bounded internal operations. The caller owns ordering;
+     * this method keeps all provenance mutation in one main-thread boundary.
      */
     List<Origin> consumeAll(List<PlacedBlockPosition> positions) {
         if (positions.isEmpty()) {
@@ -160,7 +160,12 @@ final class PlacedBlockIndex {
         return Math.floorDiv(coordinate, 16);
     }
 
-    enum Origin { NATURAL, PLAYER_PLACED, UNKNOWN }
+    /**
+     * DISABLED is an explicit policy state used by the higher-level tracker when
+     * natural-block filtering is intentionally switched off. It is never emitted
+     * by the index itself and must not be confused with NATURAL.
+     */
+    enum Origin { NATURAL, PLAYER_PLACED, UNKNOWN, DISABLED }
 
     private interface ChunkCoordinate {
         UUID worldId();

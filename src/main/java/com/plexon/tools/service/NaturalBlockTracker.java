@@ -51,6 +51,10 @@ import java.util.logging.Level;
  * fetched asynchronously, then committed to the in-memory index on the server
  * thread. A generation/token pair prevents stale async results from reviving
  * unloaded or reloaded chunks.</p>
+ *
+ * <p>Phase 2 uses conservative origin semantics: UNKNOWN is always rejected by
+ * natural-only progression. The historical fail-open configuration key remains
+ * readable for compatibility but can no longer turn UNKNOWN into NATURAL.</p>
  */
 public final class NaturalBlockTracker implements Listener {
     private final JavaPlugin plugin;
@@ -71,6 +75,11 @@ public final class NaturalBlockTracker implements Listener {
     private long loadBatchCount;
     private long loadRetryCount;
     private long failedLoadCount;
+    private long naturalDecisionCount;
+    private long playerPlacedDecisionCount;
+    private long unknownDecisionCount;
+    private long disabledDecisionCount;
+    private long rejectedDecisionCount;
 
     public NaturalBlockTracker(JavaPlugin plugin, PluginSettings settings, InstanceRegistry registry) {
         this.plugin = plugin;
@@ -91,9 +100,18 @@ public final class NaturalBlockTracker implements Listener {
         loadBatchCount = 0L;
         loadRetryCount = 0L;
         failedLoadCount = 0L;
+        naturalDecisionCount = 0L;
+        playerPlacedDecisionCount = 0L;
+        unknownDecisionCount = 0L;
+        disabledDecisionCount = 0L;
+        rejectedDecisionCount = 0L;
         index.clear();
         if (!active) return;
 
+        if (!settings.naturalBlockFailClosed()) {
+            plugin.getLogger().warning("natural-block-progression.fail-closed-while-loading=false "
+                    + "is deprecated and ignored in Phase 2; UNKNOWN provenance always fails closed.");
+        }
         for (World world : Bukkit.getWorlds()) {
             for (Chunk chunk : world.getLoadedChunks()) {
                 prime(chunk, false);
@@ -114,9 +132,8 @@ public final class NaturalBlockTracker implements Listener {
     }
 
     public boolean allowsProgress(Block block) {
-        if (!active) return true;
-        Origin origin = consume(block);
-        return allows(origin);
+        if (!active) return recordDecision(Origin.DISABLED);
+        return recordDecision(consume(block));
     }
 
     /**
@@ -130,6 +147,7 @@ public final class NaturalBlockTracker implements Listener {
             return List.of();
         }
         if (!active) {
+            disabledDecisionCount = saturatingAdd(disabledDecisionCount, blocks.size());
             return java.util.Collections.nCopies(blocks.size(), Boolean.TRUE);
         }
 
@@ -142,12 +160,12 @@ public final class NaturalBlockTracker implements Listener {
 
         List<Origin> origins = index.consumeAll(positions);
         List<Boolean> allowed = new ArrayList<>(origins.size());
-        for (int index = 0; index < origins.size(); index++) {
-            Origin origin = origins.get(index);
+        for (int originIndex = 0; originIndex < origins.size(); originIndex++) {
+            Origin origin = origins.get(originIndex);
             if (origin != Origin.NATURAL) {
-                registry.queuePlacedBlock(positions.get(index), false);
+                registry.queuePlacedBlock(positions.get(originIndex), false);
             }
-            allowed.add(allows(origin));
+            allowed.add(recordDecision(origin));
         }
         return List.copyOf(allowed);
     }
@@ -158,23 +176,23 @@ public final class NaturalBlockTracker implements Listener {
      * skips a second index operation. Cancelled events never reach this method.
      */
     public boolean allowsProgress(BlockBreakEvent event) {
-        if (!active) return true;
+        if (!active) return recordDecision(Origin.DISABLED);
         Origin origin = consumedBreakOrigins.get(event);
         if (origin == null) {
             origin = consume(event.getBlock());
             consumedBreakOrigins.put(event, origin);
         }
-        return allows(origin);
+        return recordDecision(origin);
     }
 
     public boolean isNatural(Block block) {
-        if (!active) return true;
+        if (!active) return recordDecision(Origin.DISABLED);
         UUID worldId = block.getWorld().getUID();
         int x = block.getX();
         int z = block.getZ();
         ensureTracked(worldId, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
         Origin origin = index.peek(worldId, x, block.getY(), z);
-        return allows(origin);
+        return recordDecision(origin);
     }
 
     /** Cheap main-thread snapshot for `/pt diagnostics` and performance reports. */
@@ -187,7 +205,12 @@ public final class NaturalBlockTracker implements Listener {
                 loadQueue.size() + (loadInFlight ? 1 : 0),
                 loadBatchCount,
                 loadRetryCount,
-                failedLoadCount);
+                failedLoadCount,
+                naturalDecisionCount,
+                playerPlacedDecisionCount,
+                unknownDecisionCount,
+                disabledDecisionCount,
+                rejectedDecisionCount);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -277,9 +300,31 @@ public final class NaturalBlockTracker implements Listener {
         }
     }
 
-    private boolean allows(Origin origin) {
-        return origin == Origin.NATURAL
-                || (origin == Origin.UNKNOWN && !settings.naturalBlockFailClosed());
+    private boolean recordDecision(Origin origin) {
+        boolean allowed;
+        switch (origin) {
+            case NATURAL -> {
+                naturalDecisionCount = saturatingAdd(naturalDecisionCount, 1L);
+                allowed = true;
+            }
+            case PLAYER_PLACED -> {
+                playerPlacedDecisionCount = saturatingAdd(playerPlacedDecisionCount, 1L);
+                allowed = false;
+            }
+            case UNKNOWN -> {
+                unknownDecisionCount = saturatingAdd(unknownDecisionCount, 1L);
+                allowed = false;
+            }
+            case DISABLED -> {
+                disabledDecisionCount = saturatingAdd(disabledDecisionCount, 1L);
+                allowed = true;
+            }
+            default -> throw new IllegalStateException("Unhandled block origin: " + origin);
+        }
+        if (!allowed) {
+            rejectedDecisionCount = saturatingAdd(rejectedDecisionCount, 1L);
+        }
+        return allowed;
     }
 
     private void markPlaced(Block block) {
@@ -451,6 +496,10 @@ public final class NaturalBlockTracker implements Listener {
         }, settings.naturalBlockChunkLoadRetryTicks());
     }
 
+    private static long saturatingAdd(long first, long second) {
+        return Long.MAX_VALUE - first < second ? Long.MAX_VALUE : first + second;
+    }
+
     private static PlacedBlockPosition position(Block block) {
         return new PlacedBlockPosition(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
     }
@@ -474,7 +523,12 @@ public final class NaturalBlockTracker implements Listener {
             int pendingLoads,
             long loadBatches,
             long retries,
-            long failedLoads
+            long failedLoads,
+            long naturalDecisions,
+            long playerPlacedDecisions,
+            long unknownDecisions,
+            long disabledDecisions,
+            long rejectedDecisions
     ) {}
 
     private record ChunkLoadRequest(ChunkKey key, long token) {}

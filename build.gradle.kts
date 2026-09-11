@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.plexon"
-version = "4.2.1"
+version = "4.3.0-rc.3"
 
 val pluginVersion = version.toString()
 
@@ -87,16 +87,27 @@ val verifyPluginJar by tasks.registering {
             "org/sqlite/native/Mac/x86_64/libsqlitejdbc.dylib",
             "org/sqlite/native/Windows/x86_64/sqlitejdbc.dll"
         )
+        val forbiddenPrefixes = listOf(
+            "com/zpkdxgames/plexoncore/",
+            "org/bukkit/",
+            "io/papermc/",
+            "net/kyori/adventure/",
+            "me/clip/placeholderapi/",
+            "com/sk89q/worldguard/",
+            "com/fastasyncworldedit/",
+            "com/boydti/fawe/"
+        )
         ZipFile(jarFile).use { archive ->
             requiredEntries.forEach { name ->
                 check(archive.getEntry(name) != null) {
                     "Release JAR is missing required entry: $name"
                 }
             }
-            check(archive.entries().asSequence().none { entry ->
-                entry.name.startsWith("com/zpkdxgames/plexoncore/")
-            }) {
-                "PlexonCore runtime classes must not be shaded into PlexonTools"
+            val names = archive.entries().asSequence().map { it.name }.toList()
+            forbiddenPrefixes.forEach { prefix ->
+                check(names.none { it.startsWith(prefix) }) {
+                    "Provided/runtime dependency must not be shaded into PlexonTools: $prefix"
+                }
             }
             val entries = archive.entries()
             while (entries.hasMoreElements()) {

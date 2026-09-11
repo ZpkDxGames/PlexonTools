@@ -2,37 +2,40 @@
 
 PlexonTools is a Paper-native progression engine for unique, world-activated custom tools. Every tool has its own UUID, permanent owner, world binding, activation state, level, aggregate progress, and optional per-target counters.
 
-> **Current release:** `4.1.1` — **Creator:** Tonim (`ZpkDxGames`)
+> **Current stable:** `4.2.1` — **Phase 2 candidate:** `4.3.0-rc.2` — **Creator:** Tonim (`ZpkDxGames`)
 
 ## Requirements
 
 - Paper `26.2`
 - Java `25`
-- PlexonCore `1.0.0` is optional at runtime; PlexonTools remains fully functional in standalone mode
+- PlexonCore `2.0.4` is the certified ecosystem API target for the Phase 2 candidate; Legendary Tools gameplay and provenance remain local to PlexonTools
 - No external database service or manually installed runtime dependency
 - No NMS or CraftBukkit implementation access
 
-## 4.1.1 highlights
+## 4.3.0-rc.2 Phase 2 highlights
 
-- Optimizes the ordinary single-block legendary-tool progression hot path; 3×3 Area Mine remains supported but is not the primary optimization target.
-- Keeps authoritative level/progress state immediate while coalescing compatible high-frequency `PlexonToolProgressEvent` notifications over a short two-tick window.
-- Preserves exact public progress totals through the existing event `amount` field and keeps `PlexonToolLevelUpEvent` immediate at level boundaries.
-- Reuses the authoritative latest in-memory `ToolState` during rapid mining instead of rebuilding the same registry-backed state repeatedly.
-- Reuses the validated block-break tool context for the matching Auto Smelt / Magnet drop phase instead of resolving ItemMeta/PDC/registry/definition/world state twice for one break.
-- Uses one natural-block provenance observation for tool progression and leaves the tracker cleanup phase as the single authoritative consume.
-- Preserves PlexonCore 1.x integration, standalone fallback, PlexonQuests-compatible public events, SQLite/WAL persistence, abilities, ownership/world restrictions, and the existing coalesced visual refresh.
-- Builds for Paper 26.2 / Java 25 and verifies that PlexonCore runtime classes are not shaded into the plugin JAR.
+- Keeps the optimized ordinary single-block Legendary Tool path authoritative in memory with no scheduler, database write, YAML traversal, or full item rebuild per accepted normal block.
+- Keeps PlexonTools as the sole Legendary Tools gameplay/provenance authority for this RC while integrating PlexonCore 2.0.4 for lifecycle/module status.
+- Makes `UNKNOWN` block provenance unconditionally fail closed for natural-only progression and exposes aggregate origin/load diagnostics.
+- Hard-bounds the latest-state acceleration cache; the existing registry remains authoritative after eviction.
+- Preserves coalesced visual refreshes, coalesced public progress notifications, bounded dirty persistence and exact progression totals.
+- Removes PlexonTools-owned recursive secondary `BlockBreakEvent` fan-out. Area Mine secondary breaking is `DISABLED_SAFE` in this RC until a direct protection/provenance-equivalent path can be certified.
+- Adds all-file reload preflight/fingerprinting and regression contracts for known single-block performance anti-patterns.
+- Preserves the v4.2.1 physical PDC identity, SQLite data, API/events and premium visual language.
 
-The detailed integration contracts are documented in [docs/API.md](docs/API.md), [docs/PLEXONCORE.md](docs/PLEXONCORE.md), and [docs/MIGRATION_4_1.md](docs/MIGRATION_4_1.md). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the 4.1.1 validation/release-gate status.
+The detailed Phase 2 architecture, migration and runtime gates are documented in [docs/PHASE2_4_3_0_RC2.md](docs/PHASE2_4_3_0_RC2.md). This RC is not a stable-production promotion; rollback remains `v4.2.1`.
 
 ## Installation
 
-1. Download `PlexonTools-4.1.1.jar` from the GitHub release.
-2. Place it in the Paper server's `plugins` directory.
-3. Start the server once to generate the five editable YAML files, their `examples/` references, and `plexontools.db`.
-4. Customize through `/pt gui` or YAML, then run `/pt reload`.
+For production, continue using `PlexonTools-4.2.1.jar` until the Phase 2 runtime gate is completed. To runtime-test the prerelease:
 
-Build from source with Java 25. PlexonCore 1.0.0 is a compile-only dependency; CI provisions the pinned Core release JAR into Maven Local before `gradle clean build`.
+1. Back up the existing `plugins/PlexonTools/` directory and database.
+2. Download `PlexonTools-4.3.0-rc.2.jar` from the GitHub prerelease.
+3. Replace only the plugin JAR; keep the existing PlexonTools data/configuration files.
+4. Start Paper 26.2 with Java 25 and PlexonCore 2.0.4.
+5. Verify `/pt diagnostics` before representative mining tests.
+
+Build from source with Java 25. PlexonCore 2.0.4 is a compile-only dependency; CI provisions the pinned Core release JAR before `gradle clean check build`.
 
 ## Commands
 
@@ -43,9 +46,9 @@ Build from source with Java 25. PlexonCore 1.0.0 is a compile-only dependency; C
 | `/pt all [player]` | `plexontools.use`; target requires `plexontools.admin` | Open the unified showcase |
 | `/pt give <player> <tool_id> [world]` | `plexontools.give` | Grant a unique instance for an allowed world |
 | `/pt gui` | `plexontools.gui` | Open the administrative dashboard |
-| `/pt reload` | `plexontools.reload` | Reload settings, messages, categories, tools, and world menus |
+| `/pt reload` | `plexontools.reload` | Preflight and reload settings, messages, categories, tools, and world menus |
 | `/pt backup` | `plexontools.backup` | Flush pending records and create a consistent SQLite backup |
-| `/pt diagnostics` | `plexontools.diagnostics` | Show Core/API/event and SQLite runtime health |
+| `/pt diagnostics` | `plexontools.diagnostics` | Show authority, provenance, Core/API/event, reload and SQLite runtime health |
 
 Aliases: `/plexontool` and `/plexontools`. `plexontools.admin` includes all administrative and bypass capabilities.
 
@@ -82,11 +85,11 @@ tracking:
 
 Levels can override root requirements with `requirement_mode`, `requirement`, or `requirements`.
 
-For SPECIFIC `BLOCKS_BROKEN` profiles, reload also checks the resolved material at every level. Vanilla pickaxes, axes, shovels, and hoes must match the block's mineable tag and required harvest tier; an invalid level is rejected while the last valid runtime configuration remains active.
+For SPECIFIC `BLOCKS_BROKEN` profiles, reload checks the resolved material at every level. Vanilla pickaxes, axes, shovels, and hoes must match the block's mineable tag and required harvest tier; invalid candidate definitions are rejected by the Phase 2 preflight before the live runtime is mutated.
 
-Progress is strictly per level. When a level completes, both its aggregate counter and SPECIFIC target counters reset to zero. For example, two consecutive levels that each require `STONE: 500` require 500 new Stone breaks at each level. The event that completes one level cannot contribute overflow to the next.
+Progress is strictly per level. When a level completes, both its aggregate counter and SPECIFIC target counters reset to zero. The event that completes one level cannot contribute overflow to the next unless the configured progression contract explicitly supports a larger delta path.
 
-Accepted requirement activity updates authoritative state immediately. The item lore/PDC and live action bar refresh together in a short configurable window (`performance.progress-visual-refresh-ticks`, default `4`) to reduce block-event work. Compatible public progress notifications are also coalesced briefly; consumers must use `PlexonToolProgressEvent.amount()` because one event may represent multiple accepted units. Level-up events remain immediate. Toggle the action bar with `effects.progress-action-bar` and customize `messages.progress-update`.
+Accepted requirement activity updates authoritative state immediately. The item lore/PDC and live action bar refresh together in a short configurable window (`performance.progress-visual-refresh-ticks`, default `4`) to reduce event work. Compatible public progress notifications are also coalesced briefly; consumers must use `PlexonToolProgressEvent.amount()` because one event may represent multiple accepted units. Level-up events remain immediate.
 
 ## Multi-dimension progression
 
@@ -108,11 +111,9 @@ progression:
 
 An enabled tool appears in `/pt` by default whenever its `allowed_worlds` list contains the player's current world. `menus.yml` customizes the inventory title, size, filler, and exact pinned slots; allowed tools without a pin are placed automatically. Set `world-menu.auto-show-allowed-tools: false` to restore strict explicit membership, where only pinned tools appear. Explicit `/pt give` grants remain active administrator-issued instances until the player manages them through `/pt`.
 
-The default player-facing card and the separate ON/OFF panel are configured under `world-menu` in `config.yml`, or in-game through `/pt gui` → **Player Menu Appearance**. When the slot directly below a card is free, the panel is placed there; otherwise the card itself remains the toggle control.
+The default player-facing card and the separate ON/OFF panel are configured under `world-menu` in `config.yml`, or in-game through `/pt gui` → **Player Menu Appearance**. The Phase 2 candidate intentionally does not redesign these visuals.
 
-Every tool still has a `category` that resolves against `categories.yml`. In 3.5, categories organize definitions and retain explicit legacy showcase routes; they no longer control the default `/pt` player flow.
-
-Abilities are complete per-level states. The legacy list form and the configurable map form are both accepted:
+Every tool still has a `category` that resolves against `categories.yml`. Abilities remain complete per-level states, and the legacy list form plus configurable map form remain accepted.
 
 ```yaml
 levels:
@@ -133,7 +134,7 @@ levels:
         enabled: true
 ```
 
-The 3×3 ability operates only on pickaxe, shovel, and axe material families. It checks synthetic block-break events before removing adjacent blocks so protection plugins can cancel them.
+**Phase 2 Area Mine safety gate:** `AREA_MINE_3X3` definitions remain load-compatible, but secondary Area Mine execution is `DISABLED_SAFE` in `4.3.0-rc.2`. PlexonTools no longer synthesizes recursive `BlockBreakEvent`s for adjacent blocks, and it will not directly mutate those blocks until protection/provenance equivalence is implemented and certified. This gate is checked before neighbor-plane allocation, so it does not add secondary block work to normal mining.
 
 ## Lore placeholders
 
@@ -148,29 +149,25 @@ Both `{placeholder}` and `<placeholder>` forms are accepted.
 - Profile: `material`, `material_name`, `enchantments`, `enchantment_count`
 - Player menu state: `world`, `status`, `state`, `state_symbol`, `toggle_action`, `toggle_hint`
 
-The freely ordered compact default layout lives under `tool-lore.template` in `config.yml`. `{enchantment_lines}` expands the active profile into readable enchantment rows, while `{requirement_lines}` expands to one line per SPECIFIC target or one summarized GENERAL row. `progress-value-colors` drives the current value from red through amber to green; templates keep the required value fixed. A root or per-level `lore` list in `tools.yml` can override the global template; `lore: []` intentionally removes it.
+The freely ordered compact default layout lives under `tool-lore.template` in `config.yml`. `{enchantment_lines}` expands the active profile into readable enchantment rows, while `{requirement_lines}` expands to one line per SPECIFIC target or one summarized GENERAL row. The Phase 2 candidate preserves the established visual language and only changes rendering coordination where required for performance/correctness.
 
-## Persistence
+## Persistence and provenance
 
 While materialized, the item carries `id`, `uuid`, `level`, `stat_count`, `category`, `bound_world`, `owner`, and optional `stat_breakdown` keys in the `plexontools` namespace. `plexontools.db` stores players, authoritative activation entitlements, tool instances, normalized target progress, and natural/player-placed block provenance. Gameplay updates remain in memory; visual metadata is coalesced on the server thread, an asynchronous worker persists bounded database transactions, and shutdown drains the queue before checkpointing WAL.
 
-On the first 3.6 startup, an existing schema-v3/v4 `data.yml` is strictly validated, backed up as `data.yml.pre-sqlite-<timestamp>.bak`, imported in one transaction, verified, and marked migrated. The original remains available for rollback and is never re-imported after a successful migration.
-
-When natural-block progression is enabled, player-placed blocks are indexed and excluded from block/farming progression. Provenance checks remain in memory on the gameplay thread; persistence is asynchronous and chunk provenance loading fails closed according to configuration.
+Player-placed blocks are indexed and excluded from natural-only block/farming progression. Provenance checks stay in memory on the gameplay thread; persistence and chunk warming are asynchronous. Phase 2 treats `UNKNOWN` conservatively: it is rejected for natural-only progression regardless of the historical fail-open configuration flag. `DISABLED` remains a distinct policy state when natural-block filtering itself is intentionally disabled.
 
 ## Documentation
 
+- [PlexonTools 4.3.0-rc.2 Phase 2 certification record](docs/PHASE2_4_3_0_RC2.md)
 - [PlexonTools 4.1.1 release notes](RELEASE_NOTES.md)
 - [PlexonTools 3.6.1 performance and multi-dimension guide](docs/PLEXONTOOLS_3_6_1.md)
 - [PlexonTools 3.6.0 database and configuration guide](docs/PLEXONTOOLS_3_6_0.md)
-- [PlexonTools 3.5.2 release behavior](docs/PLEXONTOOLS_3_5_2.md)
-- [PlexonTools 3.5.1 baseline and 3.6 roadmap](docs/PLEXONTOOLS_3_5_1.md)
 - [Capabilities and configuration](docs/CAPABILITIES.md)
 - [Administrative GUI](docs/ADMIN_EDITOR.md)
 - [Architecture and persistence](docs/ARCHITECTURE.md)
-- [Migrating from 2.0](docs/MIGRATION_3.md)
-- [Migrating from 3.0 to 3.5](docs/MIGRATION_3_5.md)
-- [Migrating from 3.5 to 3.6](docs/MIGRATION_3_6.md)
+- [Public API](docs/API.md)
+- [PlexonCore integration](docs/PLEXONCORE.md)
 
 ## License
 

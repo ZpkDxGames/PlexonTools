@@ -54,6 +54,7 @@ import java.util.logging.Level;
  */
 public final class ProgressionService implements Listener {
     private static final long PROGRESS_EVENT_BATCH_TICKS = 2L;
+    private static final int LATEST_STATE_CACHE_LIMIT = 16_384;
 
     private final JavaPlugin plugin;
     private final ToolItemService itemService;
@@ -62,7 +63,17 @@ public final class ProgressionService implements Listener {
     private final MessageService messages;
     private final MiningPerformanceProfiler profiler;
     private final Map<UUID, Long> lastWarnings = new HashMap<>();
-    private final Map<UUID, ToolState> latestStates = new HashMap<>();
+    /**
+     * Hot identity cache only; InstanceRegistry remains authoritative. Eviction
+     * therefore changes lookup cost, never gameplay state or persistence.
+     */
+    private final Map<UUID, ToolState> latestStates =
+            new LinkedHashMap<>(256, 0.75F, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<UUID, ToolState> eldest) {
+                    return size() > LATEST_STATE_CACHE_LIMIT;
+                }
+            };
     private final Map<UUID, PendingVisual> pendingVisuals = new LinkedHashMap<>();
     private final ProgressEventBatcher progressEventBatcher = new ProgressEventBatcher();
     private final IdentityHashMap<ToolDefinition, NavigableMap<Integer, LevelRequirement>>
@@ -498,8 +509,6 @@ public final class ProgressionService implements Listener {
                     transactionId,
                     instanceId));
         } catch (RuntimeException exception) {
-            // Public events observe already-committed progression. A consumer failure
-            // must never roll back or corrupt authoritative tool state.
             plugin.getLogger().log(Level.WARNING,
                     "A PlexonTools public progress event listener failed after state commit",
                     exception);
