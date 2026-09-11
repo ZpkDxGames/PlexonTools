@@ -10,6 +10,7 @@ permissions:
 
 env:
   ACCEPTED_SHA: '00864345eab14c372c456d669d5d9f06dd3b9cf1'
+  RELEASE_TARGET_SHA: 'a88dcc102b4999184864458b3b72a8c631e74c9a'
   VERSION: '4.3.0-rc.3'
   TAG: 'v4.3.0-rc.3'
   CORE_VERSION: '2.0.4'
@@ -21,7 +22,7 @@ jobs:
   verify-and-publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact release candidate
+      - name: Checkout release branch
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -34,26 +35,26 @@ jobs:
           set -euo pipefail
           test "${GITHUB_REF_NAME}" = 'release-trigger/4.3.0-rc.3'
           git merge-base --is-ancestor "${ACCEPTED_SHA}" "${GITHUB_SHA}"
-          mapfile -t changed < <(git diff --name-only "${ACCEPTED_SHA}..${GITHUB_SHA}" | sort)
-          printf '%s\n' "${changed[@]}"
-          test "${#changed[@]}" -eq 2
-          test "${changed[0]}" = '.github/workflows/phase3-release-4.3.0-rc.3.yml'
-          test "${changed[1]}" = 'build.gradle.kts'
+          while IFS= read -r path; do
+            case "${path}" in
+              build.gradle.kts|.github/workflows/phase3-release-4.3.0-rc.3.yml|.github/workflows/build.yml) ;;
+              *) echo "Non-release delta detected: ${path}" >&2; exit 1 ;;
+            esac
+          done < <(git diff --name-only "${ACCEPTED_SHA}..${GITHUB_SHA}")
           python3 - <<'PY'
           import os, subprocess
-          accepted = os.environ['ACCEPTED_SHA']
-          base = subprocess.check_output(['git','show',f'{accepted}:build.gradle.kts'], text=True)
+          base = subprocess.check_output(['git','show',f"{os.environ['ACCEPTED_SHA']}:build.gradle.kts"], text=True)
           current = open('build.gradle.kts', encoding='utf-8').read()
           expected = base.replace('version = "4.3.0-rc.2"', 'version = "4.3.0-rc.3"', 1)
           if current != expected:
-              raise SystemExit('build.gradle.kts contains changes beyond the version-only release metadata')
+              raise SystemExit('build.gradle.kts contains changes beyond version-only release metadata')
           PY
           test "$(git ls-remote --tags origin refs/tags/v4.3.0-rc.1 | cut -f1)" = "${PREVIOUS_RC1_SHA}"
           test "$(git ls-remote --tags origin refs/tags/v4.3.0-rc.2 | cut -f1)" = "${PREVIOUS_RC2_SHA}"
-          test -z "$(git ls-remote --tags origin "refs/tags/${TAG}" || true)"
-          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "Release ${TAG} already exists; refusing to replace immutable evidence." >&2
-            exit 1
+          current_tag="$(git ls-remote --tags origin "refs/tags/${TAG}" | cut -f1)"
+          if [ -n "${current_tag}" ]; then
+            test "${current_tag}" = "${RELEASE_TARGET_SHA}"
+            gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null
           fi
 
       - name: Set up Java 25
@@ -82,7 +83,7 @@ jobs:
       - name: Full supported verification
         run: gradle clean test check build --stacktrace
 
-      - name: Verify distribution, Java 25, Paper/Core isolation, and embedded version
+      - name: Verify distribution and generate checksum
         shell: bash
         run: |
           set -euo pipefail
@@ -93,15 +94,7 @@ jobs:
           grep -qx 'com/plexon/tools/PlexonTools.class' build/jar-contents.txt
           grep -qx 'com/plexon/tools/api/PlexonToolsAPI.class' build/jar-contents.txt
           grep -qx 'org/sqlite/JDBC.class' build/jar-contents.txt
-          for prefix in \
-            'com/zpkdxgames/plexoncore/' \
-            'org/bukkit/' \
-            'io/papermc/' \
-            'net/kyori/adventure/' \
-            'me/clip/placeholderapi/' \
-            'com/sk89q/worldguard/' \
-            'com/fastasyncworldedit/' \
-            'com/boydti/fawe/'; do
+          for prefix in 'com/zpkdxgames/plexoncore/' 'org/bukkit/' 'io/papermc/' 'net/kyori/adventure/' 'me/clip/placeholderapi/' 'com/sk89q/worldguard/' 'com/fastasyncworldedit/' 'com/boydti/fawe/'; do
             if grep -q "^${prefix}" build/jar-contents.txt; then
               echo "Provided/runtime dependency must not be shaded into PlexonTools: ${prefix}" >&2
               exit 1
@@ -113,7 +106,7 @@ jobs:
           grep -q 'PlexonCore:2.0.4' build.gradle.kts
           (cd build/libs && sha256sum "PlexonTools-${VERSION}.jar" > SHA256SUMS.txt && sha256sum --check SHA256SUMS.txt)
 
-      - name: Generate provenance and test summary
+      - name: Generate verification evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -130,53 +123,29 @@ jobs:
               out.write('PlexonTools 4.3.0-rc.3 Phase 3 release verification\n')
               for key in ('tests','failures','errors','skipped'):
                   out.write(f'{key}={totals[key]}\n')
-              out.write('java_major=69\n')
-              out.write('paper_26_2=PASS\n')
-              out.write('plexoncore_non_shaded=PASS\n')
-              out.write('server_api_non_shaded=PASS\n')
-              out.write('dependency_metadata_delta=VERSION_ONLY\n')
-              out.write('runtime_certification=NOT_EXECUTED\n')
-          with open('build/libs/PROVENANCE.txt','w',encoding='utf-8') as out:
-              out.write('product=PlexonTools\n')
-              out.write('version=4.3.0-rc.3\n')
-              out.write(f"accepted_phase3_sha={os.environ['ACCEPTED_SHA']}\n")
-              out.write(f"release_candidate_sha={os.environ['GITHUB_SHA']}\n")
-              out.write(f"ref={os.environ['GITHUB_REF']}\n")
-              out.write('accepted_sha_is_ancestor=PASS\n')
-              out.write('release_delta=METADATA_AND_RELEASE_INFRA_ONLY\n')
-              out.write('plexoncore=2.0.4\n')
-              out.write('runtime_certification=NOT_EXECUTED\n')
+              out.write('java_major=69\npaper_26_2=PASS\nplexoncore_non_shaded=PASS\nserver_api_non_shaded=PASS\nruntime_certification=NOT_EXECUTED\n')
           print(totals)
           PY
-          cat build/libs/TEST_SUMMARY.txt
-          cat build/libs/PROVENANCE.txt
 
-      - name: Publish immutable GitHub prerelease
+      - name: Publish only if immutable RC does not yet exist
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "${TAG} already exists and will not be modified."
+            exit 0
+          fi
+          test "${GITHUB_SHA}" = "${RELEASE_TARGET_SHA}"
           notes=$(mktemp)
-          cat > "${notes}" <<'NOTES'
-          ## PlexonTools 4.3.0-rc.3 — Phase 3 performance candidate
-
-          Prerelease only. This candidate contains the accepted/frozen Phase 3 Legendary single-block performance work plus version/release infrastructure only.
-
-          It preserves the existing 4.3.0 RC line; v4.3.0-rc.1 and v4.3.0-rc.2 remain immutable historical evidence. Runtime certification was not executed. Stable promotion is not authorized.
-          NOTES
+          printf '%s\n' '## PlexonTools 4.3.0-rc.3 — Phase 3 performance candidate' '' 'Prerelease only. Runtime certification was not executed. Stable promotion is not authorized.' > "${notes}"
           gh release create "${TAG}" \
-            "build/libs/PlexonTools-${VERSION}.jar" \
-            build/libs/SHA256SUMS.txt \
-            build/libs/TEST_SUMMARY.txt \
-            build/libs/PROVENANCE.txt \
-            --repo "${GITHUB_REPOSITORY}" \
-            --target "${GITHUB_SHA}" \
-            --title "PlexonTools ${VERSION} — Phase 3 RC" \
-            --notes-file "${notes}" \
-            --prerelease
+            "build/libs/PlexonTools-${VERSION}.jar" build/libs/SHA256SUMS.txt build/libs/TEST_SUMMARY.txt \
+            --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" \
+            --title "PlexonTools ${VERSION} — Phase 3 RC" --notes-file "${notes}" --prerelease
 
-      - name: Independently verify published prerelease
+      - name: Independently verify immutable published prerelease
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -197,7 +166,7 @@ jobs:
           print(f"jar_remote_digest={assets[jar].get('digest','')}")
           print(f"jar_download_url={assets[jar]['browser_download_url']}")
           PY
-          test "$(git ls-remote --tags origin "refs/tags/${TAG}" | cut -f1)" = "${GITHUB_SHA}"
+          test "$(git ls-remote --tags origin "refs/tags/${TAG}" | cut -f1)" = "${RELEASE_TARGET_SHA}"
           test "$(git ls-remote --tags origin refs/tags/v4.3.0-rc.1 | cut -f1)" = "${PREVIOUS_RC1_SHA}"
           test "$(git ls-remote --tags origin refs/tags/v4.3.0-rc.2 | cut -f1)" = "${PREVIOUS_RC2_SHA}"
           url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/PlexonTools-${VERSION}.jar"
