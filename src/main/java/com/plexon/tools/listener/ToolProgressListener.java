@@ -163,10 +163,10 @@ public final class ToolProgressListener implements Listener {
                 return;
             }
 
-            long latestStarted = profiler.begin();
-            ToolState latest = progression.latestState(context.state);
-            context.refreshState(latest, abilities);
-            profiler.record(Stage.BLOCK_MONITOR_LATEST_STATE, latestStarted);
+            // HIGH already refreshed/revalidated this exact active context. All local progression
+            // paths refresh ActiveToolContext immediately after mutation, so another registry/cache
+            // lookup here only repeated work for the same synchronous BlockBreakEvent.
+            ToolState latest = context.state;
 
             // Terminal tools still retain their abilities, but progression work
             // (target resolution, provenance and mutation) is unnecessary.
@@ -453,12 +453,14 @@ public final class ToolProgressListener implements Listener {
 
         if (cached != null && cached.quickIdentityMatches(
                 heldSlot, item.getType(), validationEpoch)) {
-            ToolState latest = progression.latestState(cached.state);
-            cached.refreshState(latest, abilities);
             long validationStarted = profiler.begin();
             boolean valid = fastCanUse(player, cached);
             profiler.record(Stage.BLOCK_HIGH_VALIDATION, validationStarted);
             if (valid) {
+                // Local progression paths refresh this object in-place. Avoid re-reading the
+                // authoritative state map on every block; the periodic compact identity check
+                // below refreshes external/administrative changes at the same bounded cadence
+                // already used for PDC identity validation.
                 if (currentTick < cached.nextIdentityValidationTick) {
                     profiler.count(Counter.CONTEXT_HITS);
                     return ActiveResolution.usable(cached);
