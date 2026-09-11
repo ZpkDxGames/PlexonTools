@@ -2,19 +2,25 @@ name: Build
 
 on:
   push:
-    branches: ['**']
+    branches: [main, 'release/**', 'closure/**', 'phase2/**', 'phase3/**']
     tags-ignore: ['v*']
   pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  ACCEPTED_RC3_SHA: 'a88dcc102b4999184864458b3b72a8c631e74c9a'
+
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Set up Java 25
@@ -23,10 +29,10 @@ jobs:
           distribution: temurin
           java-version: '25'
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '9.1.0'
-      - name: Provision PlexonCore 2.0.4 API
+      - name: Provision exact PlexonCore 2.0.4 API
         shell: bash
         run: |
           set -euo pipefail
@@ -37,21 +43,36 @@ jobs:
           mvn -B -ntp org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
             -Dfile="${core_jar}" -DgroupId=com.zpkdxgames -DartifactId=PlexonCore \
             -Dversion=2.0.4 -Dpackaging=jar -DgeneratePom=true
-      - name: Test and package
-        run: gradle clean check build --stacktrace
-      - name: Verify distribution
+      - name: Read project version and prove accepted lineage
         shell: bash
         run: |
           set -euo pipefail
-          jar_path='build/libs/PlexonTools-4.3.0-rc.3.jar'
-          test -s "${jar_path}"
-          jar tf "${jar_path}" > build/jar-contents.txt
-          grep -qx 'plugin.yml' build/jar-contents.txt
-          grep -qx 'com/plexon/tools/PlexonTools.class' build/jar-contents.txt
-          grep -qx 'com/plexon/tools/api/PlexonToolsAPI.class' build/jar-contents.txt
-          grep -qx 'com/plexon/tools/event/PlexonToolProgressEvent.class' build/jar-contents.txt
-          grep -qx 'com/plexon/tools/event/PlexonToolLevelUpEvent.class' build/jar-contents.txt
-          grep -qx 'org/sqlite/JDBC.class' build/jar-contents.txt
+          version="$(gradle -q properties | sed -n 's/^version: //p')"
+          test -n "$version"
+          echo "PLUGIN_VERSION=$version" >> "$GITHUB_ENV"
+          git merge-base --is-ancestor "$ACCEPTED_RC3_SHA" HEAD
+          grep -F 'io.papermc.paper:paper-api:26.2.build.121-stable' build.gradle.kts
+      - name: Test, check, Javadocs and build
+        run: gradle clean check javadoc build --stacktrace
+      - name: Verify distribution and generate evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar_path="build/libs/PlexonTools-${PLUGIN_VERSION}.jar"
+          test -s "$jar_path"
+          jar tf "$jar_path" > build/jar-contents.txt
+          for entry in \
+            plugin.yml \
+            com/plexon/tools/PlexonTools.class \
+            com/plexon/tools/api/PlexonToolsAPI.class \
+            com/plexon/tools/event/PlexonToolProgressEvent.class \
+            com/plexon/tools/event/PlexonToolLevelUpEvent.class \
+            org/sqlite/JDBC.class \
+            org/sqlite/native/Linux/x86_64/libsqlitejdbc.so \
+            org/sqlite/native/Mac/x86_64/libsqlitejdbc.dylib \
+            org/sqlite/native/Windows/x86_64/sqlitejdbc.dll; do
+            grep -qx "$entry" build/jar-contents.txt
+          done
           for prefix in \
             'com/zpkdxgames/plexoncore/' \
             'org/bukkit/' \
@@ -66,56 +87,54 @@ jobs:
               exit 1
             fi
           done
-          unzip -p "${jar_path}" plugin.yml | sed -n 's/^version:[[:space:]]*//p' \
-            | head -n 1 | tr -d " '\"\r" | grep -qx '4.3.0-rc.3'
-          javap -verbose -classpath "${jar_path}" com.plexon.tools.PlexonTools | grep -q 'major version: 69'
-          (cd build/libs && sha256sum PlexonTools-4.3.0-rc.3.jar > SHA256SUMS.txt && sha256sum --check SHA256SUMS.txt)
-      - name: Generate certification evidence
-        shell: bash
-        run: |
-          set -euo pipefail
+          unzip -p "$jar_path" plugin.yml | sed -n 's/^version:[[:space:]]*//p' \
+            | head -n 1 | tr -d " '\"\r" | grep -qx "$PLUGIN_VERSION"
+          javap -verbose -classpath "$jar_path" com.plexon.tools.PlexonTools | grep -q 'major version: 69'
           python3 - <<'PY'
-          import glob
-          import os
-          import xml.etree.ElementTree as ET
-
+          import glob, os, pathlib, xml.etree.ElementTree as ET
           totals = dict(tests=0, failures=0, errors=0, skipped=0)
           for path in glob.glob('build/test-results/test/TEST-*.xml'):
               root = ET.parse(path).getroot()
               for key in totals:
                   totals[key] += int(root.attrib.get(key, 0))
-          with open('build/libs/TEST_SUMMARY.txt', 'w', encoding='utf-8') as out:
-              out.write('PlexonTools 4.3.0-rc.3 CI test summary\n')
-              out.write(f"tests={totals['tests']}\n")
-              out.write(f"failures={totals['failures']}\n")
-              out.write(f"errors={totals['errors']}\n")
-              out.write(f"skipped={totals['skipped']}\n")
-              out.write('distribution=PASS\n')
-              out.write('java_major=69\n')
-              out.write('runtime_certification=NOT_EXECUTED\n')
-          with open('build/libs/PROVENANCE.txt', 'w', encoding='utf-8') as out:
-              out.write('product=PlexonTools\n')
-              out.write('version=4.3.0-rc.3\n')
-              out.write(f"commit={os.environ['GITHUB_SHA']}\n")
-              out.write(f"ref={os.environ['GITHUB_REF']}\n")
-              out.write('rollback_tag=v4.2.1\n')
-              out.write('rollback_commit=6e7a285fba8c16fc647ccc22c2c8342b2eb96711\n')
-              out.write('plexoncore=2.0.4\n')
-              out.write('gameplay_authority=LOCAL\n')
-              out.write('provenance_authority=LOCAL\n')
-              out.write('runtime_certification=NOT_EXECUTED\n')
+          if not totals['tests'] or totals['failures'] or totals['errors'] or totals['skipped']:
+              raise SystemExit(str(totals))
+          version = os.environ['PLUGIN_VERSION']
+          pathlib.Path('build/libs/TEST_SUMMARY.txt').write_text(
+              f"PlexonTools {version} CI test summary\n"
+              f"tests={totals['tests']}\nfailures={totals['failures']}\n"
+              f"errors={totals['errors']}\nskipped={totals['skipped']}\n"
+              "distribution=PASS\njava_major=69\nruntime_certification=NOT_EXECUTED\n",
+              encoding='utf-8')
           PY
-          cat build/libs/TEST_SUMMARY.txt
-          cat build/libs/PROVENANCE.txt
+          (cd build/libs && sha256sum "PlexonTools-${PLUGIN_VERSION}.jar" > SHA256SUMS.txt && sha256sum --check SHA256SUMS.txt)
+          size=$(stat -c%s "$jar_path"); digest=$(sha256sum "$jar_path" | awk '{print $1}')
+          cat > build/libs/PROVENANCE.txt <<EOF
+          product=PlexonTools
+          version=${PLUGIN_VERSION}
+          commit=${GITHUB_SHA}
+          ref=${GITHUB_REF}
+          accepted_rc3=${ACCEPTED_RC3_SHA}
+          rollback_tag=v4.2.1
+          rollback_commit=6e7a285fba8c16fc647ccc22c2c8342b2eb96711
+          plexoncore=2.0.4
+          gameplay_authority=LOCAL
+          provenance_authority=LOCAL
+          area_mine=DISABLED_SAFE
+          jar_size=${size}
+          jar_sha256=${digest}
+          runtime_certification=NOT_EXECUTED
+          EOF
       - name: Check whitespace
         run: git diff --check origin/main...HEAD
       - name: Upload verified artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: PlexonTools-4.3.0-rc.3-${{ github.sha }}
+          name: PlexonTools-${{ github.sha }}
           path: |
-            build/libs/PlexonTools-4.3.0-rc.3.jar
+            build/libs/PlexonTools-*.jar
             build/libs/SHA256SUMS.txt
             build/libs/TEST_SUMMARY.txt
             build/libs/PROVENANCE.txt
           if-no-files-found: error
+          retention-days: 30
