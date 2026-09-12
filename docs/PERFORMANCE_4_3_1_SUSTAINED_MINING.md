@@ -1,124 +1,65 @@
 # PlexonTools 4.3.1 sustained-mining performance audit
 
-Status: **BASELINE `/pt perf` CAPTURED — CONTROLLED ISOLATION STILL REQUIRED — NO 4.3.1 RELEASE CANDIDATE YET**
+Status: **ROOT CAUSE ISOLATED — FIRST VISUAL-RENDERER REMEDIATION IMPLEMENTED — CANDIDATE RUNTIME GATE PENDING**
 
-This document records the source-level audit and the mandatory PlexonCraft runtime gate for the sustained-mining regression reported against PlexonTools 4.3.0. It intentionally separates source evidence from runtime evidence. Nothing in this document is permission to infer a performance PASS from CI or source inspection.
+This document is the authoritative performance audit for the PlexonTools 4.3.1 sustained-mining remediation. Source inspection, CI, `/pt perf`, Spark, whole-server MSPT and soak evidence are intentionally kept distinct. A green build is not a runtime performance PASS.
 
 ## Release boundary
 
 - Repository: `ZpkDxGames/PlexonTools`
 - Baseline branch: `main`
 - Exact baseline SHA: `819d4fa92ea5745b72ad5933424cb194ade673ca`
-- Previous/current stable: `v4.3.0`
-- Current stable artifact: `PlexonTools-4.3.0.jar`
-- Intended compatible remediation version: `4.3.1`
+- Stable baseline: `v4.3.0`
+- Stable artifact: `PlexonTools-4.3.0.jar`
 - Runtime target: Paper `26.2`, Java `25`, PlexonCore `2.0.4`
-- Rollback: stable `v4.3.0`
+- Intended compatible remediation: `4.3.1`
+- Remediation branch: `perf/4.3.1-sustained-mining-mspt`
+- Rollback: exact stable `v4.3.0`
 
-## Reported production symptom
+## Production symptom
 
-The production report that opened this investigation is approximately:
+PlexonCraft was reported at approximately:
 
-| Workload | Observed server MSPT |
+| Workload | Server MSPT |
 | --- | ---: |
-| Idle / not continuously mining | ~2 ms |
+| Idle / no sustained mining | ~2 ms |
 | One player continuously mining with a PlexonTool | ~20 ms |
 
-The exact ~2 → ~20 server-MSPT transition still requires a synchronized Paper/Spark capture. A real PlexonCraft `/pt perf` baseline has now been captured and is recorded below; it must not be confused with whole-server MSPT.
+This whole-server symptom remains the final operational gate. The plugin-local profiler evidence below identifies the dominant PlexonTools subsystem but must not be represented as Paper-wide MSPT.
 
-## Source-level evidence from baseline `main`
+## Baseline source audit
 
-### Ordinary mining fast path already exists
+### Existing fast path preserved
 
-`ToolProgressListener` retains an `ActiveToolContext` per player, periodically revalidates compact identity rather than fully decoding PDC every block, caches definition/state/ability information, and bypasses normal progression for maximum-level tools. This means another generic identity cache is not the default remediation.
+The 4.3.0 ordinary mining architecture already has:
 
-### Progression still mutates authoritative state for each accepted block
+- cached active-tool context;
+- periodic compact identity revalidation instead of full PDC parsing every block;
+- cached definition/state/ability information;
+- max-level progression bypass;
+- asynchronous/coalesced SQLite persistence;
+- memory-only ordinary natural-block provenance decisions;
+- batched progress events;
+- coalesced visual refreshes;
+- Area Mine `DISABLED_SAFE`.
 
-For non-max-level progression, `ProgressionService.addProgressInternal(...)` still performs requirement advancement, materializes an updated immutable `ToolState`, updates registry state, refreshes the latest-state cache, batches the public progress event, and queues a visual refresh. Secondary work is coalesced, but the authoritative mutation path remains per accepted progress unit.
+The remediation therefore does not replace that architecture or add another generic block cache.
 
-### Dirty persistence is coalesced at the write level but touched per mutation
+### Progression and persistence remain per accepted mutation, but are not the measured primary cost
 
-`InstanceRegistry.update(...)` mutates the resident runtime record and then calls `markDirty(...)` for every accepted mutation. `markDirty(...)` currently:
+Every accepted non-max progress unit still enters requirement progression, immutable `ToolState` creation, registry mutation, latest-state update, event aggregation and visual queueing.
 
-1. increments a global revision;
-2. updates `recordRevisions`;
-3. acquires `pendingLock`;
-4. performs `pendingWrites.putIfAbsent(...)` or snapshot bookkeeping;
-5. calculates pending pressure/high-water state;
-6. evaluates pressure-flush scheduling.
+`InstanceRegistry.markDirty(...)` also still performs revision/map/lock bookkeeping on repeated mutations even when an instance is already queued. This remains a valid secondary optimization opportunity, but runtime evidence below does not justify changing its race-sensitive persistence model first.
 
-The pending map prevents duplicate queued record IDs, but repeated progress while an instance is already dirty still pays revision/map/lock/accounting work. This is a confirmed source-level candidate, not by itself a confirmed runtime root cause.
+### Profiler caveat
 
-### Profiling caveat: dirty first/repeat counters add diagnostic lock traffic
+While `/pt perf` is enabled, dirty first/repeat classification calls `pendingWriteCount()` before and after registry update. Those calls acquire `pendingLock` and are outside the timed `block.monitor.registry` stage. Spark with `/pt perf` disabled remains required for production-like confirmation, but the measured registry stage is sufficiently small that this caveat does not explain the visual-isolation result.
 
-While `/pt perf` is enabled, `ProgressionService.updateRegistry(...)` samples `InstanceRegistry.pendingWriteCount()` immediately before and after `InstanceRegistry.update(...)` to classify first dirty insert versus repeated dirty update. `pendingWriteCount()` itself synchronizes on `pendingLock`.
+## Real PlexonCraft baseline — stable v4.3.0
 
-Those two diagnostic lock acquisitions are outside the timed `block.monitor.registry` stage, although they are inside the larger monitor/block path. Therefore `block.monitor.registry` measures the actual `InstanceRegistry.update(...)` call but not all profiler-side dirty classification overhead. Spark with `/pt perf` disabled remains required for production-like confirmation.
+Captured 2026-09-12 during live sustained single-block mining. The screenshot was taken while the session was still running at 1935 samples, so this is a strong directional baseline rather than the final 3000-sample release benchmark.
 
-### GENERAL progression already has a partial allocation fast path
-
-`RequirementProgression.advance(...)` avoids cloning/normalizing target maps for GENERAL requirements, but still returns a new `Result`; `ProgressionService` then creates a new `ToolState` for a changed result. Allocation remains a candidate only if an allocation profile or stage evidence shows it is material.
-
-### Visual refresh remains a periodic synchronous candidate
-
-The default progress visual cadence is four ticks. Progress visual work can still include item lookup, PDC/meta mutation, dynamic lore/progress rendering, MiniMessage work, inventory replacement and action-bar work.
-
-The first real PlexonCraft profile strongly elevates this subsystem: actual visual execution is materially more expensive than registry mutation, requirement progression, natural provenance, event batching, action-bar rendering, and the ordinary block monitor path. Controlled `visual-refresh` isolation is now the next required test.
-
-### Public progress events remain an ecosystem boundary
-
-Compatible progress events are batched. Runtime profiling must distinguish PlexonTools time before event dispatch from downstream listeners of `PlexonToolProgressEvent`. A downstream consumer regression must not be silently re-owned by PlexonTools.
-
-## Current source/runtime bottleneck table
-
-| Stage / subsystem | Source observation | Runtime evidence so far | Next action |
-| --- | --- | --- | --- |
-| Active identity/context | Existing fast path and periodic revalidation | 97.36% context hit rate in initial sample | Keep as control; max-level test later |
-| Requirement progression | Per accepted unit; GENERAL avoids target-map clone | avg 0.040 ms, P95 0.053 ms | Not primary based on first sample |
-| Registry mutation | Per accepted unit | avg 0.009 ms, P95 0.014 ms | De-prioritized unless isolation/Spark contradicts |
-| Dirty bookkeeping | Revision/map/lock path entered per accepted unit | 152 first / 1732 repeat; high repetition but timed registry cost small | Preserve as secondary optimization candidate only |
-| Natural provenance | In-memory warm path | avg 0.014 ms, P95 0.019 ms | De-prioritized from first sample |
-| Visual refresh | Four-tick coalesced synchronous work | `visual.total` avg 1.775 ms, P95 2.280 ms; item refresh avg 1.495 ms, P95 1.926 ms | **Run `visual-refresh` isolation next** |
-| Action bar | Synchronous visual feedback | avg 0.205 ms, P95 0.273 ms | Test separately after visual-refresh isolation |
-| Abilities/drop handling | Mostly precomputed/fast when absent | drop context avg 0.019 ms; drop total avg 0.042 ms | Lower priority |
-| Public progress events | Batched but may invoke external consumers | event batching avg 0.013 ms; flush avg 0.012 ms | Lower priority locally; Spark still needed for consumers |
-
-## Mandatory runtime reproduction environment
-
-Record all of the following for baseline and candidate runs:
-
-- exact Paper build;
-- Java version;
-- PlexonTools version and commit SHA;
-- PlexonCore version;
-- relevant loaded block/progression listeners/plugins;
-- world and test region;
-- block type/stream;
-- tool ID, level, requirement mode and abilities;
-- NATURAL / PLAYER_PLACED / UNKNOWN origin state;
-- player count;
-- view distance and simulation distance;
-- idle baseline MSPT.
-
-Keep `AREA_MINE_3X3` `DISABLED_SAFE` for the campaign.
-
-## Baseline procedure — stable v4.3.0
-
-1. Install the exact stable `PlexonTools-4.3.0.jar`.
-2. Warm the exact test region for at least 30 seconds.
-3. Capture idle Spark + Paper MSPT.
-4. Run `/pt diagnostics`.
-5. Run `/pt perf reset`.
-6. Start a normal single-block sustained-mining workload with one player.
-7. Capture a Spark profile with `/pt perf` **disabled** to observe production-like plugin/event cost.
-8. Repeat the same workload with `/pt perf start 3000` and capture `/pt perf report console`.
-9. Record TPS, median/P95/P99/max MSPT and block-break rate.
-
-## Real PlexonCraft runtime evidence — initial `/pt perf` baseline
-
-Captured from the user's live PlexonCraft mining workload on 2026-09-12. The screenshot was taken while the profiler still reported `RUNNING`, at 1935 block samples rather than a completed 3000-sample session. Treat this as a strong directional baseline, not the final benchmark table.
-
-### Counters
+### Baseline counters
 
 | Counter | Value |
 | --- | ---: |
@@ -135,9 +76,7 @@ Captured from the user's live PlexonCraft mining workload on 2026-09-12. The scr
 | Dirty first / repeat | 152 / 1732 |
 | Event groups created / merged | 1155 / 728 |
 
-Repeated-dirty mutations account for the large majority of registry mutations, confirming that the source-level dirty-coalescing opportunity is real. However, the measured registry stage itself is very small in this sample, so repeated dirty bookkeeping is not currently the leading runtime explanation.
-
-### Timed stages
+### Baseline timed stages
 
 | Stage | Avg ms | P95 ms | P99 ms | Max ms |
 | --- | ---: | ---: | ---: | ---: |
@@ -157,116 +96,181 @@ Repeated-dirty mutations account for the large majority of registry mutations, c
 | `block.monitor.event_batch` | 0.013 | 0.019 | 0.049 | 0.274 |
 | `block.monitor.registry` | 0.009 | 0.014 | 0.032 | 0.121 |
 
-### Initial interpretation
-
-The first live profile does **not** support selecting dirty persistence or requirement progression as the primary remediation yet.
-
-- Registry mutation is two orders of magnitude below the heavy visual stages by average cost.
-- Requirement progression is also comparatively small.
-- Natural provenance and event batching are small in the measured local path.
-- Action-bar generation is measurable but substantially cheaper than physical item refresh.
-- `visual.item_refresh` dominates the visible rendering cost and reaches ~4.4 ms in the captured sample.
-- The periodic visual task reaches ~5 ms max and is therefore capable of producing repeating synchronous spikes even though many task invocations are cheap/empty.
-
-The strongest current hypothesis is physical progress item/meta/lore refresh. It must be confirmed by the controlled `visual-refresh` isolation before implementation.
-
-### Whole-server evidence still missing
-
-The screenshots do not provide synchronized Paper median/P95/P99/max MSPT or a Spark call tree. Therefore the original ~2 → ~20 server-MSPT report is not yet numerically reproduced in this audit.
-
-| Metric | Idle | One normal miner | Max-level miner |
-| --- | ---: | ---: | ---: |
-| Median MSPT | PENDING | PENDING | PENDING |
-| P95 MSPT | PENDING | PENDING | PENDING |
-| P99 MSPT | PENDING | PENDING | PENDING |
-| Max MSPT | PENDING | PENDING | PENDING |
-| Block rate | n/a | PENDING | PENDING |
-
-Spark baseline reference: **PENDING**
+The baseline strongly points at physical item/lore rendering: `visual.item_refresh` alone is roughly 1.5 ms average and the periodic visual task reaches ~5 ms, while registry, provenance, event aggregation and progression math are all much smaller.
 
 ## Isolation matrix
 
-Use the same region, tool family, block stream and workload. Change one variable at a time. Reset all isolation switches after each test.
+Use the same region, tool family and block stream and change one variable at a time.
 
-| Test | Control | Median MSPT | P95 MSPT | Interpretation |
-| --- | --- | ---: | ---: | --- |
-| A | equivalent maximum-level tool | PENDING | PENDING | Separates progression-side work from generic block path |
-| B | `progression on` | PENDING | PENDING | Requirement/progression math |
-| C | `registry-mutation on` | PENDING | PENDING | Runtime record + dirty bookkeeping |
-| D | `natural-tracking on` | PENDING | PENDING | Provenance path |
-| E | `visual-refresh on` | **NEXT TEST** | **NEXT TEST** | Physical metadata/lore refresh |
-| F | `actionbar on` | PENDING | PENDING | Action-bar rendering/packet work |
-| G | `abilities on` | PENDING | PENDING | Ability execution |
-| H | `drop-abilities on` | PENDING | PENDING | Block-drop preparation/application |
-| I | `progress-events on` | PENDING | PENDING | Local batching plus external event consumers |
+| Test | Control | Result | Interpretation |
+| --- | --- | --- | --- |
+| A | equivalent maximum-level tool | PENDING | Generic block path vs progression |
+| B | `progression on` | PENDING | Requirement/progression math |
+| C | `registry-mutation on` | PENDING | Runtime record + dirty bookkeeping |
+| D | `natural-tracking on` | PENDING | Provenance |
+| E | `visual-refresh on` | **ROOT-CAUSE ISOLATION PASS** | Physical item/lore visual path is dominant |
+| F | `actionbar on` | Optional follow-up | Action bar is secondary in baseline |
+| G | `abilities on` | PENDING if needed | Ability execution |
+| H | `drop-abilities on` | PENDING if needed | Drop preparation/application |
+| I | `progress-events on` | PENDING if needed | Local batching / downstream listeners |
 
-Also compare after the main isolation matrix:
+## Test E — visual refresh isolated
 
-- `progress-action-bar: false`;
-- `progress-visual-refresh-ticks: 20`;
-- normal configuration;
-- equivalent max-level tool.
+Captured 2026-09-12 on live PlexonCraft with `DIAGNOSTIC ISOLATION ACTIVE: visual-refresh`. The report was still running at 2019 samples.
 
-## Decision gate after baseline
+### Isolation counters
 
-The current evidence justifies prioritizing visual isolation, but not yet implementation.
+| Counter | Value |
+| --- | ---: |
+| Samples | 2019 |
+| Context hit rate | 97.67% (1972 / 2019) |
+| PDC reads | 17398 |
+| UUID parses | 8699 |
+| Registry reads | 0 |
+| Registry mutations | 1928 |
+| Inventory scans | 0 |
+| Drop fallbacks | 2019 |
+| Natural lookups | 1928 |
+| Requirement calls | 1928 |
+| Dirty first / repeat | 137 / 1791 |
+| Event groups created / merged | 1143 / 784 |
 
-- If `visual-refresh` isolation materially reduces the repeating cost, build a compiled/progress-only renderer before changing cadence.
-- If `visual-refresh` does not materially improve the server profile, continue with max-level and other isolation controls rather than assuming source-level suspects are causal.
-- If `actionbar` isolation alone materially improves the result, optimize action-bar generation independently.
-- If `registry-mutation` later proves significant despite the first timings, implement a race-safe clean → dirty generation model.
-- If `progress-events` isolation removes the regression, identify the downstream listener in Spark before changing PlexonTools event semantics.
-- If no isolation removes the cost, inspect external event dispatch, Paper/block physics and allocation/GC pressure before modifying PlexonTools.
+### Isolation timed stages
 
-## Candidate implementation
+| Stage | Avg ms | P95 ms | P99 ms | Max ms |
+| --- | ---: | ---: | ---: | ---: |
+| `block.total` | 0.049 | 0.063 | 0.103 | 5.290 |
+| `block.monitor.requirement` | 0.038 | 0.047 | 0.064 | 0.107 |
+| `drop.total` | 0.029 | 0.040 | 0.071 | 0.129 |
+| `drop.context` | 0.013 | 0.029 | 0.053 | 0.125 |
+| `task.progress_event_flush` | 0.030 | 0.075 | 0.100 | 0.591 |
+| `block.high.total` | 0.018 | 0.048 | 0.081 | 0.168 |
+| `block.monitor.event_batch` | 0.010 | 0.012 | 0.024 | 0.072 |
+| `block.monitor.natural` | 0.010 | 0.010 | 0.024 | 0.346 |
+| `block.monitor.registry` | 0.007 | 0.007 | 0.020 | 0.501 |
+| `block.monitor.state_mutation` | 0.003 | 0.006 | 0.009 | 0.031 |
+| `block.high.validation` | 0.002 | 0.003 | 0.005 | 0.056 |
+| `block.monitor.target` | 0.005 | 0.005 | 0.011 | 0.057 |
+| `block.high.identity` | 0.039 | 0.060 | 0.094 | 0.162 |
+| `block.high.context` | 0.003 | 0.004 | 0.004 | 0.053 |
 
-**PENDING CONTROLLED VISUAL ISOLATION.**
+The isolated run reduces `block.total` from:
 
-The branch must prefer the smallest measured fix. No unrelated GUI, balance, feature, storage migration or Area Mine work belongs in 4.3.1.
+- **1.125 → 0.049 ms average** (~95.6% lower);
+- **1.565 → 0.063 ms P95** (~96.0% lower);
+- **1.865 → 0.103 ms P99** (~94.5% lower).
 
-## Correctness requirements for any implementation
+A single ~5.29 ms maximum outlier remains, but the sustained distribution collapses when visual refresh is disabled. Registry mutation remains ~0.007 ms average in this control. This is sufficient evidence to select the visual item/lore renderer as the first remediation target under the directive's decision tree.
 
-Any accepted implementation must preserve:
+## Confirmed root cause
 
-- every accepted block contributes exactly once;
-- cancelled/wrong-tool/invalid-world/owner-invalid progress remains zero;
-- exact GENERAL and SPECIFIC progression math;
-- exact level boundary and excess-progress behavior;
-- no lost update during an in-flight persistence write;
-- exact final persisted progress after shutdown/restart;
-- tool PDC identity and existing tool compatibility;
-- correct full refresh on level/form/material/enchantment transitions;
-- exact public event total and level-up ordering;
-- NATURAL accepted, PLAYER_PLACED rejected and UNKNOWN fail-closed;
-- no synchronous SQLite/file access in ordinary mining;
-- no Bukkit/Paper live objects used asynchronously.
+The dominant PlexonTools-local sustained-mining cost is the coalesced **physical progress item/lore refresh path**, not ordinary progression math or SQLite dirty bookkeeping.
 
-## Acceptance targets
+The current `ToolItemService.refreshProgress(...)` still rebuilds presentation repeatedly, including placeholder rendering and repeated MiniMessage deserialization. Static lore rows, enchantment presentation, owner/profile text and quantized progress output can therefore be reparsed many times during sustained mining.
 
-For the same machine, configuration, region, tool and block stream:
+## First candidate implementation
 
-- eliminate sustained PlexonTools-attributed ~15–20 MSPT behavior for one ordinary miner;
-- target median MSPT no more than approximately idle + 2 ms;
-- target P95 no more than approximately idle + 5 ms;
+Selected strategy: **bounded immutable rendered-component cache**.
+
+Candidate head after implementation/tests: `e49f932f7fff8392f2af18adafe2eca5ca65b1a7` (subject to later documentation commits).
+
+Implementation characteristics:
+
+- `MessageService` caches fully rendered, normalized MiniMessage strings to immutable Adventure `Component` objects;
+- cache is access-ordered and bounded to 4096 entries;
+- identical static lore rows avoid repeated MiniMessage deserialization;
+- quantized outputs such as percentage/progress-bar rows can also hit the cache while their rendered value is unchanged;
+- genuinely changing exact progress rows still deserialize normally;
+- cache is cleared on message reload;
+- synchronization prevents unsafe concurrent map access without moving Bukkit work off-thread;
+- no live Bukkit objects enter background work;
+- no gameplay/progression/PDC/API/event/storage semantics change.
+
+A regression test verifies that identical rendered output reuses the same immutable component and that the cache remains bounded.
+
+This is deliberately the **smallest measured fix**. Do not yet combine it with progress-only PDC writes, lore-layout compilation, cadence changes or persistence changes. Re-measure this candidate first.
+
+## Candidate runtime test
+
+After candidate CI passes, run the candidate JAR under the same workload with all diagnostic isolation switches OFF.
+
+Capture:
+
+1. `/pt perf reset`;
+2. `/pt perf start 3000`;
+3. sustained single-block mining in the same test region;
+4. `/pt perf report console` after a useful sample;
+5. Paper server MSPT during the same workload;
+6. Spark with `/pt perf` disabled over a comparable workload.
+
+Primary candidate comparison:
+
+| Metric | Stable 4.3.0 baseline | Candidate | Gate |
+| --- | ---: | ---: | --- |
+| `block.total` avg | 1.125 ms | PENDING | materially lower |
+| `block.total` P95 | 1.565 ms | PENDING | materially lower |
+| `visual.item_refresh` avg | 1.495 ms | PENDING | substantially lower |
+| `visual.item_refresh` P95 | 1.926 ms | PENDING | substantially lower |
+| Paper median MSPT | PENDING | PENDING | ~idle + 2 ms target |
+| Paper P95 MSPT | PENDING | PENDING | ~idle + 5 ms target |
+
+If rendered-component caching is insufficient, the next measured optimization is a true progress-only physical item renderer: update only mutable progression PDC, cache stable instance/profile placeholders, reuse static lore components, and avoid display-name/static metadata reconstruction during same-level progress refreshes.
+
+## Correctness invariants
+
+Any candidate and final 4.3.1 release must preserve:
+
+- exactly-once accepted progress;
+- zero progress for cancelled/wrong-tool/owner/world-invalid actions;
+- exact GENERAL and SPECIFIC math and level boundaries;
+- no lost persistence update during an in-flight async flush;
+- shutdown/restart exact final state;
+- existing tool PDC identity and Legendary Tool compatibility;
+- immediate full metadata/profile refresh on level/form/material/enchantment transitions;
+- exact public progress totals and level-up ordering;
+- NATURAL accepted, PLAYER_PLACED rejected, UNKNOWN fail-closed;
+- no synchronous SQLite/file I/O on the ordinary mining path;
+- Area Mine remains `DISABLED_SAFE`.
+
+## Acceptance gates
+
+For the same host/configuration/region/tool/block stream:
+
+- no sustained PlexonTools-attributed ~15–20 MSPT behavior for one miner;
+- target Paper median no more than approximately idle + 2 ms;
+- target Paper P95 no more than approximately idle + 5 ms;
 - no repeating PlexonTools synchronous spike above 10 ms without an identified exceptional operation;
-- ordinary PlexonTools `BlockBreakEvent` P95 comfortably sub-millisecond where practical;
-- max-level path near identity/ability/provenance-only cost;
-- predictable 1/5/10 miner scaling without unbounded queue/task/context growth;
-- at least 30 minutes mixed-activity soak before stable publication.
+- ordinary PlexonTools block path P95 comfortably sub-millisecond where practical;
+- predictable 1/5/10 miner scaling;
+- no unbounded queue/task/context/cache growth;
+- at least 30 minutes mixed-activity soak;
+- no lost progress, stale visuals or lost database state.
 
-These are engineering targets, not evidence to be backfilled or inferred.
+## Spark evidence
+
+Still required before stable publication:
+
+1. stable v4.3.0 ordinary mining;
+2. optimized candidate ordinary mining;
+3. optimized candidate maximum-level mining;
+4. candidate with five miners if practical.
+
+Spark must distinguish PlexonTools frames, event dispatch/external progress-event consumers, item/lore/MiniMessage work, inventory/meta work, persistence synchronization, provenance and ability/drop frames.
 
 ## CI and release state
 
-- Documentation-head CI: **PASS** — PR #14 run `34716144484`
-- Runtime implementation: **NOT SELECTED YET**
-- Real runtime baseline: **PARTIAL `/pt perf` CAPTURED**
-- Controlled isolation matrix: **IN PROGRESS**
-- Spark / whole-server MSPT gate: **BLOCKING / PENDING**
+- Stable baseline: `v4.3.0` / `819d4fa92ea5745b72ad5933424cb194ade673ca`
+- Documentation CI before implementation: PASS, run `34716144484`
+- Visual isolation Test E: **PASS / root cause isolated**
+- First implementation candidate CI: **RUNNING** at time of this update
+- Candidate runtime benchmark: **PENDING**
+- Spark comparison: **PENDING**
+- 1/5/10 miner scaling: **PENDING**
+- 30-minute soak: **PENDING**
 - Merge to `main`: **NOT PERMITTED YET**
 - Stable `v4.3.1`: **NOT PERMITTED YET**
 
-The final JAR must be built from the exact merged `main` commit only after runtime evidence passes. Required release assets remain:
+The final release JAR must be built from the exact merged `main` commit after all runtime gates pass. Required final assets:
 
 - `PlexonTools-4.3.1.jar`
 - `SHA256SUMS.txt`
@@ -275,15 +279,4 @@ The final JAR must be built from the exact merged `main` commit only after runti
 
 ## Rollback
 
-Until 4.3.1 is runtime-certified and published, `v4.3.0` remains the authoritative stable release. If a future 4.3.1 candidate fails correctness or performance gates, restore the exact `v4.3.0` JAR and preserve the database; do not regenerate player tools.
-
-## Evidence classification
-
-Current evidence now consists of:
-
-1. source-level audit evidence;
-2. green documentation-branch CI evidence;
-3. real PlexonCraft `/pt perf` stage/counter evidence from a 1935-sample in-progress baseline;
-4. the original production whole-server MSPT symptom report.
-
-Synthetic benchmark, synchronized Spark, completed whole-server MSPT distributions, isolation results, post-fix scaling and soak evidence remain pending and must not be inferred from the sources above.
+Until 4.3.1 is runtime-certified and published, restore the exact `v4.3.0` JAR if a candidate fails. Preserve `plexontools.db`; existing player tools do not need regeneration.
