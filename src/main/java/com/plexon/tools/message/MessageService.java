@@ -15,7 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class MessageService {
-    private static final int RENDERED_COMPONENT_CACHE_LIMIT = 4096;
+    static final int RENDERED_COMPONENT_CACHE_LIMIT = 4096;
     private static final Map<String, String> BUILT_IN_DEFAULTS = Map.of(
             "activation-inventory-full", "<yellow>Your inventory is full. Free one slot to activate the bound tool.</yellow>",
             "target-inventory-full", "<yellow><white>{player}</white>'s inventory is full; no tool was issued or dropped.</yellow>",
@@ -41,8 +41,12 @@ public final class MessageService {
     private String prefix = "";
 
     public MessageService(JavaPlugin plugin) {
+        this(plugin, new File(plugin.getDataFolder(), "messages.yml"));
+    }
+
+    MessageService(JavaPlugin plugin, File file) {
         this.plugin = plugin;
-        this.file = new File(plugin.getDataFolder(), "messages.yml");
+        this.file = file;
     }
 
     public void reload() throws IOException, InvalidConfigurationException {
