@@ -11,9 +11,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class MessageService {
+    private static final int RENDERED_COMPONENT_CACHE_LIMIT = 4096;
     private static final Map<String, String> BUILT_IN_DEFAULTS = Map.of(
             "activation-inventory-full", "<yellow>Your inventory is full. Free one slot to activate the bound tool.</yellow>",
             "target-inventory-full", "<yellow><white>{player}</white>'s inventory is full; no tool was issued or dropped.</yellow>",
@@ -28,6 +30,13 @@ public final class MessageService {
     private final JavaPlugin plugin;
     private final File file;
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
+    private final Map<String, Component> renderedComponents =
+            new LinkedHashMap<>(256, 0.75F, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Component> eldest) {
+                    return size() > RENDERED_COMPONENT_CACHE_LIMIT;
+                }
+            };
     private YamlConfiguration messages = new YamlConfiguration();
     private String prefix = "";
 
@@ -41,6 +50,9 @@ public final class MessageService {
         candidate.load(file);
         messages = candidate;
         prefix = messages.getString("messages.prefix", messages.getString("prefix", ""));
+        synchronized (renderedComponents) {
+            renderedComponents.clear();
+        }
     }
 
     public void send(CommandSender sender, String key) {
@@ -63,11 +75,11 @@ public final class MessageService {
     }
 
     public Component parse(String input) {
-        return miniMessage.deserialize(normalizeItalics(input));
+        return deserializeCached(normalizeItalics(input));
     }
 
     public Component parse(String input, Map<String, String> placeholders) {
-        return miniMessage.deserialize(normalizeItalics(
+        return deserializeCached(normalizeItalics(
                 renderPlaceholders(input, placeholders)));
     }
 
@@ -77,6 +89,31 @@ public final class MessageService {
 
     public JavaPlugin plugin() {
         return plugin;
+    }
+
+    int renderedComponentCacheSize() {
+        synchronized (renderedComponents) {
+            return renderedComponents.size();
+        }
+    }
+
+    private Component deserializeCached(String rendered) {
+        synchronized (renderedComponents) {
+            Component cached = renderedComponents.get(rendered);
+            if (cached != null) {
+                return cached;
+            }
+        }
+
+        Component parsed = miniMessage.deserialize(rendered);
+        synchronized (renderedComponents) {
+            Component raced = renderedComponents.get(rendered);
+            if (raced != null) {
+                return raced;
+            }
+            renderedComponents.put(rendered, parsed);
+            return parsed;
+        }
     }
 
     private String value(String key) {
