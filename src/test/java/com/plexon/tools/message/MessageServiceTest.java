@@ -1,10 +1,14 @@
 package com.plexon.tools.message;
 
+import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class MessageServiceTest {
     @Test
@@ -59,5 +63,20 @@ final class MessageServiceTest {
     void handlesNullInputAndPlaceholderMap() {
         assertEquals("", MessageService.renderPlaceholders(null, Map.of()));
         assertEquals("unchanged", MessageService.renderPlaceholders("unchanged", null));
+    }
+
+    @Test
+    void reusesRenderedComponentsAndKeepsTheCacheBounded() {
+        MessageService service = new MessageService(null, new File("unused-messages.yml"));
+
+        Component first = service.parse("<gray>Hello {player}</gray>", Map.of("player", "Ada"));
+        Component second = service.parse("<gray>Hello {player}</gray>", Map.of("player", "Ada"));
+        assertSame(first, second);
+
+        for (int index = 0; index < MessageService.RENDERED_COMPONENT_CACHE_LIMIT + 128; index++) {
+            service.parse("<gray>Entry " + index + "</gray>");
+        }
+        assertTrue(service.renderedComponentCacheSize()
+                <= MessageService.RENDERED_COMPONENT_CACHE_LIMIT);
     }
 }
