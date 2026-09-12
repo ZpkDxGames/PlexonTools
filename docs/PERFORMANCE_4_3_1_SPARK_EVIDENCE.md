@@ -56,7 +56,7 @@ The live visual-refresh stack is:
 
 Across the full 23m21s profile, Spark sampled approximately `152 ms` inside the coalesced PlexonTools visual flush. The current remaining renderer cost is concentrated in lore construction, especially `enchantmentLines`, `requirementLines`, progress placeholder generation, and MiniMessage escaping/parsing. There is no evidence of a large persistence or registry hotspot in the server profile.
 
-Because the whole-server one-player MSPT acceptance target is already met, the proposed second same-level progress-only renderer is now **HOLD / evidence-triggered only** rather than an automatic follow-up. It should be implemented only if later 5/10-miner scaling or soak evidence shows the renderer becoming material again.
+The first candidate's internal `/pt perf` result still shows measurable local visual-renderer cost (`block.total` P95 ~1.10 ms), but the whole-server one-player acceptance target is already met. Under the campaign's smallest-fix rule, the proposed second same-level progress-only renderer is therefore **HOLD / evidence-triggered only**, not an automatic follow-up. Implement it only if later 5/10-miner scaling or soak evidence shows the renderer becoming material again.
 
 ## Unrelated periodic spikes
 
@@ -72,6 +72,7 @@ PlexonPanel `TelemetryService.captureServer` is another visible background cost 
 - First candidate CI: PASS.
 - One-player internal `/pt perf`: materially improved.
 - One-player whole-server Spark/MSPT: PASS.
+- Second renderer optimization: HOLD unless scaling/soak reopens it.
 - Maximum-level control: pending.
 - 5-player scaling: pending.
 - 10-player scaling: pending.
