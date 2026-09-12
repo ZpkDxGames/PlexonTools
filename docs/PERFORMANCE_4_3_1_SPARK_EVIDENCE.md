@@ -40,7 +40,7 @@ Mining median-of-medians: `3.241 ms`.
 
 Delta from idle median-of-medians: approximately `+1.054 ms`.
 
-This satisfies the campaign's one-player whole-server target of approximately idle + 2 ms median and idle + 5 ms P95/normal-tail behavior.
+This satisfies the campaign's one-player whole-server target of approximately idle + 2 ms median. The Spark capture also shows normal mining-window maxima below 10 ms for these clean windows. A dedicated percentile capture for the exact three-minute mining subset is not encoded separately by Spark, so the campaign should not invent a subset P95 value.
 
 ## PlexonTools attribution
 
